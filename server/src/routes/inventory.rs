@@ -39,6 +39,13 @@ async fn add_inventory(
     headers: HeaderMap,
     Json(req): Json<inventory::AddInventoryRequest>,
 ) -> Result<Json<inventory::InventoryRow>, AppError> {
+    // 음수 값 방지
+    if req.add_mandarin < 0 || req.add_watermelon < 0 || req.add_hotspring_material < 0 {
+        return Err(AppError::BadRequest(
+            "Inventory values must be non-negative".to_string(),
+        ));
+    }
+
     let token = extract_token(&headers)?;
     let u = user::find_by_token(&state.pool, token)
         .await

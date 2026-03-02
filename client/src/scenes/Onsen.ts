@@ -12,7 +12,6 @@ import {
     ONSEN_POOL_W,
     ONSEN_POOL_H,
     ONSEN_INVENTORY_START_Y,
-    LS_KEY_INVENTORY,
     type ItemType,
     type Inventory,
     type PlacedItem,
@@ -20,6 +19,7 @@ import {
 } from '../utils/Constants';
 import { getOnsenLevel } from '../utils/OnsenLogic';
 import { InventoryManager } from '../services/InventoryManager';
+import { createButton } from '../ui/UIFactory';
 
 const ITEM_TYPES: ItemType[] = ['mandarin', 'watermelon', 'hotspring_material'];
 const ITEM_NAMES: Record<ItemType, string> = {
@@ -27,12 +27,6 @@ const ITEM_NAMES: Record<ItemType, string> = {
     watermelon: '수박',
     hotspring_material: '온천 재료',
 };
-
-// Onsen pool area bounds (from Constants.ts)
-const POOL_X = ONSEN_POOL_X;
-const POOL_Y = ONSEN_POOL_Y;
-const POOL_W = ONSEN_POOL_W;
-const POOL_H = ONSEN_POOL_H;
 
 export class Onsen extends Phaser.Scene {
     private inventoryMgr!: InventoryManager;
@@ -52,6 +46,12 @@ export class Onsen extends Phaser.Scene {
 
     constructor() {
         super(SCENE_ONSEN);
+    }
+
+    shutdown(): void {
+        this.cleanupPlacingMode();
+        this.input.off('drag');
+        this.input.off('dragend');
     }
 
     create(): void {
@@ -89,21 +89,21 @@ export class Onsen extends Phaser.Scene {
         this.poolGraphics = this.add.graphics();
         // 테두리
         this.poolGraphics.fillStyle(colors.rim, 1);
-        this.poolGraphics.fillRoundedRect(POOL_X - 10, POOL_Y - 10, POOL_W + 20, POOL_H + 20, 30);
+        this.poolGraphics.fillRoundedRect(ONSEN_POOL_X - 10, ONSEN_POOL_Y - 10, ONSEN_POOL_W + 20, ONSEN_POOL_H + 20, 30);
         // 물
         this.poolGraphics.fillStyle(colors.water, 1);
-        this.poolGraphics.fillRoundedRect(POOL_X, POOL_Y, POOL_W, POOL_H, 24);
+        this.poolGraphics.fillRoundedRect(ONSEN_POOL_X, ONSEN_POOL_Y, ONSEN_POOL_W, ONSEN_POOL_H, 24);
         // 김(steam) 효과 — 간단한 투명 원
         this.poolGraphics.fillStyle(0xFFFFFF, 0.15);
-        this.poolGraphics.fillCircle(POOL_X + 100, POOL_Y + 30, 40);
-        this.poolGraphics.fillCircle(POOL_X + 300, POOL_Y + 50, 50);
-        this.poolGraphics.fillCircle(POOL_X + 420, POOL_Y + 20, 35);
+        this.poolGraphics.fillCircle(ONSEN_POOL_X + 100, ONSEN_POOL_Y + 30, 40);
+        this.poolGraphics.fillCircle(ONSEN_POOL_X + 300, ONSEN_POOL_Y + 50, 50);
+        this.poolGraphics.fillCircle(ONSEN_POOL_X + 420, ONSEN_POOL_Y + 20, 35);
 
         // 배치된 아이템 렌더링
         this.renderPlacedItems();
 
         // 온천 영역 클릭 → 배치
-        const poolZone = this.add.zone(POOL_X + POOL_W / 2, POOL_Y + POOL_H / 2, POOL_W, POOL_H)
+        const poolZone = this.add.zone(ONSEN_POOL_X + ONSEN_POOL_W / 2, ONSEN_POOL_Y + ONSEN_POOL_H / 2, ONSEN_POOL_W, ONSEN_POOL_H)
             .setInteractive({ useHandCursor: true });
         poolZone.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
             this.onPoolTap(pointer.x, pointer.y);
@@ -121,9 +121,14 @@ export class Onsen extends Phaser.Scene {
         this.renderInventoryPanel();
 
         // 뒤로가기 버튼
-        this.createButton(GAME_WIDTH / 2, GAME_HEIGHT - 70, 'BACK', 0x757575, () => {
-            this.inventoryMgr.saveOnsenLayout(this.layout);
-            this.scene.start(SCENE_MAIN_MENU);
+        createButton(this, {
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT - 70,
+            label: 'BACK', color: 0x757575,
+            callback: () => {
+                this.cleanupPlacingMode();
+                this.inventoryMgr.saveOnsenLayout(this.layout);
+                this.scene.start(SCENE_MAIN_MENU);
+            },
         });
 
         // 드래그 설정 (풀 밖으로 끌면 제거)
@@ -131,8 +136,8 @@ export class Onsen extends Phaser.Scene {
             gameObject.x = dragX;
             gameObject.y = dragY;
             // 풀 밖이면 반투명으로 제거 힌트
-            const inside = dragX >= POOL_X && dragX <= POOL_X + POOL_W
-                        && dragY >= POOL_Y && dragY <= POOL_Y + POOL_H;
+            const inside = dragX >= ONSEN_POOL_X && dragX <= ONSEN_POOL_X + ONSEN_POOL_W
+                        && dragY >= ONSEN_POOL_Y && dragY <= ONSEN_POOL_Y + ONSEN_POOL_H;
             gameObject.setAlpha(inside ? 1 : 0.4);
         });
 
@@ -140,8 +145,8 @@ export class Onsen extends Phaser.Scene {
             const idx = this.placedSprites.indexOf(gameObject);
             if (idx < 0) return;
 
-            const inside = gameObject.x >= POOL_X && gameObject.x <= POOL_X + POOL_W
-                        && gameObject.y >= POOL_Y && gameObject.y <= POOL_Y + POOL_H;
+            const inside = gameObject.x >= ONSEN_POOL_X && gameObject.x <= ONSEN_POOL_X + ONSEN_POOL_W
+                        && gameObject.y >= ONSEN_POOL_Y && gameObject.y <= ONSEN_POOL_Y + ONSEN_POOL_H;
 
             if (inside) {
                 // 풀 안: 위치 저장
@@ -157,7 +162,7 @@ export class Onsen extends Phaser.Scene {
 
                 if (removed) {
                     this.inventory[removed.itemType]++;
-                    localStorage.setItem(LS_KEY_INVENTORY, JSON.stringify(this.inventory));
+                    this.inventoryMgr.saveInventory(this.inventory);
                     const countText = this.inventoryTexts.get(removed.itemType);
                     if (countText) countText.setText(`x${this.inventory[removed.itemType]}`);
                 }
@@ -222,12 +227,21 @@ export class Onsen extends Phaser.Scene {
         }
     }
 
+    private cleanupPlacingMode(): void {
+        if (this.ghostSprite) {
+            this.ghostSprite.destroy();
+            this.ghostSprite = null;
+        }
+        this.placingType = null;
+        this.input.off('pointermove', this.onGhostMove, this);
+    }
+
     private startPlacing(itemType: ItemType): void {
         this.placingType = itemType;
 
         // 고스트 스프라이트 (포인터를 따라다님)
         if (this.ghostSprite) this.ghostSprite.destroy();
-        this.ghostSprite = this.add.image(GAME_WIDTH / 2, POOL_Y + POOL_H / 2, `onsen-deco-${itemType}`)
+        this.ghostSprite = this.add.image(GAME_WIDTH / 2, ONSEN_POOL_Y + ONSEN_POOL_H / 2, `onsen-deco-${itemType}`)
             .setDisplaySize(ONSEN_ITEM_DISPLAY_SIZE * 0.8, ONSEN_ITEM_DISPLAY_SIZE * 0.8)
             .setAlpha(0.5);
 
@@ -240,8 +254,8 @@ export class Onsen extends Phaser.Scene {
 
     private onGhostMove(pointer: Phaser.Input.Pointer): void {
         if (this.ghostSprite) {
-            this.ghostSprite.x = Phaser.Math.Clamp(pointer.x, POOL_X + 20, POOL_X + POOL_W - 20);
-            this.ghostSprite.y = Phaser.Math.Clamp(pointer.y, POOL_Y + 20, POOL_Y + POOL_H - 20);
+            this.ghostSprite.x = Phaser.Math.Clamp(pointer.x, ONSEN_POOL_X + 20, ONSEN_POOL_X + ONSEN_POOL_W - 20);
+            this.ghostSprite.y = Phaser.Math.Clamp(pointer.y, ONSEN_POOL_Y + 20, ONSEN_POOL_Y + ONSEN_POOL_H - 20);
         }
     }
 
@@ -251,9 +265,7 @@ export class Onsen extends Phaser.Scene {
         const itemType = this.placingType;
         const count = this.inventory[itemType];
         if (count <= 0) {
-            this.placingType = null;
-            if (this.ghostSprite) { this.ghostSprite.destroy(); this.ghostSprite = null; }
-            this.input.off('pointermove', this.onGhostMove, this);
+            this.cleanupPlacingMode();
             return;
         }
 
@@ -262,8 +274,8 @@ export class Onsen extends Phaser.Scene {
         const countText = this.inventoryTexts.get(itemType);
         if (countText) countText.setText(`x${this.inventory[itemType]}`);
 
-        // localStorage에 인벤토리 저장 (음수 방지를 위해 직접 저장)
-        localStorage.setItem(LS_KEY_INVENTORY, JSON.stringify(this.inventory));
+        // InventoryManager를 통해 인벤토리 저장
+        this.inventoryMgr.saveInventory(this.inventory);
 
         // 배치 정보 저장
         const placed: PlacedItem = { itemType, x: px, y: py };
@@ -287,9 +299,7 @@ export class Onsen extends Phaser.Scene {
         });
 
         // 고스트 제거, 모드 해제
-        this.placingType = null;
-        if (this.ghostSprite) { this.ghostSprite.destroy(); this.ghostSprite = null; }
-        this.input.off('pointermove', this.onGhostMove, this);
+        this.cleanupPlacingMode();
         this.titleText.setText('나의 온천');
 
         // 레벨 업 체크
@@ -307,39 +317,13 @@ export class Onsen extends Phaser.Scene {
         // 풀 색상 업데이트
         this.poolGraphics.clear();
         this.poolGraphics.fillStyle(colors.rim, 1);
-        this.poolGraphics.fillRoundedRect(POOL_X - 10, POOL_Y - 10, POOL_W + 20, POOL_H + 20, 30);
+        this.poolGraphics.fillRoundedRect(ONSEN_POOL_X - 10, ONSEN_POOL_Y - 10, ONSEN_POOL_W + 20, ONSEN_POOL_H + 20, 30);
         this.poolGraphics.fillStyle(colors.water, 1);
-        this.poolGraphics.fillRoundedRect(POOL_X, POOL_Y, POOL_W, POOL_H, 24);
+        this.poolGraphics.fillRoundedRect(ONSEN_POOL_X, ONSEN_POOL_Y, ONSEN_POOL_W, ONSEN_POOL_H, 24);
         this.poolGraphics.fillStyle(0xFFFFFF, 0.15);
-        this.poolGraphics.fillCircle(POOL_X + 100, POOL_Y + 30, 40);
-        this.poolGraphics.fillCircle(POOL_X + 300, POOL_Y + 50, 50);
-        this.poolGraphics.fillCircle(POOL_X + 420, POOL_Y + 20, 35);
+        this.poolGraphics.fillCircle(ONSEN_POOL_X + 100, ONSEN_POOL_Y + 30, 40);
+        this.poolGraphics.fillCircle(ONSEN_POOL_X + 300, ONSEN_POOL_Y + 50, 50);
+        this.poolGraphics.fillCircle(ONSEN_POOL_X + 420, ONSEN_POOL_Y + 20, 35);
     }
 
-    private createButton(
-        x: number, y: number, label: string, color: number, callback: () => void,
-    ): void {
-        const btnW = 240;
-        const btnH = 56;
-
-        const bg = this.add.graphics();
-        bg.fillStyle(color, 1);
-        bg.fillRoundedRect(x - btnW / 2, y - btnH / 2, btnW, btnH, 14);
-
-        const text = this.add.text(x, y, label, {
-            fontFamily: 'Arial', fontSize: '26px', color: '#FFFFFF', fontStyle: 'bold',
-        }).setOrigin(0.5);
-
-        const hitArea = this.add.zone(x, y, btnW, btnH).setInteractive({ useHandCursor: true });
-
-        hitArea.on('pointerdown', () => {
-            bg.setAlpha(0.7);
-            text.setAlpha(0.7);
-            this.time.delayedCall(120, () => {
-                bg.setAlpha(1);
-                text.setAlpha(1);
-                callback();
-            });
-        });
-    }
 }

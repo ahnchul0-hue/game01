@@ -5,12 +5,12 @@ import {
     SCENE_SKIN_SELECT,
     SCENE_MAIN_MENU,
     SKIN_CONFIGS,
-    LS_KEY_MAX_DISTANCE,
     type SkinId,
     type SkinConfig,
 } from '../utils/Constants';
 import { isSkinUnlocked, getOnsenLevelIndex, getTotalItems, getOnsenLevel, type UnlockStats } from '../utils/OnsenLogic';
 import { InventoryManager } from '../services/InventoryManager';
+import { createButton } from '../ui/UIFactory';
 
 export class SkinSelect extends Phaser.Scene {
     private inventoryMgr!: InventoryManager;
@@ -26,7 +26,7 @@ export class SkinSelect extends Phaser.Scene {
     create(): void {
         this.inventoryMgr = InventoryManager.getInstance();
         this.selectedSkin = this.inventoryMgr.getSelectedSkin();
-        this.unlockedSkins = this.inventoryMgr.getUnlockedSkins();
+        this.unlockedSkins = [...this.inventoryMgr.getUnlockedSkins()];
         this.cardBorders = new Map();
 
         // 잠금해제 상태 체크를 위한 통계 수집
@@ -34,7 +34,7 @@ export class SkinSelect extends Phaser.Scene {
         const layout = this.inventoryMgr.getOnsenLayout();
         const onsenLevel = getOnsenLevel(layout.placedItems.length);
         const stats: UnlockStats = {
-            maxDistance: this.getMaxDistance(),
+            maxDistance: this.inventoryMgr.getMaxDistance(),
             onsenLevelIndex: getOnsenLevelIndex(onsenLevel),
             totalItemsCollected: getTotalItems(inventory),
         };
@@ -60,7 +60,7 @@ export class SkinSelect extends Phaser.Scene {
         }).setOrigin(0.5);
 
         // 2×2 그리드
-        const gridStartY = 420;
+        const gridStartY = 460;
         const cardW = 300;
         const cardH = 140;
         const gapX = 30;
@@ -79,23 +79,20 @@ export class SkinSelect extends Phaser.Scene {
         }
 
         // 뒤로가기 + 확인 (한 줄로)
-        this.createButton(GAME_WIDTH / 2 - 130, GAME_HEIGHT - 70, 'BACK', 0x757575, () => {
-            this.scene.start(SCENE_MAIN_MENU);
+        createButton(this, {
+            x: GAME_WIDTH / 2 - 130, y: GAME_HEIGHT - 70,
+            label: 'BACK', color: 0x757575, width: 200, height: 52, fontSize: '24px',
+            callback: () => this.scene.start(SCENE_MAIN_MENU),
         });
 
-        this.createButton(GAME_WIDTH / 2 + 130, GAME_HEIGHT - 70, 'CONFIRM', 0x4CAF50, () => {
-            this.inventoryMgr.saveSelectedSkin(this.selectedSkin);
-            this.scene.start(SCENE_MAIN_MENU);
+        createButton(this, {
+            x: GAME_WIDTH / 2 + 130, y: GAME_HEIGHT - 70,
+            label: 'CONFIRM', color: 0x4CAF50, width: 200, height: 52, fontSize: '24px',
+            callback: () => {
+                this.inventoryMgr.saveSelectedSkin(this.selectedSkin);
+                this.scene.start(SCENE_MAIN_MENU);
+            },
         });
-    }
-
-    private getMaxDistance(): number {
-        try {
-            const raw = localStorage.getItem(LS_KEY_MAX_DISTANCE);
-            return raw ? parseInt(raw, 10) : 0;
-        } catch {
-            return 0;
-        }
     }
 
     private updateUnlocks(stats: UnlockStats): void {
@@ -188,30 +185,4 @@ export class SkinSelect extends Phaser.Scene {
         }
     }
 
-    private createButton(
-        x: number, y: number, label: string, color: number, callback: () => void,
-    ): void {
-        const btnW = 200;
-        const btnH = 52;
-
-        const bg = this.add.graphics();
-        bg.fillStyle(color, 1);
-        bg.fillRoundedRect(x - btnW / 2, y - btnH / 2, btnW, btnH, 14);
-
-        const text = this.add.text(x, y, label, {
-            fontFamily: 'Arial', fontSize: '24px', color: '#FFFFFF', fontStyle: 'bold',
-        }).setOrigin(0.5);
-
-        const hitArea = this.add.zone(x, y, btnW, btnH).setInteractive({ useHandCursor: true });
-
-        hitArea.on('pointerdown', () => {
-            bg.setAlpha(0.7);
-            text.setAlpha(0.7);
-            this.time.delayedCall(120, () => {
-                bg.setAlpha(1);
-                text.setAlpha(1);
-                callback();
-            });
-        });
-    }
 }

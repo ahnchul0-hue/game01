@@ -91,6 +91,11 @@ export class Game extends Phaser.Scene {
         this.reviveHitZones = [];
     }
 
+    shutdown(): void {
+        this.input.off('pointerdown');
+        this.input.off('pointerup');
+    }
+
     create(): void {
         // 배경 (패럴랙스 3레이어 — M3: 스테이지별 텍스처)
         this.bgSky = this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, 'bg-sky-forest')

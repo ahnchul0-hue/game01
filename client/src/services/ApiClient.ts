@@ -5,15 +5,6 @@ interface UserResponse {
     token: string;
 }
 
-export interface ScoreEntry {
-    id: string;
-    user_id: string;
-    score: number;
-    distance: number;
-    items_collected: number;
-    created_at: string;
-}
-
 export interface InventoryResponse {
     mandarin: number;
     watermelon: number;
@@ -67,10 +58,7 @@ export class ApiClient {
         try {
             await fetch(`${this.baseUrl}/api/scores`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
+                headers: this.authHeaders(),
                 body: JSON.stringify({
                     score,
                     distance,
@@ -79,16 +67,6 @@ export class ApiClient {
             });
         } catch {
             // fire-and-forget
-        }
-    }
-
-    async getTopScores(limit = 10): Promise<ScoreEntry[]> {
-        try {
-            const res = await fetch(`${this.baseUrl}/api/scores/top?limit=${limit}`);
-            if (!res.ok) return [];
-            return await res.json();
-        } catch {
-            return [];
         }
     }
 

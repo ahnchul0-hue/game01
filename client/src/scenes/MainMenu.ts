@@ -9,6 +9,7 @@ import {
 } from '../utils/Constants';
 import { ApiClient } from '../services/ApiClient';
 import { InventoryManager } from '../services/InventoryManager';
+import { createButton } from '../ui/UIFactory';
 
 export class MainMenu extends Phaser.Scene {
     constructor() {
@@ -50,75 +51,31 @@ export class MainMenu extends Phaser.Scene {
         capybara.setScale(2);
 
         // 시작 버튼
-        this.createButton(
-            GAME_WIDTH / 2,
-            GAME_HEIGHT * 0.52,
-            'START',
-            0x4CAF50,
-            () => this.scene.start(SCENE_GAME, { mode: 'normal' }),
-        );
+        createButton(this, {
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.52,
+            label: 'START', color: 0x4CAF50, width: 280, height: 64, fontSize: '28px', radius: 16,
+            callback: () => this.scene.start(SCENE_GAME, { mode: 'normal' }),
+        });
 
         // 릴렉스 모드 버튼
-        this.createButton(
-            GAME_WIDTH / 2,
-            GAME_HEIGHT * 0.62,
-            'RELAX MODE',
-            0x81C784,
-            () => this.scene.start(SCENE_GAME, { mode: 'relax' }),
-        );
+        createButton(this, {
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.62,
+            label: 'RELAX MODE', color: 0x81C784, width: 280, height: 64, fontSize: '28px', radius: 16,
+            callback: () => this.scene.start(SCENE_GAME, { mode: 'relax' }),
+        });
 
         // 온천 버튼
-        this.createButton(
-            GAME_WIDTH / 2,
-            GAME_HEIGHT * 0.72,
-            'ONSEN',
-            0xFF8C00,
-            () => this.scene.start(SCENE_ONSEN),
-        );
+        createButton(this, {
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.72,
+            label: 'ONSEN', color: 0xFF8C00, width: 280, height: 64, fontSize: '28px', radius: 16,
+            callback: () => this.scene.start(SCENE_ONSEN),
+        });
 
         // 스킨 버튼
-        this.createButton(
-            GAME_WIDTH / 2,
-            GAME_HEIGHT * 0.82,
-            'SKINS',
-            0x8B008B,
-            () => this.scene.start(SCENE_SKIN_SELECT),
-        );
-    }
-
-    private createButton(
-        x: number,
-        y: number,
-        label: string,
-        color: number,
-        callback: () => void,
-    ): void {
-        const btnW = 280;
-        const btnH = 64;
-
-        const bg = this.add.graphics();
-        bg.fillStyle(color, 1);
-        bg.fillRoundedRect(x - btnW / 2, y - btnH / 2, btnW, btnH, 16);
-
-        const text = this.add.text(x, y, label, {
-            fontFamily: 'Arial',
-            fontSize: '28px',
-            color: '#FFFFFF',
-            fontStyle: 'bold',
-        }).setOrigin(0.5);
-
-        // 인터랙티브 영역
-        const hitArea = this.add.zone(x, y, btnW, btnH).setInteractive({ useHandCursor: true });
-
-        hitArea.on('pointerdown', () => {
-            // alpha 변경으로 눌림 효과 (Graphics scale tween 버그 회피)
-            bg.setAlpha(0.7);
-            text.setAlpha(0.7);
-            this.time.delayedCall(120, () => {
-                bg.setAlpha(1);
-                text.setAlpha(1);
-                callback();
-            });
+        createButton(this, {
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.82,
+            label: 'SKINS', color: 0x8B008B, width: 280, height: 64, fontSize: '28px', radius: 16,
+            callback: () => this.scene.start(SCENE_SKIN_SELECT),
         });
     }
 }

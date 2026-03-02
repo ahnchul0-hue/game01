@@ -6,11 +6,11 @@ import {
     SCENE_GAME,
     SCENE_MAIN_MENU,
     SCENE_ONSEN,
-    LS_KEY_MAX_DISTANCE,
 } from '../utils/Constants';
 import type { GameMode, CollectedItems } from '../utils/Constants';
 import { ApiClient } from '../services/ApiClient';
 import { InventoryManager } from '../services/InventoryManager';
+import { createButton } from '../ui/UIFactory';
 
 interface GameOverData {
     score?: number;
@@ -47,7 +47,7 @@ export class GameOver extends Phaser.Scene {
         // M4: 인벤토리 누적 + 최고 거리 갱신
         const inventoryMgr = InventoryManager.getInstance();
         inventoryMgr.addItems(this.collectedItems);
-        this.updateMaxDistance(this.finalDistance);
+        inventoryMgr.updateMaxDistance(this.finalDistance);
 
         // 어두운 오버레이
         const overlay = this.add.graphics();
@@ -68,8 +68,9 @@ export class GameOver extends Phaser.Scene {
             duration: 500, ease: 'Bounce.easeOut',
         });
 
-        // 카피바라
-        const capybara = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT * 0.28, 'capybara');
+        // 카피바라 (선택된 스킨)
+        const selectedSkin = inventoryMgr.getSelectedSkin();
+        const capybara = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT * 0.28, `capybara-${selectedSkin}`);
         capybara.setScale(2);
         capybara.setAlpha(0.7);
 
@@ -103,36 +104,25 @@ export class GameOver extends Phaser.Scene {
         this.createItemDisplay(startX + itemSpacing * 2, itemY, 'item-hotspring_material', this.collectedItems.hotspring_material);
 
         // 재시작 버튼
-        this.createButton(
-            GAME_WIDTH / 2, GAME_HEIGHT * 0.73,
-            'RETRY', 0x4CAF50,
-            () => this.scene.start(SCENE_GAME, { mode: this.lastMode }),
-        );
+        createButton(this, {
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.73,
+            label: 'RETRY', color: 0x4CAF50,
+            callback: () => this.scene.start(SCENE_GAME, { mode: this.lastMode }),
+        });
 
         // 온천 버튼
-        this.createButton(
-            GAME_WIDTH / 2, GAME_HEIGHT * 0.82,
-            'GO TO ONSEN', 0xFF8C00,
-            () => this.scene.start(SCENE_ONSEN),
-        );
+        createButton(this, {
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.82,
+            label: 'GO TO ONSEN', color: 0xFF8C00,
+            callback: () => this.scene.start(SCENE_ONSEN),
+        });
 
         // 메뉴 버튼
-        this.createButton(
-            GAME_WIDTH / 2, GAME_HEIGHT * 0.91,
-            'MENU', 0x757575,
-            () => this.scene.start(SCENE_MAIN_MENU),
-        );
-    }
-
-    private updateMaxDistance(distance: number): void {
-        try {
-            const prev = parseInt(localStorage.getItem(LS_KEY_MAX_DISTANCE) ?? '0', 10);
-            if (distance > prev) {
-                localStorage.setItem(LS_KEY_MAX_DISTANCE, distance.toString());
-            }
-        } catch {
-            // ignore
-        }
+        createButton(this, {
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.91,
+            label: 'MENU', color: 0x757575,
+            callback: () => this.scene.start(SCENE_MAIN_MENU),
+        });
     }
 
     private createItemDisplay(x: number, y: number, texture: string, count: number): void {
@@ -147,30 +137,4 @@ export class GameOver extends Phaser.Scene {
         }).setOrigin(0.5);
     }
 
-    private createButton(
-        x: number, y: number, label: string, color: number, callback: () => void,
-    ): void {
-        const btnW = 240;
-        const btnH = 56;
-
-        const bg = this.add.graphics();
-        bg.fillStyle(color, 1);
-        bg.fillRoundedRect(x - btnW / 2, y - btnH / 2, btnW, btnH, 14);
-
-        const text = this.add.text(x, y, label, {
-            fontFamily: 'Arial', fontSize: '26px', color: '#FFFFFF', fontStyle: 'bold',
-        }).setOrigin(0.5);
-
-        const hitArea = this.add.zone(x, y, btnW, btnH).setInteractive({ useHandCursor: true });
-
-        hitArea.on('pointerdown', () => {
-            bg.setAlpha(0.7);
-            text.setAlpha(0.7);
-            this.time.delayedCall(120, () => {
-                bg.setAlpha(1);
-                text.setAlpha(1);
-                callback();
-            });
-        });
-    }
 }

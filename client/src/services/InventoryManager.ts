@@ -8,6 +8,7 @@ import {
     LS_KEY_ONSEN_LAYOUT,
     LS_KEY_SELECTED_SKIN,
     LS_KEY_UNLOCKED_SKINS,
+    LS_KEY_MAX_DISTANCE,
 } from '../utils/Constants';
 
 const DEFAULT_INVENTORY: Inventory = { mandarin: 0, watermelon: 0, hotspring_material: 0 };
@@ -53,8 +54,30 @@ export class InventoryManager {
         this.api.addInventory(collected);
     }
 
-    private setInventory(inv: Inventory): void {
+    saveInventory(inv: Inventory): void {
         localStorage.setItem(LS_KEY_INVENTORY, JSON.stringify(inv));
+    }
+
+    // --- Max Distance ---
+
+    getMaxDistance(): number {
+        try {
+            const raw = localStorage.getItem(LS_KEY_MAX_DISTANCE);
+            return raw ? parseInt(raw, 10) : 0;
+        } catch {
+            return 0;
+        }
+    }
+
+    updateMaxDistance(distance: number): void {
+        try {
+            const prev = this.getMaxDistance();
+            if (distance > prev) {
+                localStorage.setItem(LS_KEY_MAX_DISTANCE, distance.toString());
+            }
+        } catch {
+            // ignore
+        }
     }
 
     // --- Onsen Layout ---
@@ -114,7 +137,7 @@ export class InventoryManager {
             if (inv) {
                 // 머지 전략: 로컬 vs 서버 중 더 큰 값 유지 (오프라인 수집 데이터 보호)
                 const local = this.getInventory();
-                this.setInventory({
+                this.saveInventory({
                     mandarin: Math.max(local.mandarin, inv.mandarin),
                     watermelon: Math.max(local.watermelon, inv.watermelon),
                     hotspring_material: Math.max(local.hotspring_material, inv.hotspring_material),
