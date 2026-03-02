@@ -6,12 +6,9 @@ import {
     LANE_POSITIONS,
     SPAWN_Y,
     ITEM_SPAWN_CHANCE,
-    ITEM_WEIGHTS,
     SPAWN_INTERVAL_START,
-    POWERUP_SPAWN_CHANCE,
-    POWERUP_MIN_DISTANCE,
 } from '../utils/Constants';
-import type { ItemType, PowerUpType } from '../utils/Constants';
+import { shouldSpawnPowerUp, weightedRandomItem, randomPowerUpType } from '../utils/GameLogic';
 
 export class SpawnManager {
     private obstaclePool: ObstaclePool;
@@ -68,32 +65,14 @@ export class SpawnManager {
         // 남은 레인에 아이템/파워업 배치 (확률 기반)
         for (let i = obstacleCount; i < lanes.length; i++) {
             // 파워업 우선 체크 (300m+ 이후 12% 확률)
-            if (distance >= POWERUP_MIN_DISTANCE && Math.random() < POWERUP_SPAWN_CHANCE) {
-                const powerUpType = this.randomPowerUpType();
-                this.powerUpPool.spawn(LANE_POSITIONS[lanes[i]], SPAWN_Y, powerUpType, gameSpeed);
+            if (shouldSpawnPowerUp(distance, Math.random())) {
+                const puType = randomPowerUpType(Math.random());
+                this.powerUpPool.spawn(LANE_POSITIONS[lanes[i]], SPAWN_Y, puType, gameSpeed);
             } else if (Math.random() < ITEM_SPAWN_CHANCE) {
-                const itemType = this.weightedRandom();
+                const itemType = weightedRandomItem(Math.random());
                 this.itemPool.spawn(LANE_POSITIONS[lanes[i]], SPAWN_Y, itemType, gameSpeed);
             }
         }
-    }
-
-    private weightedRandom(): ItemType {
-        const entries = Object.entries(ITEM_WEIGHTS) as [ItemType, number][];
-        const totalWeight = entries.reduce((sum, [, w]) => sum + w, 0);
-        let random = Math.random() * totalWeight;
-
-        for (const [type, weight] of entries) {
-            random -= weight;
-            if (random <= 0) return type;
-        }
-
-        return entries[0][0];
-    }
-
-    private randomPowerUpType(): PowerUpType {
-        const types: PowerUpType[] = ['helmet', 'tube', 'friend'];
-        return types[Math.floor(Math.random() * types.length)];
     }
 
     reset(): void {

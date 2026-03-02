@@ -1,10 +1,7 @@
 import Phaser from 'phaser';
-import {
-    STAGE_THRESHOLDS,
-    STAGE_LOOP_DISTANCE,
-    STAGE_TRANSITION_DURATION,
-} from '../utils/Constants';
+import { STAGE_TRANSITION_DURATION } from '../utils/Constants';
 import type { StageType } from '../utils/Constants';
+import { getStageForDistance } from '../utils/GameLogic';
 
 export class StageManager {
     private scene: Phaser.Scene;
@@ -31,7 +28,7 @@ export class StageManager {
 
     /** 거리 기반 스테이지 업데이트. 전환 발생 시 새 스테이지를 반환, 없으면 null */
     update(distance: number): StageType | null {
-        const stage = this.getStageForDistance(distance);
+        const stage = getStageForDistance(distance);
         if (stage === this.currentStage || this.isTransitioning) return null;
 
         const prevStage = this.currentStage;
@@ -42,21 +39,6 @@ export class StageManager {
 
     getCurrentStage(): StageType {
         return this.currentStage;
-    }
-
-    /** 거리에 해당하는 스테이지 계산 (3000m+ 루프) */
-    private getStageForDistance(distance: number): StageType {
-        const looped = distance >= STAGE_LOOP_DISTANCE
-            ? distance % STAGE_LOOP_DISTANCE
-            : distance;
-
-        let result: StageType = 'forest';
-        for (const { stage, minDistance } of STAGE_THRESHOLDS) {
-            if (looped >= minDistance) {
-                result = stage;
-            }
-        }
-        return result;
     }
 
     /** 배경 크로스페이드 전환 */
