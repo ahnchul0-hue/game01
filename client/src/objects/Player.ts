@@ -135,6 +135,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         return this.isInvincible;
     }
 
+    getIsSliding(): boolean {
+        return this.isSliding;
+    }
+
+    getIsJumping(): boolean {
+        return this.isJumping;
+    }
+
     getCurrentLane(): number {
         return this.currentLane;
     }

@@ -4,7 +4,10 @@ import {
     GAME_HEIGHT,
     SCENE_PRELOADER,
     SCENE_MAIN_MENU,
+    OBSTACLE_CONFIGS,
+    ITEM_SIZE,
 } from '../utils/Constants';
+import type { ObstacleType } from '../utils/Constants';
 
 export class Preloader extends Phaser.Scene {
     constructor() {
@@ -103,5 +106,54 @@ export class Preloader extends Phaser.Scene {
         groundGfx.fillRect(0, 0, 512, 8);
         groundGfx.generateTexture('bg-ground', 512, 256);
         groundGfx.destroy();
+
+        // M2: 장애물 텍스처 3종
+        this.createObstacleTexture('rock', OBSTACLE_CONFIGS.rock);
+        this.createObstacleTexture('branch_high', OBSTACLE_CONFIGS.branch_high);
+        this.createObstacleTexture('puddle', OBSTACLE_CONFIGS.puddle);
+
+        // M2: 아이템 텍스처 3종
+        this.createItemTexture('mandarin', 0xFF8C00);
+        this.createItemTexture('watermelon', 0x2E8B57);
+        this.createItemTexture('hotspring_material', 0xFF69B4);
+    }
+
+    private createObstacleTexture(
+        type: ObstacleType,
+        config: { width: number; height: number; color: number },
+    ): void {
+        const gfx = this.make.graphics({ x: 0, y: 0 }, false);
+        gfx.fillStyle(config.color, 1);
+        gfx.fillRoundedRect(0, 0, config.width, config.height, 8);
+
+        // 타입별 시각 구분
+        if (type === 'rock') {
+            // 어두운 테두리
+            gfx.lineStyle(3, 0x505050, 1);
+            gfx.strokeRoundedRect(0, 0, config.width, config.height, 8);
+        } else if (type === 'branch_high') {
+            // 나뭇가지 선
+            gfx.lineStyle(2, 0x5C3317, 1);
+            gfx.lineBetween(10, config.height / 2, config.width - 10, config.height / 2);
+        } else {
+            // 물결 (puddle)
+            gfx.lineStyle(2, 0xFFFFFF, 0.5);
+            gfx.lineBetween(20, config.height / 2, 40, config.height / 2 - 5);
+            gfx.lineBetween(40, config.height / 2 - 5, 60, config.height / 2);
+        }
+
+        gfx.generateTexture(`obstacle-${type}`, config.width, config.height);
+        gfx.destroy();
+    }
+
+    private createItemTexture(name: string, color: number): void {
+        const gfx = this.make.graphics({ x: 0, y: 0 }, false);
+        gfx.fillStyle(color, 1);
+        gfx.fillCircle(ITEM_SIZE / 2, ITEM_SIZE / 2, ITEM_SIZE / 2);
+        // 하이라이트
+        gfx.fillStyle(0xFFFFFF, 0.3);
+        gfx.fillCircle(ITEM_SIZE / 2 - 5, ITEM_SIZE / 2 - 5, ITEM_SIZE / 6);
+        gfx.generateTexture(`item-${name}`, ITEM_SIZE, ITEM_SIZE);
+        gfx.destroy();
     }
 }

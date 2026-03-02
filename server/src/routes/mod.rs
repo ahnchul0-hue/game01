@@ -1,0 +1,19 @@
+pub mod scores;
+pub mod users;
+
+use axum::Router;
+use sqlx::SqlitePool;
+
+#[derive(Clone)]
+pub struct AppState {
+    pub pool: SqlitePool,
+}
+
+pub fn create_router(pool: SqlitePool) -> Router {
+    let state = AppState { pool };
+
+    Router::new()
+        .merge(users::router())
+        .merge(scores::router())
+        .with_state(state)
+}

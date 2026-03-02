@@ -5,6 +5,7 @@ import {
     SCENE_MAIN_MENU,
     SCENE_GAME,
 } from '../utils/Constants';
+import { ApiClient } from '../services/ApiClient';
 
 export class MainMenu extends Phaser.Scene {
     constructor() {
@@ -12,6 +13,9 @@ export class MainMenu extends Phaser.Scene {
     }
 
     create(): void {
+        // 게스트 유저 생성 (fire-and-forget, 2차 리뷰 C2)
+        new ApiClient().ensureUser();
+
         // 배경
         this.cameras.main.setBackgroundColor('#87CEEB');
 
