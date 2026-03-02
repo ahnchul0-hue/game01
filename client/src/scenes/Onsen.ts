@@ -19,7 +19,7 @@ import {
 } from '../utils/Constants';
 import { getOnsenLevel } from '../utils/OnsenLogic';
 import { InventoryManager } from '../services/InventoryManager';
-import { createButton } from '../ui/UIFactory';
+import { createButton, fadeToScene, fadeIn } from '../ui/UIFactory';
 
 const ITEM_TYPES: ItemType[] = ['mandarin', 'watermelon', 'hotspring_material'];
 const ITEM_NAMES: Record<ItemType, string> = {
@@ -66,6 +66,9 @@ export class Onsen extends Phaser.Scene {
 
         this.cameras.main.setBackgroundColor('#D2B48C');
 
+        // 페이드인
+        fadeIn(this);
+
         this.drawAll();
     }
 
@@ -99,6 +102,37 @@ export class Onsen extends Phaser.Scene {
         this.poolGraphics.fillCircle(ONSEN_POOL_X + 300, ONSEN_POOL_Y + 50, 50);
         this.poolGraphics.fillCircle(ONSEN_POOL_X + 420, ONSEN_POOL_Y + 20, 35);
 
+        // 온천 김(steam) 파티클
+        this.add.particles(ONSEN_POOL_X + ONSEN_POOL_W / 2, ONSEN_POOL_Y + 20, 'particle', {
+            x: { min: -ONSEN_POOL_W / 3, max: ONSEN_POOL_W / 3 },
+            speedY: { min: -30, max: -15 },
+            speedX: { min: -5, max: 5 },
+            scale: { start: 0.8, end: 0 },
+            alpha: { start: 0.25, end: 0 },
+            lifespan: { min: 1500, max: 2500 },
+            frequency: 200,
+            tint: 0xFFFFFF,
+        }).setDepth(5);
+
+        // 카피바라 목욕 스프라이트 (풀 중앙)
+        const selectedSkin = this.inventoryMgr.getSelectedSkin();
+        const bathCapy = this.add.image(
+            ONSEN_POOL_X + ONSEN_POOL_W / 2,
+            ONSEN_POOL_Y + ONSEN_POOL_H / 2 + 20,
+            `capybara-${selectedSkin}`,
+        ).setScale(1.2).setDepth(3);
+        // 반쯤 물에 잠긴 효과 — crop 대신 alpha mask
+        bathCapy.setCrop(0, 0, 100, 85);
+        // 물에서 살짝 흔들리는 애니메이션
+        this.tweens.add({
+            targets: bathCapy,
+            y: bathCapy.y - 3,
+            duration: 2000,
+            ease: 'Sine.easeInOut',
+            yoyo: true,
+            repeat: -1,
+        });
+
         // 배치된 아이템 렌더링
         this.renderPlacedItems();
 
@@ -127,7 +161,7 @@ export class Onsen extends Phaser.Scene {
             callback: () => {
                 this.cleanupPlacingMode();
                 this.inventoryMgr.saveOnsenLayout(this.layout);
-                this.scene.start(SCENE_MAIN_MENU);
+                fadeToScene(this, SCENE_MAIN_MENU);
             },
         });
 

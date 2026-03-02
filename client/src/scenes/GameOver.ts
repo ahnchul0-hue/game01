@@ -7,10 +7,12 @@ import {
     SCENE_MAIN_MENU,
     SCENE_ONSEN,
 } from '../utils/Constants';
-import type { GameMode, CollectedItems } from '../utils/Constants';
+import type { GameMode, CollectedItems, SkinConfig } from '../utils/Constants';
+import { SKIN_CONFIGS } from '../utils/Constants';
+import { getUnlockProgress, getOnsenLevelIndex, getTotalItems, getOnsenLevel, type UnlockStats } from '../utils/OnsenLogic';
 import { ApiClient } from '../services/ApiClient';
 import { InventoryManager } from '../services/InventoryManager';
-import { createButton } from '../ui/UIFactory';
+import { createButton, fadeToScene, fadeIn } from '../ui/UIFactory';
 
 interface GameOverData {
     score?: number;
@@ -37,6 +39,9 @@ export class GameOver extends Phaser.Scene {
     }
 
     create(): void {
+        // 페이드인
+        fadeIn(this);
+
         // 점수 API 전송 (fire-and-forget)
         const totalItems = this.collectedItems.mandarin
             + this.collectedItems.watermelon
@@ -103,26 +108,65 @@ export class GameOver extends Phaser.Scene {
         this.createItemDisplay(startX + itemSpacing, itemY, 'item-watermelon', this.collectedItems.watermelon);
         this.createItemDisplay(startX + itemSpacing * 2, itemY, 'item-hotspring_material', this.collectedItems.hotspring_material);
 
+        // 최고 거리
+        const bestDistance = inventoryMgr.getMaxDistance();
+        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.65, `BEST: ${bestDistance}m`, {
+            fontFamily: 'Arial', fontSize: '20px', color: '#AAAAAA',
+        }).setOrigin(0.5);
+
+        // 다음 스킨 잠금해제 힌트
+        const hint = this.getNextUnlockHint(inventoryMgr);
+        if (hint) {
+            this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.69, hint, {
+                fontFamily: 'Arial', fontSize: '16px', color: '#81C784',
+            }).setOrigin(0.5);
+        }
+
         // 재시작 버튼
         createButton(this, {
             x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.73,
             label: 'RETRY', color: 0x4CAF50,
-            callback: () => this.scene.start(SCENE_GAME, { mode: this.lastMode }),
+            callback: () => fadeToScene(this, SCENE_GAME, { mode: this.lastMode }),
         });
 
         // 온천 버튼
         createButton(this, {
             x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.82,
             label: 'GO TO ONSEN', color: 0xFF8C00,
-            callback: () => this.scene.start(SCENE_ONSEN),
+            callback: () => fadeToScene(this, SCENE_ONSEN),
         });
 
         // 메뉴 버튼
         createButton(this, {
             x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.91,
             label: 'MENU', color: 0x757575,
-            callback: () => this.scene.start(SCENE_MAIN_MENU),
+            callback: () => fadeToScene(this, SCENE_MAIN_MENU),
         });
+    }
+
+    private getNextUnlockHint(inventoryMgr: InventoryManager): string | null {
+        const unlockedSkins = inventoryMgr.getUnlockedSkins();
+        const inventory = inventoryMgr.getInventory();
+        const layout = inventoryMgr.getOnsenLayout();
+        const onsenLevel = getOnsenLevel(layout.placedItems.length);
+        const stats: UnlockStats = {
+            maxDistance: inventoryMgr.getMaxDistance(),
+            onsenLevelIndex: getOnsenLevelIndex(onsenLevel),
+            totalItemsCollected: getTotalItems(inventory),
+        };
+
+        let bestCandidate: { config: SkinConfig; progress: number } | null = null;
+        for (const config of SKIN_CONFIGS) {
+            if (unlockedSkins.includes(config.id)) continue;
+            const progress = getUnlockProgress(config.unlockCondition, stats);
+            if (!bestCandidate || progress > bestCandidate.progress) {
+                bestCandidate = { config, progress };
+            }
+        }
+
+        if (!bestCandidate) return null;
+        const pct = Math.floor(bestCandidate.progress * 100);
+        return `Next: ${bestCandidate.config.name} (${pct}%) — ${bestCandidate.config.unlockDescription}`;
     }
 
     private createItemDisplay(x: number, y: number, texture: string, count: number): void {

@@ -31,6 +31,13 @@ async fn create_score(
         .and_then(|v| v.strip_prefix("Bearer "))
         .ok_or(AppError::Unauthorized)?;
 
+    // 입력 값 검증
+    if req.score < 0 || req.distance < 0 || req.items_collected < 0 {
+        return Err(AppError::BadRequest(
+            "Score values must be non-negative".to_string(),
+        ));
+    }
+
     // 토큰으로 유저 조회
     let u = user::find_by_token(&state.pool, token)
         .await
@@ -45,7 +52,7 @@ async fn get_top_scores(
     State(state): State<AppState>,
     Query(params): Query<TopScoresQuery>,
 ) -> Result<Json<Vec<score::Score>>, AppError> {
-    let limit = params.limit.unwrap_or(10);
+    let limit = params.limit.unwrap_or(10).min(100);
     let scores = score::get_top_scores(&state.pool, limit).await?;
     Ok(Json(scores))
 }

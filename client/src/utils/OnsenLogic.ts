@@ -30,6 +30,16 @@ export interface UnlockStats {
     totalItemsCollected: number;
 }
 
+export function getUnlockProgress(condition: UnlockCondition, stats: UnlockStats): number {
+    switch (condition) {
+        case 'always':         return 1;
+        case 'distance_5000':  return Math.min(1, stats.maxDistance / 5000);
+        case 'onsen_level_3':  return Math.min(1, stats.onsenLevelIndex / 2);
+        case 'items_1000':     return Math.min(1, stats.totalItemsCollected / 1000);
+        default:               return 0;
+    }
+}
+
 export function isSkinUnlocked(condition: UnlockCondition, stats: UnlockStats): boolean {
     switch (condition) {
         case 'always':

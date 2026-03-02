@@ -131,17 +131,14 @@ export class EffectManager {
         this.particleEmitter.explode(8, x, y);
     }
 
-    /** 매 프레임 호출: 슬로우모션 타이머 체크. 슬로우 배율 반환 (1.0 = 정상) */
-    update(): number {
+    /** 매 프레임 호출: 슬로우모션 타이머 체크 */
+    update(): void {
         if (this.isSlowmo) {
             const elapsed = performance.now() - this.slowmoStart;
             if (elapsed >= EFFECT_SLOWMO_DURATION) {
                 this.isSlowmo = false;
-                return 1;
             }
-            return 1; // slowmo scale은 Game.update에서 EFFECT_SLOWMO_SCALE로 적용
         }
-        return 1;
     }
 
     reset(): void {

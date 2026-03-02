@@ -8,9 +8,9 @@ import {
     type SkinId,
     type SkinConfig,
 } from '../utils/Constants';
-import { isSkinUnlocked, getOnsenLevelIndex, getTotalItems, getOnsenLevel, type UnlockStats } from '../utils/OnsenLogic';
+import { isSkinUnlocked, getUnlockProgress, getOnsenLevelIndex, getTotalItems, getOnsenLevel, type UnlockStats } from '../utils/OnsenLogic';
 import { InventoryManager } from '../services/InventoryManager';
-import { createButton } from '../ui/UIFactory';
+import { createButton, fadeToScene, fadeIn } from '../ui/UIFactory';
 
 export class SkinSelect extends Phaser.Scene {
     private inventoryMgr!: InventoryManager;
@@ -44,6 +44,9 @@ export class SkinSelect extends Phaser.Scene {
 
         this.cameras.main.setBackgroundColor('#87CEEB');
 
+        // 페이드인
+        fadeIn(this);
+
         // 제목
         this.add.text(GAME_WIDTH / 2, 50, '스킨 선택', {
             fontFamily: 'Arial', fontSize: '40px', color: '#5D4037',
@@ -75,14 +78,14 @@ export class SkinSelect extends Phaser.Scene {
             const cx = colX[col];
             const cy = rowY[row];
 
-            this.createSkinCard(cx, cy, cardW, cardH, config, previewText);
+            this.createSkinCard(cx, cy, cardW, cardH, config, previewText, stats);
         }
 
         // 뒤로가기 + 확인 (한 줄로)
         createButton(this, {
             x: GAME_WIDTH / 2 - 130, y: GAME_HEIGHT - 70,
             label: 'BACK', color: 0x757575, width: 200, height: 52, fontSize: '24px',
-            callback: () => this.scene.start(SCENE_MAIN_MENU),
+            callback: () => fadeToScene(this, SCENE_MAIN_MENU),
         });
 
         createButton(this, {
@@ -90,7 +93,7 @@ export class SkinSelect extends Phaser.Scene {
             label: 'CONFIRM', color: 0x4CAF50, width: 200, height: 52, fontSize: '24px',
             callback: () => {
                 this.inventoryMgr.saveSelectedSkin(this.selectedSkin);
-                this.scene.start(SCENE_MAIN_MENU);
+                fadeToScene(this, SCENE_MAIN_MENU);
             },
         });
     }
@@ -112,6 +115,7 @@ export class SkinSelect extends Phaser.Scene {
         x: number, y: number, w: number, h: number,
         config: SkinConfig,
         previewText: Phaser.GameObjects.Text,
+        stats: UnlockStats,
     ): void {
         const isUnlocked = this.unlockedSkins.includes(config.id);
         const isSelected = config.id === this.selectedSkin;
@@ -154,13 +158,28 @@ export class SkinSelect extends Phaser.Scene {
             fontFamily: 'Arial', fontSize: '16px', color: statusColor,
         }).setOrigin(0, 0.5);
 
-        // 잠금 아이콘
+        // 잠금 아이콘 + 진행률 바
         if (!isUnlocked) {
             const lockGfx = this.add.graphics();
             lockGfx.fillStyle(0x666666, 1);
             lockGfx.fillRoundedRect(x + w / 2 - 42, y - h / 2 + 6, 18, 14, 3);
             lockGfx.lineStyle(2, 0x666666, 1);
             lockGfx.strokeCircle(x + w / 2 - 33, y - h / 2 + 6, 7);
+
+            // 진행률 바
+            const progress = getUnlockProgress(config.unlockCondition, stats);
+            const barW = w - 100;
+            const barH = 10;
+            const barX = x - w / 2 + 80;
+            const barY = y + 35;
+            const barGfx = this.add.graphics();
+            barGfx.fillStyle(0x555555, 1);
+            barGfx.fillRoundedRect(barX, barY, barW, barH, 5);
+            barGfx.fillStyle(0x4CAF50, 1);
+            barGfx.fillRoundedRect(barX, barY, barW * progress, barH, 5);
+            this.add.text(barX + barW + 8, barY + barH / 2, `${Math.floor(progress * 100)}%`, {
+                fontFamily: 'Arial', fontSize: '12px', color: '#999999',
+            }).setOrigin(0, 0.5);
         }
 
         // 클릭 영역

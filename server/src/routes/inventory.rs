@@ -46,6 +46,16 @@ async fn add_inventory(
         ));
     }
 
+    const MAX_ADD_PER_REQUEST: i64 = 1000;
+    if req.add_mandarin > MAX_ADD_PER_REQUEST
+        || req.add_watermelon > MAX_ADD_PER_REQUEST
+        || req.add_hotspring_material > MAX_ADD_PER_REQUEST
+    {
+        return Err(AppError::BadRequest(
+            "Inventory delta too large".to_string(),
+        ));
+    }
+
     let token = extract_token(&headers)?;
     let u = user::find_by_token(&state.pool, token)
         .await
@@ -103,6 +113,11 @@ async fn save_skins(
     headers: HeaderMap,
     Json(req): Json<inventory::SaveSkinsRequest>,
 ) -> Result<Json<inventory::UserSkinRow>, AppError> {
+    const VALID_SKINS: &[&str] = &["default", "towel", "yukata", "santa"];
+    if !VALID_SKINS.contains(&req.selected_skin.as_str()) {
+        return Err(AppError::BadRequest("Invalid skin id".to_string()));
+    }
+
     let token = extract_token(&headers)?;
     let u = user::find_by_token(&state.pool, token)
         .await

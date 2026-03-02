@@ -53,6 +53,7 @@ export class StageManager {
             duration: halfDuration,
             ease: 'Power1',
             onComplete: () => {
+                if (!this.scene.sys.isActive()) return;
                 this.bgSky.setTexture(`bg-sky-${newStage}`);
                 this.bgTrees.setTexture(`bg-trees-${newStage}`);
                 this.bgGround.setTexture(`bg-ground-${newStage}`);

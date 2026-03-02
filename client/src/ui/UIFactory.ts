@@ -12,6 +12,29 @@ export interface ButtonConfig {
     radius?: number;
 }
 
+const FADE_DURATION = 400;
+
+/**
+ * Fade out the current scene's camera, then start a new scene with fade-in.
+ */
+export function fadeToScene(scene: Phaser.Scene, targetScene: string, data?: object): void {
+    // Prevent double-trigger during fade
+    if (scene.cameras.main.fadeEffect.isRunning) return;
+
+    scene.cameras.main.fadeOut(FADE_DURATION, 0, 0, 0);
+    scene.cameras.main.once(
+        Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE,
+        () => scene.scene.start(targetScene, data),
+    );
+}
+
+/**
+ * Called in create() of incoming scenes to fade in from black.
+ */
+export function fadeIn(scene: Phaser.Scene): void {
+    scene.cameras.main.fadeIn(FADE_DURATION, 0, 0, 0);
+}
+
 /**
  * Shared UI button factory — replaces duplicated createButton across 5 scenes.
  */

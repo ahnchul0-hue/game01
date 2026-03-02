@@ -25,29 +25,18 @@ pub struct AddInventoryRequest {
 }
 
 pub async fn get_inventory(pool: &SqlitePool, user_id: &str) -> Result<InventoryRow, sqlx::Error> {
-    match sqlx::query_as::<_, InventoryRow>(
+    let id = Uuid::new_v4().to_string();
+    sqlx::query("INSERT OR IGNORE INTO inventories (id, user_id) VALUES (?, ?)")
+        .bind(&id)
+        .bind(user_id)
+        .execute(pool)
+        .await?;
+    sqlx::query_as::<_, InventoryRow>(
         "SELECT id, user_id, mandarin, watermelon, hotspring_material, updated_at FROM inventories WHERE user_id = ?",
     )
     .bind(user_id)
-    .fetch_optional(pool)
-    .await?
-    {
-        Some(row) => Ok(row),
-        None => {
-            let id = Uuid::new_v4().to_string();
-            sqlx::query("INSERT INTO inventories (id, user_id) VALUES (?, ?)")
-                .bind(&id)
-                .bind(user_id)
-                .execute(pool)
-                .await?;
-            sqlx::query_as::<_, InventoryRow>(
-                "SELECT id, user_id, mandarin, watermelon, hotspring_material, updated_at FROM inventories WHERE id = ?",
-            )
-            .bind(&id)
-            .fetch_one(pool)
-            .await
-        }
-    }
+    .fetch_one(pool)
+    .await
 }
 
 pub async fn add_inventory(
@@ -92,29 +81,18 @@ pub struct SaveLayoutRequest {
 }
 
 pub async fn get_layout(pool: &SqlitePool, user_id: &str) -> Result<OnsenLayoutRow, sqlx::Error> {
-    match sqlx::query_as::<_, OnsenLayoutRow>(
+    let id = Uuid::new_v4().to_string();
+    sqlx::query("INSERT OR IGNORE INTO onsen_layouts (id, user_id) VALUES (?, ?)")
+        .bind(&id)
+        .bind(user_id)
+        .execute(pool)
+        .await?;
+    sqlx::query_as::<_, OnsenLayoutRow>(
         "SELECT id, user_id, layout_json, updated_at FROM onsen_layouts WHERE user_id = ?",
     )
     .bind(user_id)
-    .fetch_optional(pool)
-    .await?
-    {
-        Some(row) => Ok(row),
-        None => {
-            let id = Uuid::new_v4().to_string();
-            sqlx::query("INSERT INTO onsen_layouts (id, user_id) VALUES (?, ?)")
-                .bind(&id)
-                .bind(user_id)
-                .execute(pool)
-                .await?;
-            sqlx::query_as::<_, OnsenLayoutRow>(
-                "SELECT id, user_id, layout_json, updated_at FROM onsen_layouts WHERE id = ?",
-            )
-            .bind(&id)
-            .fetch_one(pool)
-            .await
-        }
-    }
+    .fetch_one(pool)
+    .await
 }
 
 pub async fn upsert_layout(
@@ -157,29 +135,18 @@ pub struct SaveSkinsRequest {
 }
 
 pub async fn get_skins(pool: &SqlitePool, user_id: &str) -> Result<UserSkinRow, sqlx::Error> {
-    match sqlx::query_as::<_, UserSkinRow>(
+    let id = Uuid::new_v4().to_string();
+    sqlx::query("INSERT OR IGNORE INTO user_skins (id, user_id) VALUES (?, ?)")
+        .bind(&id)
+        .bind(user_id)
+        .execute(pool)
+        .await?;
+    sqlx::query_as::<_, UserSkinRow>(
         "SELECT id, user_id, selected_skin, unlocked_skins, updated_at FROM user_skins WHERE user_id = ?",
     )
     .bind(user_id)
-    .fetch_optional(pool)
-    .await?
-    {
-        Some(row) => Ok(row),
-        None => {
-            let id = Uuid::new_v4().to_string();
-            sqlx::query("INSERT INTO user_skins (id, user_id) VALUES (?, ?)")
-                .bind(&id)
-                .bind(user_id)
-                .execute(pool)
-                .await?;
-            sqlx::query_as::<_, UserSkinRow>(
-                "SELECT id, user_id, selected_skin, unlocked_skins, updated_at FROM user_skins WHERE id = ?",
-            )
-            .bind(&id)
-            .fetch_one(pool)
-            .await
-        }
-    }
+    .fetch_one(pool)
+    .await
 }
 
 pub async fn upsert_skins(

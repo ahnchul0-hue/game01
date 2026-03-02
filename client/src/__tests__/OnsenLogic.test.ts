@@ -4,6 +4,7 @@ import {
     getOnsenLevelIndex,
     getTotalItems,
     isSkinUnlocked,
+    getUnlockProgress,
     type UnlockStats,
 } from '../utils/OnsenLogic';
 
@@ -106,5 +107,37 @@ describe('isSkinUnlocked', () => {
 
     it('returns true for items_1000 when items = 1000', () => {
         expect(isSkinUnlocked('items_1000', { ...baseStats, totalItemsCollected: 1000 })).toBe(true);
+    });
+});
+
+describe('getUnlockProgress', () => {
+    const baseStats: UnlockStats = {
+        maxDistance: 0,
+        onsenLevelIndex: 0,
+        totalItemsCollected: 0,
+    };
+
+    it('returns 1 for "always"', () => {
+        expect(getUnlockProgress('always', baseStats)).toBe(1);
+    });
+
+    it('returns 0.5 for distance_5000 at 2500m', () => {
+        expect(getUnlockProgress('distance_5000', { ...baseStats, maxDistance: 2500 })).toBe(0.5);
+    });
+
+    it('caps at 1 for distance_5000 at 10000m', () => {
+        expect(getUnlockProgress('distance_5000', { ...baseStats, maxDistance: 10000 })).toBe(1);
+    });
+
+    it('returns 0.5 for onsen_level_3 at index 1', () => {
+        expect(getUnlockProgress('onsen_level_3', { ...baseStats, onsenLevelIndex: 1 })).toBe(0.5);
+    });
+
+    it('returns 0.1 for items_1000 at 100 items', () => {
+        expect(getUnlockProgress('items_1000', { ...baseStats, totalItemsCollected: 100 })).toBe(0.1);
+    });
+
+    it('returns 1 for items_1000 at 2000 items', () => {
+        expect(getUnlockProgress('items_1000', { ...baseStats, totalItemsCollected: 2000 })).toBe(1);
     });
 });

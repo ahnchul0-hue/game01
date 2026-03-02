@@ -25,6 +25,7 @@ import {
 } from '../utils/Constants';
 import type { GameMode, CollectedItems } from '../utils/Constants';
 import { InventoryManager } from '../services/InventoryManager';
+import { fadeToScene } from '../ui/UIFactory';
 
 type GameState = 'playing' | 'revivePrompt' | 'gameOver';
 
@@ -426,8 +427,9 @@ export class Game extends Phaser.Scene {
             this.reviveContainer = null;
         }
 
-        // M3: 파워업 초기화
+        // M3: 파워업/스테이지/이펙트 초기화
         this.player.clearAllPowerUps();
+        this.effectManager.reset();
 
         // 모든 장애물/아이템 제거
         this.spawnManager.reset();
@@ -455,8 +457,8 @@ export class Game extends Phaser.Scene {
 
         this.physics.pause();
 
-        this.time.delayedCall(500, () => {
-            this.scene.start(SCENE_GAME_OVER, {
+        this.time.delayedCall(300, () => {
+            fadeToScene(this, SCENE_GAME_OVER, {
                 score: this.score,
                 distance: Math.floor(this.distance),
                 mode: this.mode,

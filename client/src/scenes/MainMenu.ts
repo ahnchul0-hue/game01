@@ -9,7 +9,7 @@ import {
 } from '../utils/Constants';
 import { ApiClient } from '../services/ApiClient';
 import { InventoryManager } from '../services/InventoryManager';
-import { createButton } from '../ui/UIFactory';
+import { createButton, fadeToScene, fadeIn } from '../ui/UIFactory';
 
 export class MainMenu extends Phaser.Scene {
     constructor() {
@@ -21,6 +21,9 @@ export class MainMenu extends Phaser.Scene {
         const api = ApiClient.getInstance();
         const inventoryMgr = InventoryManager.getInstance();
         api.ensureUser().then(() => inventoryMgr.syncFromServer());
+
+        // 페이드인
+        fadeIn(this);
 
         // 배경
         this.cameras.main.setBackgroundColor('#87CEEB');
@@ -54,28 +57,28 @@ export class MainMenu extends Phaser.Scene {
         createButton(this, {
             x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.52,
             label: 'START', color: 0x4CAF50, width: 280, height: 64, fontSize: '28px', radius: 16,
-            callback: () => this.scene.start(SCENE_GAME, { mode: 'normal' }),
+            callback: () => fadeToScene(this, SCENE_GAME, { mode: 'normal' }),
         });
 
         // 릴렉스 모드 버튼
         createButton(this, {
             x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.62,
             label: 'RELAX MODE', color: 0x81C784, width: 280, height: 64, fontSize: '28px', radius: 16,
-            callback: () => this.scene.start(SCENE_GAME, { mode: 'relax' }),
+            callback: () => fadeToScene(this, SCENE_GAME, { mode: 'relax' }),
         });
 
         // 온천 버튼
         createButton(this, {
             x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.72,
             label: 'ONSEN', color: 0xFF8C00, width: 280, height: 64, fontSize: '28px', radius: 16,
-            callback: () => this.scene.start(SCENE_ONSEN),
+            callback: () => fadeToScene(this, SCENE_ONSEN),
         });
 
         // 스킨 버튼
         createButton(this, {
             x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.82,
             label: 'SKINS', color: 0x8B008B, width: 280, height: 64, fontSize: '28px', radius: 16,
-            callback: () => this.scene.start(SCENE_SKIN_SELECT),
+            callback: () => fadeToScene(this, SCENE_SKIN_SELECT),
         });
     }
 }
