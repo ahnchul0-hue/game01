@@ -83,13 +83,13 @@ export class MainMenu extends Phaser.Scene {
         const hitArea = this.add.zone(x, y, btnW, btnH).setInteractive({ useHandCursor: true });
 
         hitArea.on('pointerdown', () => {
-            this.tweens.add({
-                targets: [bg, text],
-                scaleX: 0.95,
-                scaleY: 0.95,
-                duration: 80,
-                yoyo: true,
-                onComplete: callback,
+            // alpha 변경으로 눌림 효과 (Graphics scale tween 버그 회피)
+            bg.setAlpha(0.7);
+            text.setAlpha(0.7);
+            this.time.delayedCall(120, () => {
+                bg.setAlpha(1);
+                text.setAlpha(1);
+                callback();
             });
         });
     }

@@ -59,9 +59,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         body.setSize(body.width, this.originalBodyHeight / 2);
         body.setOffset(body.offset.x, this.originalBodyOffsetY + this.originalBodyHeight / 2);
 
-        // 시각적 피드백: Y 스케일 축소
+        // 시각적 피드백: Y 스케일 축소 + 위치 보정 (origin 변경 없이)
+        const halfH = this.displayHeight * 0.25;
         this.setScale(this.scaleX, 0.5);
-        this.setOrigin(0.5, 1);
+        this.y += halfH;
 
         this.slideTimer = this.scene.time.delayedCall(SLIDE_DURATION, () => {
             this.endSlide();
@@ -76,9 +77,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         body.setSize(body.width, this.originalBodyHeight);
         body.setOffset(body.offset.x, this.originalBodyOffsetY);
 
-        // 시각적 복원
+        // 시각적 복원: 위치를 원래로 되돌림
+        const halfH = this.displayHeight * 0.5;
         this.setScale(this.scaleX, 1);
-        this.setOrigin(0.5, 0.5);
+        this.y -= halfH;
 
         this.slideTimer = null;
     }

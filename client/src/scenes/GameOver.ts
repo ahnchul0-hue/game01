@@ -6,8 +6,7 @@ import {
     SCENE_GAME,
     SCENE_MAIN_MENU,
 } from '../utils/Constants';
-
-type GameMode = 'normal' | 'relax';
+import type { GameMode } from '../utils/Constants';
 
 interface GameOverData {
     score?: number;
@@ -137,13 +136,12 @@ export class GameOver extends Phaser.Scene {
         const hitArea = this.add.zone(x, y, btnW, btnH).setInteractive({ useHandCursor: true });
 
         hitArea.on('pointerdown', () => {
-            this.tweens.add({
-                targets: [bg, text],
-                scaleX: 0.95,
-                scaleY: 0.95,
-                duration: 80,
-                yoyo: true,
-                onComplete: callback,
+            bg.setAlpha(0.7);
+            text.setAlpha(0.7);
+            this.time.delayedCall(120, () => {
+                bg.setAlpha(1);
+                text.setAlpha(1);
+                callback();
             });
         });
     }

@@ -13,8 +13,7 @@ import {
     SCENE_GAME,
     SCENE_GAME_OVER,
 } from '../utils/Constants';
-
-type GameMode = 'normal' | 'relax';
+import type { GameMode } from '../utils/Constants';
 
 interface GameInitData {
     mode?: GameMode;
@@ -60,19 +59,21 @@ export class Game extends Phaser.Scene {
             .setOrigin(0, 0)
             .setDepth(0);
 
-        this.bgTrees = this.add.tileSprite(0, GAME_HEIGHT - 500, GAME_WIDTH, 300, 'bg-trees')
+        this.bgTrees = this.add.tileSprite(0, GAME_HEIGHT - 384, GAME_WIDTH, 256, 'bg-trees')
             .setOrigin(0, 0)
             .setDepth(1);
 
-        this.bgGround = this.add.tileSprite(0, GAME_HEIGHT - 200, GAME_WIDTH, 200, 'bg-ground')
+        this.bgGround = this.add.tileSprite(0, GAME_HEIGHT - 128, GAME_WIDTH, 128, 'bg-ground')
             .setOrigin(0, 0)
             .setDepth(2);
 
-        // 레인 구분선 (프로토타입용)
+        // 레인 구분선 (프로토타입용 — 바닥 위에 반투명 선)
         const laneLines = this.add.graphics().setDepth(3);
-        laneLines.lineStyle(1, 0xFFFFFF, 0.15);
-        laneLines.lineBetween(GAME_WIDTH / 3, GAME_HEIGHT - 200, GAME_WIDTH / 3, GAME_HEIGHT);
-        laneLines.lineBetween((GAME_WIDTH / 3) * 2, GAME_HEIGHT - 200, (GAME_WIDTH / 3) * 2, GAME_HEIGHT);
+        laneLines.lineStyle(2, 0xFFFFFF, 0.2);
+        const laneX1 = LANE_POSITIONS[0] + (LANE_POSITIONS[1] - LANE_POSITIONS[0]) / 2;
+        const laneX2 = LANE_POSITIONS[1] + (LANE_POSITIONS[2] - LANE_POSITIONS[1]) / 2;
+        laneLines.lineBetween(laneX1, GAME_HEIGHT - 128, laneX1, GAME_HEIGHT);
+        laneLines.lineBetween(laneX2, GAME_HEIGHT - 128, laneX2, GAME_HEIGHT);
 
         // 플레이어
         this.player = new Player(this, LANE_POSITIONS[1], PLAYER_Y);
