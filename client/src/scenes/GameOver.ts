@@ -6,6 +6,7 @@ import {
     SCENE_GAME,
     SCENE_MAIN_MENU,
     SCENE_ONSEN,
+    LS_KEY_USER_ID,
 } from '../utils/Constants';
 import type { GameMode, CollectedItems, SkinConfig } from '../utils/Constants';
 import { SKIN_CONFIGS } from '../utils/Constants';
@@ -198,7 +199,7 @@ export class GameOver extends Phaser.Scene {
         if (scores.length === 0) return;
 
         const startY = GAME_HEIGHT * 0.65;
-        const userId = localStorage.getItem('capybara_user_id');
+        const userId = localStorage.getItem(LS_KEY_USER_ID);
 
         this.add.text(GAME_WIDTH / 2, startY, 'TOP SCORES', {
             fontFamily: 'Arial', fontSize: '18px', color: '#FFD700', fontStyle: 'bold',

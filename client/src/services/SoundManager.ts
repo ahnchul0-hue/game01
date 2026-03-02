@@ -116,6 +116,7 @@ export class SoundManager {
     stopBgm(): void {
         for (const node of this.bgmNodes) {
             try { (node as OscillatorNode | AudioBufferSourceNode).stop(); } catch { /* already stopped */ }
+            try { node.disconnect(); } catch { /* already disconnected */ }
         }
         this.bgmNodes = [];
     }
@@ -154,7 +155,7 @@ export class SoundManager {
         pulseGain.connect(this.bgmGain!);
 
         drone.start(); lfo.start();
-        this.bgmNodes.push(drone, lfo);
+        this.bgmNodes.push(drone, lfo, lfoGain, pulseGain);
     }
 
     /** Bandpass-filtered looping white noise for water ambience. */
@@ -177,7 +178,7 @@ export class SoundManager {
         source.connect(filter);
         filter.connect(this.bgmGain!);
         source.start();
-        this.bgmNodes.push(source);
+        this.bgmNodes.push(source, filter);
     }
 
     // ---- Volume / Mute ------------------------------------------------------

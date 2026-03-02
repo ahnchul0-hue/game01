@@ -28,7 +28,10 @@ impl From<sqlx::Error> for AppError {
     fn from(err: sqlx::Error) -> Self {
         match err {
             sqlx::Error::RowNotFound => AppError::NotFound("Not found".to_string()),
-            _ => AppError::Internal(err.to_string()),
+            _ => {
+                eprintln!("DB error: {:?}", err);
+                AppError::Internal("Internal server error".to_string())
+            }
         }
     }
 }

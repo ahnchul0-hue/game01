@@ -37,6 +37,11 @@ async fn create_score(
             "Score values must be non-negative".to_string(),
         ));
     }
+    if req.score > 10_000_000 || req.distance > 1_000_000 || req.items_collected > 100_000 {
+        return Err(AppError::BadRequest(
+            "Score values exceed maximum allowed".to_string(),
+        ));
+    }
 
     // 토큰으로 유저 조회
     let u = user::find_by_token(&state.pool, token)
@@ -51,8 +56,17 @@ async fn create_score(
 async fn get_top_scores(
     State(state): State<AppState>,
     Query(params): Query<TopScoresQuery>,
-) -> Result<Json<Vec<score::Score>>, AppError> {
+) -> Result<Json<Vec<score::PublicScore>>, AppError> {
     let limit = params.limit.unwrap_or(10).min(100);
     let scores = score::get_top_scores(&state.pool, limit).await?;
-    Ok(Json(scores))
+    let public_scores = scores
+        .into_iter()
+        .map(|s| score::PublicScore {
+            score: s.score,
+            distance: s.distance,
+            items_collected: s.items_collected,
+            created_at: s.created_at,
+        })
+        .collect();
+    Ok(Json(public_scores))
 }

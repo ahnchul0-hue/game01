@@ -12,6 +12,14 @@ pub struct Score {
     pub created_at: String,
 }
 
+#[derive(Debug, Serialize)]
+pub struct PublicScore {
+    pub score: i64,
+    pub distance: i64,
+    pub items_collected: i64,
+    pub created_at: String,
+}
+
 #[derive(Deserialize)]
 pub struct CreateScoreRequest {
     pub score: i64,

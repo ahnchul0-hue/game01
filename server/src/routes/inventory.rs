@@ -118,6 +118,15 @@ async fn save_skins(
         return Err(AppError::BadRequest("Invalid skin id".to_string()));
     }
 
+    // Validate each skin in unlocked_skins JSON array
+    let unlocked: Vec<String> = serde_json::from_str(&req.unlocked_skins)
+        .map_err(|_| AppError::BadRequest("Invalid unlocked_skins JSON".to_string()))?;
+    for skin in &unlocked {
+        if !VALID_SKINS.contains(&skin.as_str()) {
+            return Err(AppError::BadRequest(format!("Invalid skin id: {}", skin)));
+        }
+    }
+
     let token = extract_token(&headers)?;
     let u = user::find_by_token(&state.pool, token)
         .await

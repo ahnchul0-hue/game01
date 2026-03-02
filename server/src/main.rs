@@ -4,8 +4,8 @@ mod error;
 mod models;
 mod routes;
 
-use axum::http::{header, Method};
-use tower_http::cors::{Any, CorsLayer};
+use axum::http::{header, HeaderValue, Method};
+use tower_http::cors::{AllowOrigin, CorsLayer};
 
 use crate::config::Config;
 
@@ -17,7 +17,10 @@ async fn main() {
     let pool = db::init_db(&config.database_url).await;
 
     let cors = CorsLayer::new()
-        .allow_origin(Any)
+        .allow_origin(AllowOrigin::list([
+            HeaderValue::from_static("http://localhost:5173"),
+            HeaderValue::from_static("http://localhost"),
+        ]))
         .allow_methods([Method::GET, Method::POST, Method::PUT])
         .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]);
 

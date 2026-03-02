@@ -76,6 +76,7 @@ export class Game extends Phaser.Scene {
     // HUD
     private scoreText!: Phaser.GameObjects.Text;
     private distanceText!: Phaser.GameObjects.Text;
+    private itemCounterText!: Phaser.GameObjects.Text;
 
     // 부활 UI
     private reviveContainer: Phaser.GameObjects.Container | null = null;
@@ -86,6 +87,9 @@ export class Game extends Phaser.Scene {
 
     // 일시정지
     private pauseContainer: Phaser.GameObjects.Container | null = null;
+
+    // 팝업 텍스트 추적 (메모리 누수 방지)
+    private popupTexts: Phaser.GameObjects.Text[] = [];
 
     // 착지 감지 (먼지 파티클용)
     private wasJumping = false;
@@ -108,6 +112,7 @@ export class Game extends Phaser.Scene {
         this.tutorialContainer = null;
         this.pauseContainer = null;
         this.wasJumping = false;
+        this.popupTexts = [];
     }
 
     shutdown(): void {
@@ -130,6 +135,11 @@ export class Game extends Phaser.Scene {
             this.pauseContainer.destroy();
             this.pauseContainer = null;
         }
+        // 팝업 텍스트 잔여분 정리 (C1: tween 미완료 시 누수 방지)
+        for (const t of this.popupTexts) {
+            if (t.scene) t.destroy();
+        }
+        this.popupTexts = [];
     }
 
     create(): void {
@@ -240,6 +250,12 @@ export class Game extends Phaser.Scene {
             stroke: '#000000', strokeThickness: 3,
         }).setOrigin(1, 0).setScrollFactor(0).setDepth(100);
 
+        // HUD 아이템 카운터
+        this.itemCounterText = this.add.text(20, 100, '', {
+            fontFamily: 'Arial', fontSize: '18px', color: '#FFD700',
+            stroke: '#000000', strokeThickness: 2,
+        }).setScrollFactor(0).setDepth(100);
+
         // 모드 표시
         if (this.mode === 'relax') {
             this.add.text(GAME_WIDTH / 2, 20, 'RELAX', {
@@ -278,6 +294,7 @@ export class Game extends Phaser.Scene {
     private pauseGame(): void {
         this.state = 'paused';
         this.physics.pause();
+        SoundManager.getInstance().stopBgm();
 
         this.pauseContainer = this.add.container(0, 0).setDepth(400);
 
@@ -310,6 +327,7 @@ export class Game extends Phaser.Scene {
         }
         this.physics.resume();
         this.state = 'playing';
+        SoundManager.getInstance().playBgm(this.mode === 'relax' ? 'bgm-onsen' : 'bgm-game');
     }
 
     private showTutorial(): void {
@@ -404,11 +422,16 @@ export class Game extends Phaser.Scene {
         // M2: 스폰 업데이트
         this.spawnManager.update(effectiveDelta, this.distance, this.gameSpeed, isRelax);
 
-        // M3: 스테이지 전환 체크
+        // M3: 스테이지 전환 체크 + 스테이지 BGM 전환
         const newStage = this.stageManager.update(this.distance);
         if (newStage) {
             this.effectManager.onStageTransition(newStage);
             SoundManager.getInstance().playSfx('levelup');
+            if (newStage === 'onsen') {
+                SoundManager.getInstance().playBgm('bgm-onsen');
+            } else if (this.mode !== 'relax') {
+                SoundManager.getInstance().playBgm('bgm-game');
+            }
         }
 
         // M3: friend 자동 수집 + M4: 온천 버프 아이템 자석
@@ -423,6 +446,9 @@ export class Game extends Phaser.Scene {
         if (this.scoreText.text !== scoreStr) this.scoreText.setText(scoreStr);
         const distStr = `${Math.floor(this.distance)}m`;
         if (this.distanceText.text !== distStr) this.distanceText.setText(distStr);
+        const totalItems = this.collectedItems.mandarin + this.collectedItems.watermelon + this.collectedItems.hotspring_material;
+        const itemStr = totalItems > 0 ? `x${totalItems}` : '';
+        if (this.itemCounterText.text !== itemStr) this.itemCounterText.setText(itemStr);
     }
 
     // M2: 장애물 충돌 판정 (processCallback — 리뷰 C3)
@@ -476,11 +502,12 @@ export class Game extends Phaser.Scene {
         // M3: 수집 이펙트 (파티클 + 점수 바운스)
         this.effectManager.onItemCollected(item.x, item.y, this.scoreText);
 
-        // 팝업 텍스트
+        // 팝업 텍스트 (C1: 추적 배열에 추가, tween 완료 시 제거)
         const popupText = this.add.text(item.x, item.y, `+${points}`, {
             fontFamily: 'Arial', fontSize: '24px', color: '#FFD700',
             fontStyle: 'bold', stroke: '#000000', strokeThickness: 2,
         }).setOrigin(0.5).setDepth(200);
+        this.popupTexts.push(popupText);
 
         this.tweens.add({
             targets: popupText,
@@ -488,7 +515,11 @@ export class Game extends Phaser.Scene {
             alpha: 0,
             duration: 600,
             ease: 'Power2',
-            onComplete: () => popupText.destroy(),
+            onComplete: () => {
+                const idx = this.popupTexts.indexOf(popupText);
+                if (idx !== -1) this.popupTexts.splice(idx, 1);
+                popupText.destroy();
+            },
         });
 
         item.deactivate();
