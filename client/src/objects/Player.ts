@@ -106,8 +106,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             this.isJumping = false;
         }
 
-        // 바닥 고정 (점프 아닐 때 중력에 의해 떨어지는 것 방지)
-        if (!this.isJumping && this.y > PLAYER_Y) {
+        // 바닥 고정 (점프/슬라이드 아닐 때 중력에 의해 떨어지는 것 방지)
+        if (!this.isJumping && !this.isSliding && this.y > PLAYER_Y) {
             this.y = PLAYER_Y;
             this.setVelocityY(0);
         }

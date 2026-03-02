@@ -59,11 +59,11 @@ export class Game extends Phaser.Scene {
             .setOrigin(0, 0)
             .setDepth(0);
 
-        this.bgTrees = this.add.tileSprite(0, GAME_HEIGHT - 384, GAME_WIDTH, 256, 'bg-trees')
+        this.bgTrees = this.add.tileSprite(0, GAME_HEIGHT - 512, GAME_WIDTH, 256, 'bg-trees')
             .setOrigin(0, 0)
             .setDepth(1);
 
-        this.bgGround = this.add.tileSprite(0, GAME_HEIGHT - 128, GAME_WIDTH, 128, 'bg-ground')
+        this.bgGround = this.add.tileSprite(0, GAME_HEIGHT - 256, GAME_WIDTH, 256, 'bg-ground')
             .setOrigin(0, 0)
             .setDepth(2);
 
@@ -72,8 +72,8 @@ export class Game extends Phaser.Scene {
         laneLines.lineStyle(2, 0xFFFFFF, 0.2);
         const laneX1 = LANE_POSITIONS[0] + (LANE_POSITIONS[1] - LANE_POSITIONS[0]) / 2;
         const laneX2 = LANE_POSITIONS[1] + (LANE_POSITIONS[2] - LANE_POSITIONS[1]) / 2;
-        laneLines.lineBetween(laneX1, GAME_HEIGHT - 128, laneX1, GAME_HEIGHT);
-        laneLines.lineBetween(laneX2, GAME_HEIGHT - 128, laneX2, GAME_HEIGHT);
+        laneLines.lineBetween(laneX1, GAME_HEIGHT - 256, laneX1, GAME_HEIGHT);
+        laneLines.lineBetween(laneX2, GAME_HEIGHT - 256, laneX2, GAME_HEIGHT);
 
         // 플레이어
         this.player = new Player(this, LANE_POSITIONS[1], PLAYER_Y);

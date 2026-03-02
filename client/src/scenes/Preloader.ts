@@ -94,11 +94,14 @@ export class Preloader extends Phaser.Scene {
         treesGfx.generateTexture('bg-trees', 512, 256);
         treesGfx.destroy();
 
-        // 땅 (512x128 POT, 진한 갈색)
+        // 땅 (512x256 POT, 진한 갈색)
         const groundGfx = this.make.graphics({ x: 0, y: 0 }, false);
         groundGfx.fillStyle(0x8B4513, 1);
-        groundGfx.fillRect(0, 0, 512, 128);
-        groundGfx.generateTexture('bg-ground', 512, 128);
+        groundGfx.fillRect(0, 0, 512, 256);
+        // 상단 경계선 (풀 느낌)
+        groundGfx.fillStyle(0x5D8A2D, 1);
+        groundGfx.fillRect(0, 0, 512, 8);
+        groundGfx.generateTexture('bg-ground', 512, 256);
         groundGfx.destroy();
     }
 }
