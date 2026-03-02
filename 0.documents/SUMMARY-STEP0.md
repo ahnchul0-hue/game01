@@ -30,8 +30,8 @@
 - OS: Ubuntu 24.04
 - Node.js: v24.14.0
 - Git: v2.43.0
-- Rust: 미설치 (설치 예정)
-- Nginx: 미설치 (설치 예정)
+- Rust: v1.93.1 (설치 완료)
+- Nginx: v1.24.0 (설치 완료)
 
 ## 5. 마일스톤 (5개)
 1. **M1**: 프로젝트 셋업 (프론트 + Rust 백엔드) + 카피바라 달리기 + 기본 조작
@@ -47,8 +47,8 @@
 - [x] 개발 워크플로우 문서화 (0.instructions.txt)
 - [x] clx alias 설정 (claude --dangerously-skip-permissions)
 
-## 7. 다음 단계
-- [ ] STEP 0 완료: PRD.md + README.md 작성
-- [ ] STEP 1: research.md 작성 (코드리서치)
+## 7. 진행 상태
+- [x] STEP 0 완료: PRD.md + README.md 작성
+- [x] STEP 1: research.md 작성 (코드리서치)
+- [x] Rust v1.93.1, Nginx v1.24.0 설치
 - [ ] STEP 2: plan.md 작성 (계획)
-- [ ] Rust, Nginx 설치

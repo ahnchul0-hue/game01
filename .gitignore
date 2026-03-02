@@ -6,6 +6,10 @@ dist/
 # Rust
 target/
 
+# SQLite
+*.db
+*.sqlite
+
 # Environment
 .env
 .env.*
