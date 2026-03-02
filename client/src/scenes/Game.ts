@@ -22,9 +22,12 @@ import {
     SCENE_GAME,
     SCENE_GAME_OVER,
     EFFECT_SLOWMO_SCALE,
+    LS_KEY_TUTORIAL_DONE,
 } from '../utils/Constants';
-import type { GameMode, CollectedItems } from '../utils/Constants';
+import type { GameMode, CollectedItems, OnsenBuff } from '../utils/Constants';
+import { getOnsenLevel, getOnsenBuff } from '../utils/OnsenLogic';
 import { InventoryManager } from '../services/InventoryManager';
+import { SoundManager } from '../services/SoundManager';
 import { fadeToScene } from '../ui/UIFactory';
 
 type GameState = 'playing' | 'revivePrompt' | 'gameOver';
@@ -52,6 +55,9 @@ export class Game extends Phaser.Scene {
     private stageManager!: StageManager;
     private effectManager!: EffectManager;
 
+    // M4: 온천 버프
+    private onsenBuff: OnsenBuff = { scoreMultiplier: 1, startingShield: false, itemMagnetRange: 0 };
+
     // M2: 부활
     private revivesUsed = 0;
 
@@ -75,6 +81,12 @@ export class Game extends Phaser.Scene {
     private reviveContainer: Phaser.GameObjects.Container | null = null;
     private reviveHitZones: Phaser.GameObjects.Zone[] = [];
 
+    // 튜토리얼
+    private tutorialContainer: Phaser.GameObjects.Container | null = null;
+
+    // 착지 감지 (먼지 파티클용)
+    private wasJumping = false;
+
     constructor() {
         super(SCENE_GAME);
     }
@@ -90,11 +102,26 @@ export class Game extends Phaser.Scene {
         this.collectedItems = { mandarin: 0, watermelon: 0, hotspring_material: 0 };
         this.reviveContainer = null;
         this.reviveHitZones = [];
+        this.tutorialContainer = null;
+        this.wasJumping = false;
     }
 
     shutdown(): void {
+        // Context7 권장: 전체 리소스 정리
         this.input.off('pointerdown');
         this.input.off('pointerup');
+        this.tweens.killAll();
+        this.time.removeAllEvents();
+        this.cameras.main.resetFX();
+        this.destroyReviveHitZones();
+        if (this.reviveContainer) {
+            this.reviveContainer.destroy();
+            this.reviveContainer = null;
+        }
+        if (this.tutorialContainer) {
+            this.tutorialContainer.destroy();
+            this.tutorialContainer = null;
+        }
     }
 
     create(): void {
@@ -114,13 +141,21 @@ export class Game extends Phaser.Scene {
         laneLines.lineBetween(laneX1, GAME_HEIGHT - 256, laneX1, GAME_HEIGHT);
         laneLines.lineBetween(laneX2, GAME_HEIGHT - 256, laneX2, GAME_HEIGHT);
 
-        // M4: 선택된 스킨 읽기
+        // M4: 선택된 스킨 + 온천 버프 읽기
         const inventoryMgr = InventoryManager.getInstance();
         const skinId = inventoryMgr.getSelectedSkin();
+        const layout = inventoryMgr.getOnsenLayout();
+        const onsenLevel = getOnsenLevel(layout.placedItems.length);
+        this.onsenBuff = getOnsenBuff(onsenLevel);
 
         // 플레이어
         this.player = new Player(this, LANE_POSITIONS[1], PLAYER_Y, skinId);
         this.player.setDepth(10);
+
+        // 온천 버프: 시작 방어막
+        if (this.onsenBuff.startingShield) {
+            this.player.applyPowerUp('helmet');
+        }
 
         // M2: 오브젝트 풀 + 매니저
         this.obstaclePool = new ObstaclePool(this);
@@ -174,12 +209,13 @@ export class Game extends Phaser.Scene {
             const dx = p.x - this.swipeStart.x;
             const dy = p.y - this.swipeStart.y;
 
+            const snd = SoundManager.getInstance();
             if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy)) {
                 if (dx > 0) this.player.moveRight();
                 else this.player.moveLeft();
             } else if (Math.abs(dy) > SWIPE_THRESHOLD && Math.abs(dy) > Math.abs(dx)) {
-                if (dy < 0) this.player.jump();
-                else this.player.slide();
+                if (dy < 0) { this.player.jump(); snd.playSfx('jump'); this.effectManager.onJump(this.player.x, this.player.y); }
+                else { this.player.slide(); snd.playSfx('slide'); }
             }
 
             this.swipeStart = null;
@@ -203,13 +239,79 @@ export class Game extends Phaser.Scene {
                 stroke: '#000000', strokeThickness: 2,
             }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(100);
         }
+
+        // 온천 버프 표시
+        if (this.onsenBuff.scoreMultiplier > 1) {
+            const buffLabel = `x${this.onsenBuff.scoreMultiplier.toFixed(1)}`;
+            this.add.text(20, 60, buffLabel, {
+                fontFamily: 'Arial', fontSize: '18px', color: '#FF8C00',
+                stroke: '#000000', strokeThickness: 2,
+            }).setScrollFactor(0).setDepth(100);
+        }
+
+        // 게임 BGM
+        SoundManager.getInstance().playBgm('bgm-game');
+
+        // 첫 플레이 튜토리얼
+        if (!localStorage.getItem(LS_KEY_TUTORIAL_DONE)) {
+            this.showTutorial();
+        }
     }
 
-    update(_time: number, delta: number): void {
+    private showTutorial(): void {
+        this.physics.pause();
+        this.tutorialContainer = this.add.container(0, 0).setDepth(400);
+
+        // 반투명 오버레이
+        const overlay = this.add.graphics();
+        overlay.fillStyle(0x000000, 0.5);
+        overlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+        this.tutorialContainer.add(overlay);
+
+        // 조작 안내
+        const hints = [
+            { icon: '←  →', desc: '좌우 스와이프: 레인 이동', y: GAME_HEIGHT / 2 - 100 },
+            { icon: '↑', desc: '위로 스와이프: 점프', y: GAME_HEIGHT / 2 - 30 },
+            { icon: '↓', desc: '아래로 스와이프: 슬라이드', y: GAME_HEIGHT / 2 + 40 },
+        ];
+
+        for (const h of hints) {
+            const iconText = this.add.text(GAME_WIDTH / 2 - 120, h.y, h.icon, {
+                fontFamily: 'Arial', fontSize: '32px', color: '#FFD700', fontStyle: 'bold',
+            }).setOrigin(0.5);
+            const descText = this.add.text(GAME_WIDTH / 2 + 40, h.y, h.desc, {
+                fontFamily: 'Arial', fontSize: '22px', color: '#FFFFFF',
+            }).setOrigin(0, 0.5);
+            this.tutorialContainer.add([iconText, descText]);
+        }
+
+        // "탭하여 시작" 텍스트 (깜빡임)
+        const tapText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 140, '탭하여 시작', {
+            fontFamily: 'Arial', fontSize: '28px', color: '#FFFFFF', fontStyle: 'bold',
+        }).setOrigin(0.5);
+        this.tutorialContainer.add(tapText);
+        this.tweens.add({ targets: tapText, alpha: 0.3, duration: 600, yoyo: true, repeat: -1 });
+
+        // 탭하면 튜토리얼 닫기
+        const dismissZone = this.add.zone(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT)
+            .setInteractive();
+        this.tutorialContainer.add(dismissZone);
+
+        dismissZone.once('pointerdown', () => {
+            if (this.tutorialContainer) {
+                this.tutorialContainer.destroy();
+                this.tutorialContainer = null;
+            }
+            localStorage.setItem(LS_KEY_TUTORIAL_DONE, '1');
+            this.physics.resume();
+        });
+    }
+
+    update(time: number, delta: number): void {
         if (this.state !== 'playing') return;
 
         // M3: 슬로우모션 적용
-        this.effectManager.update();
+        this.effectManager.update(time);
         const effectiveDelta = this.effectManager.isSlowmo ? delta * EFFECT_SLOWMO_SCALE : delta;
 
         const dt = effectiveDelta / 1000;
@@ -230,12 +332,19 @@ export class Game extends Phaser.Scene {
         if (this.cursors) {
             if (Phaser.Input.Keyboard.JustDown(this.cursors.left)) this.player.moveLeft();
             if (Phaser.Input.Keyboard.JustDown(this.cursors.right)) this.player.moveRight();
-            if (Phaser.Input.Keyboard.JustDown(this.cursors.up)) this.player.jump();
-            if (Phaser.Input.Keyboard.JustDown(this.cursors.down)) this.player.slide();
+            if (Phaser.Input.Keyboard.JustDown(this.cursors.up)) { this.player.jump(); SoundManager.getInstance().playSfx('jump'); this.effectManager.onJump(this.player.x, this.player.y); }
+            if (Phaser.Input.Keyboard.JustDown(this.cursors.down)) { this.player.slide(); SoundManager.getInstance().playSfx('slide'); }
         }
 
         // 플레이어 업데이트
         this.player.update();
+
+        // 착지 감지 → 먼지 파티클
+        const jumping = this.player.getIsJumping();
+        if (this.wasJumping && !jumping) {
+            this.effectManager.onLand(this.player.x, this.player.y);
+        }
+        this.wasJumping = jumping;
 
         // M2: 스폰 업데이트
         this.spawnManager.update(effectiveDelta, this.distance, this.gameSpeed, isRelax);
@@ -244,16 +353,21 @@ export class Game extends Phaser.Scene {
         const newStage = this.stageManager.update(this.distance);
         if (newStage) {
             this.effectManager.onStageTransition(newStage);
+            SoundManager.getInstance().playSfx('levelup');
         }
 
-        // M3: friend 자동 수집
+        // M3: friend 자동 수집 + M4: 온천 버프 아이템 자석
         if (this.player.getHasFriend()) {
-            this.autoCollectItems();
+            this.autoCollectItems(200);
+        } else if (this.onsenBuff.itemMagnetRange > 0) {
+            this.autoCollectItems(this.onsenBuff.itemMagnetRange);
         }
 
-        // HUD 업데이트
-        this.scoreText.setText(`${this.score}`);
-        this.distanceText.setText(`${Math.floor(this.distance)}m`);
+        // HUD 업데이트 (값 변경 시에만)
+        const scoreStr = `${this.score}`;
+        if (this.scoreText.text !== scoreStr) this.scoreText.setText(scoreStr);
+        const distStr = `${Math.floor(this.distance)}m`;
+        if (this.distanceText.text !== distStr) this.distanceText.setText(distStr);
     }
 
     // M2: 장애물 충돌 판정 (processCallback — 리뷰 C3)
@@ -284,6 +398,8 @@ export class Game extends Phaser.Scene {
         // 동일 프레임 중복 호출 방지 (리뷰 2차 C1)
         if (this.state !== 'playing') return;
 
+        SoundManager.getInstance().playSfx('hit');
+
         // M3: 이펙트 매니저를 통한 충돌 이펙트 (빨간 플래시 + 강화 카메라 흔들림)
         this.effectManager.onObstacleHit();
 
@@ -296,8 +412,9 @@ export class Game extends Phaser.Scene {
 
     // M2: 아이템 수집
     private onCollectItem(item: Item): void {
-        // M3: 점수 배율 적용 (tube 파워업)
-        const points = item.points * this.player.getScoreMultiplier();
+        SoundManager.getInstance().playSfx('collect');
+        // M3+M4: 점수 배율 적용 (tube 파워업 × 온천 버프)
+        const points = Math.floor(item.points * this.player.getScoreMultiplier() * this.onsenBuff.scoreMultiplier);
         this.score += points;
         this.collectedItems[item.itemType]++;
 
@@ -324,13 +441,14 @@ export class Game extends Phaser.Scene {
 
     // M3: 파워업 수집
     private onCollectPowerUp(powerUp: PowerUp): void {
+        SoundManager.getInstance().playSfx('powerup');
         this.player.applyPowerUp(powerUp.powerUpType);
         this.effectManager.onPowerUpCollected(this.player);
         powerUp.deactivate();
     }
 
-    // M3: friend 파워업 — 같은 레인 + Y 근접 아이템 자동 수집
-    private autoCollectItems(): void {
+    // M3+M4: 같은 레인 + Y 근접 아이템 자동 수집 (friend 파워업 또는 온천 자석)
+    private autoCollectItems(range: number): void {
         const playerLane = this.player.getCurrentLane();
         const playerY = this.player.y;
         const children = this.itemPool.getGroup().getChildren();
@@ -347,8 +465,8 @@ export class Game extends Phaser.Scene {
             );
             if (itemLane !== playerLane) continue;
 
-            // Y 근접 체크 (200px 이내)
-            if (Math.abs(child.y - playerY) < 200) {
+            // Y 근접 체크
+            if (Math.abs(child.y - playerY) < range) {
                 this.onCollectItem(child);
             }
         }
@@ -430,6 +548,7 @@ export class Game extends Phaser.Scene {
         // M3: 파워업/스테이지/이펙트 초기화
         this.player.clearAllPowerUps();
         this.effectManager.reset();
+        this.stageManager.reset();
 
         // 모든 장애물/아이템 제거
         this.spawnManager.reset();
@@ -445,6 +564,10 @@ export class Game extends Phaser.Scene {
     triggerGameOver(): void {
         if (this.state === 'gameOver') return;
         this.state = 'gameOver';
+
+        const snd = SoundManager.getInstance();
+        snd.stopBgm();
+        snd.playSfx('gameover');
 
         // M3: 파워업 초기화
         this.player.clearAllPowerUps();

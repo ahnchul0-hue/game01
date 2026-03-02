@@ -7,11 +7,11 @@ import {
     OBSTACLE_CONFIGS,
     ITEM_SIZE,
     POWERUP_CONFIGS,
-    STAGE_COLORS,
-    SKIN_CONFIGS,
     ONSEN_ITEM_DISPLAY_SIZE,
+    LS_KEY_SELECTED_SKIN,
 } from '../utils/Constants';
-import type { ObstacleType, PowerUpType, StageType, SkinId, ItemType } from '../utils/Constants';
+import type { ObstacleType, PowerUpType, ItemType } from '../utils/Constants';
+import { ensureStageTextures, ensureSkinTexture } from '../utils/TextureUtils';
 
 export class Preloader extends Phaser.Scene {
     constructor() {
@@ -126,10 +126,8 @@ export class Preloader extends Phaser.Scene {
         this.createPowerUpTexture('tube');
         this.createPowerUpTexture('friend');
 
-        // M3: 스테이지별 배경 텍스처 (4 스테이지 × 3 레이어)
-        for (const stage of Object.keys(STAGE_COLORS) as StageType[]) {
-            this.createStageBgTextures(stage);
-        }
+        // M3: 스테이지 배경 — 시작 스테이지만 생성 (나머지는 StageManager에서 lazy 생성)
+        ensureStageTextures(this, 'forest');
 
         // M3: 파티클 텍스처 (8x8 흰색)
         const particleGfx = this.make.graphics({ x: 0, y: 0 }, false);
@@ -164,9 +162,11 @@ export class Preloader extends Phaser.Scene {
         helmetGfx.generateTexture('helmet-overlay', 50, 40);
         helmetGfx.destroy();
 
-        // M4: 스킨별 카피바라 텍스처
-        for (const skin of SKIN_CONFIGS) {
-            this.createSkinTexture(skin.id, skin.color);
+        // M4: 스킨 — 선택된 스킨만 생성 (나머지는 SkinSelect에서 lazy 생성)
+        ensureSkinTexture(this, 'default');
+        const selectedSkin = localStorage.getItem(LS_KEY_SELECTED_SKIN);
+        if (selectedSkin && selectedSkin !== 'default') {
+            ensureSkinTexture(this, selectedSkin as import('../utils/Constants').SkinId);
         }
 
         // M4: 온천 장식 아이템 텍스처 (원형)
@@ -271,39 +271,6 @@ export class Preloader extends Phaser.Scene {
         gfx.destroy();
     }
 
-    // M4: 스킨 텍스처 (카피바라와 동일 형태, 바디 색상만 다름)
-    private createSkinTexture(skinId: SkinId, bodyColor: number): void {
-        const gfx = this.make.graphics({ x: 0, y: 0 }, false);
-        gfx.fillStyle(bodyColor, 1);
-        gfx.fillRoundedRect(0, 0, 100, 130, 16);
-        // 귀
-        const earColor = Phaser.Display.Color.ValueToColor(bodyColor);
-        earColor.darken(15);
-        gfx.fillStyle(earColor.color, 1);
-        gfx.fillRoundedRect(10, 0, 20, 16, 6);
-        gfx.fillRoundedRect(70, 0, 20, 16, 6);
-        // 눈
-        gfx.fillStyle(0x000000, 1);
-        gfx.fillCircle(35, 45, 6);
-        gfx.fillCircle(65, 45, 6);
-        gfx.fillStyle(0xFFFFFF, 1);
-        gfx.fillCircle(37, 43, 2);
-        gfx.fillCircle(67, 43, 2);
-        // 코
-        gfx.fillStyle(0x654321, 1);
-        gfx.fillCircle(50, 65, 10);
-        gfx.fillStyle(0x4A3015, 1);
-        gfx.fillCircle(46, 65, 3);
-        gfx.fillCircle(54, 65, 3);
-        // 입
-        gfx.lineStyle(2, 0x654321, 1);
-        gfx.beginPath();
-        gfx.arc(50, 72, 12, Phaser.Math.DegToRad(10), Phaser.Math.DegToRad(170), false);
-        gfx.strokePath();
-        gfx.generateTexture(`capybara-${skinId}`, 100, 130);
-        gfx.destroy();
-    }
-
     // M4: 온천 장식 아이템 텍스처
     private createOnsenDecoTexture(name: ItemType, color: number): void {
         const s = ONSEN_ITEM_DISPLAY_SIZE;
@@ -316,40 +283,5 @@ export class Preloader extends Phaser.Scene {
         gfx.destroy();
     }
 
-    // M3: 스테이지별 배경 텍스처 세트 (sky, trees, ground)
-    private createStageBgTextures(stage: StageType): void {
-        const colors = STAGE_COLORS[stage];
-
-        // 하늘
-        const skyGfx = this.make.graphics({ x: 0, y: 0 }, false);
-        skyGfx.fillStyle(colors.sky, 1);
-        skyGfx.fillRect(0, 0, 64, 64);
-        skyGfx.generateTexture(`bg-sky-${stage}`, 64, 64);
-        skyGfx.destroy();
-
-        // 나무/산
-        const treesGfx = this.make.graphics({ x: 0, y: 0 }, false);
-        treesGfx.fillStyle(colors.trees, 1);
-        treesGfx.fillTriangle(0, 256, 128, 40, 256, 256);
-        const treeVariant = Phaser.Display.Color.ValueToColor(colors.trees);
-        treeVariant.brighten(10);
-        treesGfx.fillStyle(treeVariant.color, 1);
-        treesGfx.fillTriangle(150, 256, 300, 60, 450, 256);
-        treeVariant.darken(20);
-        treesGfx.fillStyle(treeVariant.color, 1);
-        treesGfx.fillTriangle(350, 256, 480, 90, 512, 256);
-        treesGfx.generateTexture(`bg-trees-${stage}`, 512, 256);
-        treesGfx.destroy();
-
-        // 땅
-        const groundGfx = this.make.graphics({ x: 0, y: 0 }, false);
-        groundGfx.fillStyle(colors.ground, 1);
-        groundGfx.fillRect(0, 0, 512, 256);
-        const grassColor = Phaser.Display.Color.ValueToColor(colors.trees);
-        grassColor.darken(10);
-        groundGfx.fillStyle(grassColor.color, 1);
-        groundGfx.fillRect(0, 0, 512, 8);
-        groundGfx.generateTexture(`bg-ground-${stage}`, 512, 256);
-        groundGfx.destroy();
-    }
+    // (스테이지 배경 텍스처는 TextureUtils.ensureStageTextures에서 lazy 생성)
 }

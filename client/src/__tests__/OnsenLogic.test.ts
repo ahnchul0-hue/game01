@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
     getOnsenLevel,
     getOnsenLevelIndex,
+    getOnsenBuff,
     getTotalItems,
     isSkinUnlocked,
     getUnlockProgress,
@@ -139,5 +140,65 @@ describe('getUnlockProgress', () => {
 
     it('returns 1 for items_1000 at 2000 items', () => {
         expect(getUnlockProgress('items_1000', { ...baseStats, totalItemsCollected: 2000 })).toBe(1);
+    });
+});
+
+describe('getOnsenBuff', () => {
+    it('returns no buffs for basic level', () => {
+        const buff = getOnsenBuff('basic');
+        expect(buff.scoreMultiplier).toBe(1.0);
+        expect(buff.startingShield).toBe(false);
+        expect(buff.itemMagnetRange).toBe(0);
+    });
+
+    it('returns 1.1x score and 50px magnet for forest level', () => {
+        const buff = getOnsenBuff('forest');
+        expect(buff.scoreMultiplier).toBe(1.1);
+        expect(buff.startingShield).toBe(false);
+        expect(buff.itemMagnetRange).toBe(50);
+    });
+
+    it('returns 1.2x score, shield, and 100px magnet for snow level', () => {
+        const buff = getOnsenBuff('snow');
+        expect(buff.scoreMultiplier).toBe(1.2);
+        expect(buff.startingShield).toBe(true);
+        expect(buff.itemMagnetRange).toBe(100);
+    });
+
+    it('returns 1.3x score, shield, and 150px magnet for luxury level', () => {
+        const buff = getOnsenBuff('luxury');
+        expect(buff.scoreMultiplier).toBe(1.3);
+        expect(buff.startingShield).toBe(true);
+        expect(buff.itemMagnetRange).toBe(150);
+    });
+
+    it('integrates with getOnsenLevel — 0 placed items gives basic buff', () => {
+        const level = getOnsenLevel(0);
+        const buff = getOnsenBuff(level);
+        expect(buff.scoreMultiplier).toBe(1.0);
+    });
+
+    it('integrates with getOnsenLevel — 10 placed items gives luxury buff', () => {
+        const level = getOnsenLevel(10);
+        const buff = getOnsenBuff(level);
+        expect(buff.scoreMultiplier).toBe(1.3);
+        expect(buff.startingShield).toBe(true);
+        expect(buff.itemMagnetRange).toBe(150);
+    });
+
+    it('forest buff multiplier is strictly between basic and snow', () => {
+        const basic = getOnsenBuff('basic');
+        const forest = getOnsenBuff('forest');
+        const snow = getOnsenBuff('snow');
+        expect(forest.scoreMultiplier).toBeGreaterThan(basic.scoreMultiplier);
+        expect(forest.scoreMultiplier).toBeLessThan(snow.scoreMultiplier);
+    });
+
+    it('magnet range increases with each level', () => {
+        const levels: Array<'basic' | 'forest' | 'snow' | 'luxury'> = ['basic', 'forest', 'snow', 'luxury'];
+        for (let i = 1; i < levels.length; i++) {
+            expect(getOnsenBuff(levels[i]).itemMagnetRange)
+                .toBeGreaterThan(getOnsenBuff(levels[i - 1]).itemMagnetRange);
+        }
     });
 });

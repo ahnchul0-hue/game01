@@ -11,6 +11,7 @@ import {
 import { isSkinUnlocked, getUnlockProgress, getOnsenLevelIndex, getTotalItems, getOnsenLevel, type UnlockStats } from '../utils/OnsenLogic';
 import { InventoryManager } from '../services/InventoryManager';
 import { createButton, fadeToScene, fadeIn } from '../ui/UIFactory';
+import { ensureSkinTexture } from '../utils/TextureUtils';
 
 export class SkinSelect extends Phaser.Scene {
     private inventoryMgr!: InventoryManager;
@@ -23,7 +24,17 @@ export class SkinSelect extends Phaser.Scene {
         super(SCENE_SKIN_SELECT);
     }
 
+    shutdown(): void {
+        this.input.off('pointerdown');
+        this.cardBorders.clear();
+    }
+
     create(): void {
+        // lazy 스킨 텍스처 생성 (필요 시점에 CPU로 생성)
+        for (const skin of SKIN_CONFIGS) {
+            ensureSkinTexture(this, skin.id);
+        }
+
         this.inventoryMgr = InventoryManager.getInstance();
         this.selectedSkin = this.inventoryMgr.getSelectedSkin();
         this.unlockedSkins = [...this.inventoryMgr.getUnlockedSkins()];

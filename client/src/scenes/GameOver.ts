@@ -31,6 +31,10 @@ export class GameOver extends Phaser.Scene {
         super(SCENE_GAME_OVER);
     }
 
+    shutdown(): void {
+        this.tweens.killAll();
+    }
+
     init(data: GameOverData): void {
         this.finalScore = data.score ?? 0;
         this.finalDistance = data.distance ?? 0;

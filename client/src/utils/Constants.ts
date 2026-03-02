@@ -47,7 +47,7 @@ export const OBSTACLE_CONFIGS: Record<ObstacleType, { width: number; height: num
     puddle:      { width: 100, height: 30, color: 0x4FC3F7 },
 };
 
-export const OBSTACLE_POOL_SIZE = 10;
+export const OBSTACLE_POOL_SIZE = 6;
 
 // ========== M2: 아이템 시스템 ==========
 export type ItemType = 'mandarin' | 'watermelon' | 'hotspring_material';
@@ -65,7 +65,7 @@ export const ITEM_WEIGHTS: Record<ItemType, number> = {
 };
 
 export const ITEM_SIZE = 50;
-export const ITEM_POOL_SIZE = 15;
+export const ITEM_POOL_SIZE = 8;
 
 // ========== M2: 스폰/디스폰 ==========
 export const SPAWN_Y = -100;
@@ -106,7 +106,7 @@ export const POWERUP_CONFIGS: Record<PowerUpType, { width: number; height: numbe
     friend: { width: 50, height: 50, color: 0xFF6F00, duration: 8000 },    // 8초
 };
 
-export const POWERUP_POOL_SIZE = 5;
+export const POWERUP_POOL_SIZE = 3;
 export const POWERUP_SPAWN_CHANCE = 0.12;
 export const POWERUP_MIN_DISTANCE = 300;
 export const POWERUP_SCORE_MULTIPLIER_TUBE = 2;
@@ -228,3 +228,18 @@ export const ONSEN_ITEM_DISPLAY_SIZE = 60;
 
 // ========== M4: localStorage 키 (maxDistance) ==========
 export const LS_KEY_MAX_DISTANCE = 'capybara_max_distance';
+export const LS_KEY_TUTORIAL_DONE = 'capybara_tutorial_done';
+
+// ========== M4: 온천 버프 시스템 ==========
+export interface OnsenBuff {
+    scoreMultiplier: number;
+    startingShield: boolean;
+    itemMagnetRange: number;
+}
+
+export const ONSEN_BUFF_CONFIGS: Record<OnsenLevel, OnsenBuff> = {
+    basic:  { scoreMultiplier: 1.0, startingShield: false, itemMagnetRange: 0 },
+    forest: { scoreMultiplier: 1.1, startingShield: false, itemMagnetRange: 50 },
+    snow:   { scoreMultiplier: 1.2, startingShield: true,  itemMagnetRange: 100 },
+    luxury: { scoreMultiplier: 1.3, startingShield: true,  itemMagnetRange: 150 },
+};

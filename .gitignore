@@ -26,3 +26,10 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# MCP / Tools
+.playwright-mcp/
+.serena/
+
+# Screenshots (root only)
+/*.png

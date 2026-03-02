@@ -9,6 +9,7 @@ import {
 } from '../utils/Constants';
 import { ApiClient } from '../services/ApiClient';
 import { InventoryManager } from '../services/InventoryManager';
+import { SoundManager } from '../services/SoundManager';
 import { createButton, fadeToScene, fadeIn } from '../ui/UIFactory';
 
 export class MainMenu extends Phaser.Scene {
@@ -16,11 +17,25 @@ export class MainMenu extends Phaser.Scene {
         super(SCENE_MAIN_MENU);
     }
 
+    shutdown(): void {
+        this.input.off('pointerdown');
+        this.tweens.killAll();
+    }
+
     create(): void {
         // 게스트 유저 생성 후 서버 동기화 (ensureUser 완료 대기 후 sync)
         const api = ApiClient.getInstance();
         const inventoryMgr = InventoryManager.getInstance();
-        api.ensureUser().then(() => inventoryMgr.syncFromServer());
+        api.ensureUser().then(() => inventoryMgr.syncFromServer()).catch(() => { /* offline — use local data */ });
+
+        // 오디오 초기화 (브라우저 autoplay 정책: 첫 상호작용 후 init)
+        const sound = SoundManager.getInstance();
+        this.input.once('pointerdown', () => {
+            sound.init();
+            sound.playBgm('bgm-menu');
+        });
+        // 이미 init된 경우 바로 BGM 재생
+        if (sound.isReady()) sound.playBgm('bgm-menu');
 
         // 페이드인
         fadeIn(this);
@@ -79,6 +94,18 @@ export class MainMenu extends Phaser.Scene {
             x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.82,
             label: 'SKINS', color: 0x8B008B, width: 280, height: 64, fontSize: '28px', radius: 16,
             callback: () => fadeToScene(this, SCENE_SKIN_SELECT),
+        });
+
+        // 음소거 토글 버튼
+        const muteLabel = sound.isMuted() ? 'UNMUTE' : 'MUTE';
+        const muteText = this.add.text(GAME_WIDTH - 20, GAME_HEIGHT - 30, muteLabel, {
+            fontFamily: 'Arial', fontSize: '18px', color: '#999999',
+        }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true });
+        muteText.on('pointerdown', () => {
+            const nowMuted = !sound.isMuted();
+            sound.setMuted(nowMuted);
+            muteText.setText(nowMuted ? 'UNMUTE' : 'MUTE');
+            if (!nowMuted) sound.playBgm('bgm-menu');
         });
     }
 }

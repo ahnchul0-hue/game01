@@ -4,12 +4,15 @@ import {
     type Inventory,
     type OnsenLayout,
     type SkinId,
+    SKIN_CONFIGS,
     LS_KEY_INVENTORY,
     LS_KEY_ONSEN_LAYOUT,
     LS_KEY_SELECTED_SKIN,
     LS_KEY_UNLOCKED_SKINS,
     LS_KEY_MAX_DISTANCE,
 } from '../utils/Constants';
+
+const VALID_SKIN_IDS = new Set<string>(SKIN_CONFIGS.map(s => s.id));
 
 const DEFAULT_INVENTORY: Inventory = { mandarin: 0, watermelon: 0, hotspring_material: 0 };
 const DEFAULT_LAYOUT: OnsenLayout = { placedItems: [] };
@@ -37,7 +40,8 @@ export class InventoryManager {
         try {
             const raw = localStorage.getItem(LS_KEY_INVENTORY);
             if (!raw) return { ...DEFAULT_INVENTORY };
-            return JSON.parse(raw) as Inventory;
+            const parsed = JSON.parse(raw);
+            return { ...DEFAULT_INVENTORY, ...parsed };
         } catch {
             return { ...DEFAULT_INVENTORY };
         }
@@ -86,7 +90,8 @@ export class InventoryManager {
         try {
             const raw = localStorage.getItem(LS_KEY_ONSEN_LAYOUT);
             if (!raw) return { ...DEFAULT_LAYOUT, placedItems: [] };
-            return JSON.parse(raw) as OnsenLayout;
+            const parsed = JSON.parse(raw);
+            return { placedItems: Array.isArray(parsed?.placedItems) ? parsed.placedItems : [] };
         } catch {
             return { ...DEFAULT_LAYOUT, placedItems: [] };
         }
@@ -101,7 +106,8 @@ export class InventoryManager {
     // --- Skins ---
 
     getSelectedSkin(): SkinId {
-        return (localStorage.getItem(LS_KEY_SELECTED_SKIN) as SkinId) || 'default';
+        const raw = localStorage.getItem(LS_KEY_SELECTED_SKIN);
+        return raw && VALID_SKIN_IDS.has(raw) ? (raw as SkinId) : 'default';
     }
 
     saveSelectedSkin(skinId: SkinId): void {

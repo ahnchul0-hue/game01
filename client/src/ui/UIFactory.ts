@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { SoundManager } from '../services/SoundManager';
 
 export interface ButtonConfig {
     x: number;
@@ -58,6 +59,7 @@ export function createButton(scene: Phaser.Scene, config: ButtonConfig): void {
     const hitArea = scene.add.zone(x, y, btnW, btnH).setInteractive({ useHandCursor: true });
 
     hitArea.on('pointerdown', () => {
+        SoundManager.getInstance().playSfx('button');
         bg.setAlpha(0.7);
         text.setAlpha(0.7);
         scene.time.delayedCall(120, () => {

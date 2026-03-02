@@ -61,6 +61,17 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         if (this.isJumping || this.isSliding) return;
         this.isJumping = true;
         this.setVelocityY(JUMP_VELOCITY);
+        // Squash/Stretch: 점프 시 세로로 늘어남
+        this.scene.tweens.add({
+            targets: this, scaleX: 0.85, scaleY: 1.2,
+            duration: 100, ease: 'Power2',
+            onComplete: () => {
+                this.scene.tweens.add({
+                    targets: this, scaleX: 1, scaleY: 1,
+                    duration: 150, ease: 'Power1',
+                });
+            },
+        });
     }
 
     slide(): void {
@@ -117,6 +128,17 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             this.y = PLAYER_Y;
             this.setVelocityY(0);
             this.isJumping = false;
+            // Squash/Stretch: 착지 시 납작해짐
+            this.scene.tweens.add({
+                targets: this, scaleX: 1.25, scaleY: 0.75,
+                duration: 80, ease: 'Power2',
+                onComplete: () => {
+                    this.scene.tweens.add({
+                        targets: this, scaleX: 1, scaleY: 1,
+                        duration: 150, ease: 'Bounce.easeOut',
+                    });
+                },
+            });
         }
 
         // 바닥 고정 (점프/슬라이드 아닐 때 중력에 의해 떨어지는 것 방지)
@@ -269,6 +291,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     destroy(fromScene?: boolean): void {
+        if (!this.scene) return;
         if (this.slideTimer) {
             this.slideTimer.destroy();
             this.slideTimer = null;

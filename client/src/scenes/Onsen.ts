@@ -19,6 +19,7 @@ import {
 } from '../utils/Constants';
 import { getOnsenLevel } from '../utils/OnsenLogic';
 import { InventoryManager } from '../services/InventoryManager';
+import { SoundManager } from '../services/SoundManager';
 import { createButton, fadeToScene, fadeIn } from '../ui/UIFactory';
 
 const ITEM_TYPES: ItemType[] = ['mandarin', 'watermelon', 'hotspring_material'];
@@ -50,8 +51,13 @@ export class Onsen extends Phaser.Scene {
 
     shutdown(): void {
         this.cleanupPlacingMode();
+        this.tweens.killAll();
+        this.time.removeAllEvents();
         this.input.off('drag');
         this.input.off('dragend');
+        this.input.off('pointerdown');
+        this.placedSprites = [];
+        this.inventoryTexts.clear();
     }
 
     create(): void {
@@ -68,6 +74,9 @@ export class Onsen extends Phaser.Scene {
 
         // 페이드인
         fadeIn(this);
+
+        // 온천 BGM
+        SoundManager.getInstance().playBgm('bgm-onsen');
 
         this.drawAll();
     }

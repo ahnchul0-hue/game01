@@ -3,6 +3,11 @@ body {
     padding: 0;
     color: rgba(255, 255, 255, 0.87);
     background-color: #0f0f0f;
+    touch-action: none;
+    overscroll-behavior: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 #app {
@@ -12,4 +17,17 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+#game-container {
+    touch-action: none;
+}
+
+canvas {
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
 }

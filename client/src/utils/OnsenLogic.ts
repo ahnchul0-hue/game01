@@ -1,8 +1,10 @@
 import {
     type Inventory,
     type OnsenLevel,
+    type OnsenBuff,
     type UnlockCondition,
     ONSEN_LEVEL_THRESHOLDS,
+    ONSEN_BUFF_CONFIGS,
 } from './Constants';
 
 export function getOnsenLevel(placedItemCount: number): OnsenLevel {
@@ -38,6 +40,10 @@ export function getUnlockProgress(condition: UnlockCondition, stats: UnlockStats
         case 'items_1000':     return Math.min(1, stats.totalItemsCollected / 1000);
         default:               return 0;
     }
+}
+
+export function getOnsenBuff(level: OnsenLevel): OnsenBuff {
+    return ONSEN_BUFF_CONFIGS[level];
 }
 
 export function isSkinUnlocked(condition: UnlockCondition, stats: UnlockStats): boolean {

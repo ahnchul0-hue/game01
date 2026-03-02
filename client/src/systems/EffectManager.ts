@@ -24,6 +24,7 @@ export class EffectManager {
 
     // 파티클 이미터
     private particleEmitter: Phaser.GameObjects.Particles.ParticleEmitter;
+    private dustEmitter: Phaser.GameObjects.Particles.ParticleEmitter;
 
     constructor(scene: Phaser.Scene) {
         this.scene = scene;
@@ -40,6 +41,17 @@ export class EffectManager {
             scale: { start: 1, end: 0 },
             lifespan: EFFECT_PARTICLE_LIFESPAN,
             quantity: 6,
+            emitting: false,
+        }).setDepth(DEPTH_EFFECT_OVERLAY);
+
+        // 먼지 파티클 (점프/착지용)
+        this.dustEmitter = scene.add.particles(0, 0, 'particle', {
+            speed: { min: 20, max: 60 },
+            scale: { start: 0.6, end: 0 },
+            alpha: { start: 0.5, end: 0 },
+            lifespan: 300,
+            tint: 0xBBAAAA,
+            quantity: 4,
             emitting: false,
         }).setDepth(DEPTH_EFFECT_OVERLAY);
     }
@@ -90,7 +102,7 @@ export class EffectManager {
 
         // 슬로우모션 활성화
         this.isSlowmo = true;
-        this.slowmoStart = performance.now();
+        this.slowmoStart = this.scene.time.now;
     }
 
     /** 스테이지 전환 이펙트: 스테이지명 텍스트 */
@@ -124,6 +136,18 @@ export class EffectManager {
         });
     }
 
+    /** 점프 시 바닥에서 먼지 파티클 */
+    onJump(x: number, y: number): void {
+        this.dustEmitter.setPosition(x, y + 30);
+        this.dustEmitter.explode(4, x, y + 30);
+    }
+
+    /** 착지 시 바닥에서 먼지 파티클 (더 강하게) */
+    onLand(x: number, y: number): void {
+        this.dustEmitter.setPosition(x, y + 30);
+        this.dustEmitter.explode(6, x, y + 30);
+    }
+
     /** 헬멧 파괴 이펙트: 파괴 파티클 */
     onHelmetBreak(x: number, y: number): void {
         this.particleEmitter.setPosition(x, y);
@@ -132,9 +156,9 @@ export class EffectManager {
     }
 
     /** 매 프레임 호출: 슬로우모션 타이머 체크 */
-    update(): void {
+    update(sceneTimeNow: number): void {
         if (this.isSlowmo) {
-            const elapsed = performance.now() - this.slowmoStart;
+            const elapsed = sceneTimeNow - this.slowmoStart;
             if (elapsed >= EFFECT_SLOWMO_DURATION) {
                 this.isSlowmo = false;
             }

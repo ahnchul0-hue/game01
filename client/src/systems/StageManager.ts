@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { STAGE_TRANSITION_DURATION } from '../utils/Constants';
 import type { StageType } from '../utils/Constants';
 import { getStageForDistance } from '../utils/GameLogic';
+import { ensureStageTextures } from '../utils/TextureUtils';
 
 export class StageManager {
     private scene: Phaser.Scene;
@@ -43,6 +44,8 @@ export class StageManager {
 
     /** 배경 크로스페이드 전환 */
     private transitionTo(newStage: StageType, _prevStage: StageType): void {
+        // lazy 텍스처 생성 (CPU 연산으로 메모리 절약)
+        ensureStageTextures(this.scene, newStage);
         this.isTransitioning = true;
         const halfDuration = STAGE_TRANSITION_DURATION / 2;
 
@@ -53,7 +56,10 @@ export class StageManager {
             duration: halfDuration,
             ease: 'Power1',
             onComplete: () => {
-                if (!this.scene.sys.isActive()) return;
+                if (!this.scene.sys.isActive()) {
+                    this.isTransitioning = false;
+                    return;
+                }
                 this.bgSky.setTexture(`bg-sky-${newStage}`);
                 this.bgTrees.setTexture(`bg-trees-${newStage}`);
                 this.bgGround.setTexture(`bg-ground-${newStage}`);
