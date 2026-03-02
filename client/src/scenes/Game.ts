@@ -21,7 +21,6 @@ import {
     PLAYER_Y,
     PLAYER_Z,
     BASE_SPEED,
-    SWIPE_THRESHOLD,
     MAX_FREE_REVIVES,
     INVINCIBLE_DURATION,
     SCENE_GAME,
@@ -36,6 +35,8 @@ import { getOnsenLevel, getOnsenBuff, getCompanionAbility } from '../utils/Onsen
 import { InventoryManager } from '../services/InventoryManager';
 import { SoundManager } from '../services/SoundManager';
 import { fadeToScene } from '../ui/UIFactory';
+import { InputController } from '../ui/InputController';
+import { ReviveUI } from '../ui/ReviveUI';
 
 type GameState = 'playing' | 'paused' | 'revivePrompt' | 'gameOver';
 
@@ -83,8 +84,7 @@ export class Game extends Phaser.Scene {
     private dodgedObstacles = 0;
 
     // 입력
-    private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-    private swipeStart: { x: number; y: number } | null = null;
+    private inputController!: InputController;
 
     // HUD
     private scoreText!: Phaser.GameObjects.Text;
@@ -92,8 +92,7 @@ export class Game extends Phaser.Scene {
     private itemCounterText!: Phaser.GameObjects.Text;
 
     // 부활 UI
-    private reviveContainer: Phaser.GameObjects.Container | null = null;
-    private reviveHitZones: Phaser.GameObjects.Zone[] = [];
+    private reviveUI!: ReviveUI;
 
     // 튜토리얼
     private tutorialContainer: Phaser.GameObjects.Container | null = null;
@@ -123,14 +122,11 @@ export class Game extends Phaser.Scene {
         this.score = 0;
         this.gameSpeed = BASE_SPEED;
         this.state = 'playing';
-        this.swipeStart = null;
         this.revivesUsed = 0;
         this.collectedItems = { mandarin: 0, watermelon: 0, hotspring_material: 0 };
         this.dodgedObstacles = 0;
         this.prevActiveObstacles = new Set();
         this.currentActiveObstacles = new Set();
-        this.reviveContainer = null;
-        this.reviveHitZones = [];
         this.tutorialContainer = null;
         this.pauseContainer = null;
         this.wasJumping = false;
@@ -139,16 +135,11 @@ export class Game extends Phaser.Scene {
     }
 
     shutdown(): void {
-        this.input.off('pointerdown');
-        this.input.off('pointerup');
+        if (this.inputController) this.inputController.destroy();
         this.tweens.killAll();
         this.time.removeAllEvents();
         this.cameras.main.resetFX();
-        this.destroyReviveHitZones();
-        if (this.reviveContainer) {
-            this.reviveContainer.destroy();
-            this.reviveContainer = null;
-        }
+        if (this.reviveUI) this.reviveUI.destroy();
         if (this.tutorialContainer) {
             this.tutorialContainer.destroy();
             this.tutorialContainer = null;
@@ -229,33 +220,18 @@ export class Game extends Phaser.Scene {
             this,
         );
 
-        // 키보드 입력
-        if (this.input.keyboard) {
-            this.cursors = this.input.keyboard.createCursorKeys();
-        }
-
-        // 터치 입력
-        this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-            if (this.state !== 'playing') return;
-            this.swipeStart = { x: p.x, y: p.y };
+        // 입력 (키보드 + 터치)
+        const snd = SoundManager.getInstance();
+        this.inputController = new InputController(this, {
+            isInputActive: () => this.state === 'playing',
+            onMoveLeft: () => this.player.moveLeft(),
+            onMoveRight: () => this.player.moveRight(),
+            onJump: () => { this.player.jump(); snd.playSfx('jump'); this.effectManager.onJump(this.player.x, this.player.y); },
+            onSlide: () => { this.player.slide(); snd.playSfx('slide'); },
         });
 
-        this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
-            if (!this.swipeStart || this.state !== 'playing') return;
-            const dx = p.x - this.swipeStart.x;
-            const dy = p.y - this.swipeStart.y;
-
-            const snd = SoundManager.getInstance();
-            if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy)) {
-                if (dx > 0) this.player.moveRight();
-                else this.player.moveLeft();
-            } else if (Math.abs(dy) > SWIPE_THRESHOLD && Math.abs(dy) > Math.abs(dx)) {
-                if (dy < 0) { this.player.jump(); snd.playSfx('jump'); this.effectManager.onJump(this.player.x, this.player.y); }
-                else { this.player.slide(); snd.playSfx('slide'); }
-            }
-
-            this.swipeStart = null;
-        });
+        // 부활 UI
+        this.reviveUI = new ReviveUI(this);
 
         // HUD
         this.scoreText = this.add.text(20, 20, '0', {
@@ -419,13 +395,8 @@ export class Game extends Phaser.Scene {
         this.sceneryManager.update(zSpeed, dt);
         this.speedLineRenderer.update(this.gameSpeed, dt);
 
-        // 키보드 입력
-        if (this.cursors) {
-            if (Phaser.Input.Keyboard.JustDown(this.cursors.left)) this.player.moveLeft();
-            if (Phaser.Input.Keyboard.JustDown(this.cursors.right)) this.player.moveRight();
-            if (Phaser.Input.Keyboard.JustDown(this.cursors.up)) { this.player.jump(); SoundManager.getInstance().playSfx('jump'); this.effectManager.onJump(this.player.x, this.player.y); }
-            if (Phaser.Input.Keyboard.JustDown(this.cursors.down)) { this.player.slide(); SoundManager.getInstance().playSfx('slide'); }
-        }
+        // 키보드 입력 폴링
+        this.inputController.pollKeyboard();
 
         // 플레이어 업데이트
         this.player.update();
@@ -616,69 +587,16 @@ export class Game extends Phaser.Scene {
     private showRevivePrompt(): void {
         this.state = 'revivePrompt';
         this.physics.pause();
-
-        this.reviveContainer = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(300);
-
-        const overlay = this.add.graphics();
-        overlay.fillStyle(0x000000, 0.6);
-        overlay.fillRect(-GAME_WIDTH / 2, -GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT);
-        this.reviveContainer.add(overlay);
-
-        const text = this.add.text(0, -60, 'Continue?', {
-            fontFamily: 'Arial', fontSize: '40px', color: '#FFFFFF', fontStyle: 'bold',
-        }).setOrigin(0.5);
-        this.reviveContainer.add(text);
-
-        this.createReviveButton(0, 20, 'REVIVE', 0x4CAF50, () => this.revive());
-        this.createReviveButton(0, 90, 'GIVE UP', 0x757575, () => this.triggerGameOver());
-    }
-
-    private createReviveButton(x: number, y: number, label: string, color: number, callback: () => void): void {
-        if (!this.reviveContainer) return;
-
-        const btnW = 200;
-        const btnH = 50;
-        const bg = this.add.graphics();
-        bg.fillStyle(color, 1);
-        bg.fillRoundedRect(x - btnW / 2, y - btnH / 2, btnW, btnH, 12);
-        this.reviveContainer.add(bg);
-
-        const btnText = this.add.text(x, y, label, {
-            fontFamily: 'Arial', fontSize: '22px', color: '#FFFFFF', fontStyle: 'bold',
-        }).setOrigin(0.5);
-        this.reviveContainer.add(btnText);
-
-        const hitArea = this.add.zone(
-            GAME_WIDTH / 2 + x,
-            GAME_HEIGHT / 2 + y,
-            btnW,
-            btnH,
-        ).setInteractive({ useHandCursor: true });
-        this.reviveHitZones.push(hitArea);
-
-        hitArea.on('pointerdown', () => {
-            this.destroyReviveHitZones();
-            callback();
-        });
-    }
-
-    private destroyReviveHitZones(): void {
-        for (const zone of this.reviveHitZones) {
-            if (!zone.scene) continue;
-            zone.destroy();
-        }
-        this.reviveHitZones = [];
+        this.reviveUI.show(
+            () => this.revive(),
+            () => this.triggerGameOver(),
+        );
     }
 
     // M2: 부활 처리
     private revive(): void {
         this.revivesUsed++;
-
-        this.destroyReviveHitZones();
-        if (this.reviveContainer) {
-            this.reviveContainer.destroy();
-            this.reviveContainer = null;
-        }
+        this.reviveUI.hide();
 
         this.player.clearAllPowerUps();
         this.effectManager.reset();
@@ -699,13 +617,7 @@ export class Game extends Phaser.Scene {
         snd.playSfx('gameover');
 
         this.player.clearAllPowerUps();
-
-        this.destroyReviveHitZones();
-        if (this.reviveContainer) {
-            this.reviveContainer.destroy();
-            this.reviveContainer = null;
-        }
-
+        this.reviveUI.hide();
         this.physics.pause();
 
         this.time.delayedCall(300, () => {

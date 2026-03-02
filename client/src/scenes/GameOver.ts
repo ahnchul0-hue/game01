@@ -152,24 +152,27 @@ export class GameOver extends Phaser.Scene {
 
         // 리더보드 영역 (비동기 로드 — 0.70 이하 표시됨)
 
-        // 재시작 버튼
+        // 재시작 + 온천 (같은 줄)
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.80,
-            label: 'RETRY', color: 0x4CAF50,
+            x: GAME_WIDTH / 2 - 110, y: GAME_HEIGHT * 0.80,
+            label: 'RETRY', color: 0x4CAF50, width: 180, height: 48,
             callback: () => fadeToScene(this, SCENE_GAME, { mode: this.lastMode }),
         });
-
-        // 온천 버튼
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.88,
-            label: 'GO TO ONSEN', color: 0xFF8C00,
+            x: GAME_WIDTH / 2 + 110, y: GAME_HEIGHT * 0.80,
+            label: 'ONSEN', color: 0xFF8C00, width: 180, height: 48,
             callback: () => fadeToScene(this, SCENE_ONSEN),
         });
 
-        // 메뉴 버튼
+        // 공유 + 메뉴 (같은 줄)
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.96,
-            label: 'MENU', color: 0x757575,
+            x: GAME_WIDTH / 2 - 110, y: GAME_HEIGHT * 0.88,
+            label: 'SHARE', color: 0x1DA1F2, width: 180, height: 48,
+            callback: () => this.shareScore(),
+        });
+        createButton(this, {
+            x: GAME_WIDTH / 2 + 110, y: GAME_HEIGHT * 0.88,
+            label: 'MENU', color: 0x757575, width: 180, height: 48,
             callback: () => fadeToScene(this, SCENE_MAIN_MENU),
         });
     }
@@ -209,6 +212,30 @@ export class GameOver extends Phaser.Scene {
             fontFamily: 'Arial', fontSize: '20px', color: '#FFFFFF',
             stroke: '#000000', strokeThickness: 2,
         }).setOrigin(0.5);
+    }
+
+    private shareScore(): void {
+        const text = `Capybara Runner: ${this.finalScore.toLocaleString()}pts / ${this.finalDistance}m`;
+
+        if (navigator.share) {
+            navigator.share({ title: 'Capybara Runner', text }).catch(() => {});
+        } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(() => {
+                this.showShareToast('Copied!');
+            }).catch(() => {});
+        }
+    }
+
+    private showShareToast(message: string): void {
+        const toast = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.93, message, {
+            fontFamily: 'Arial', fontSize: '16px', color: '#FFFFFF',
+            backgroundColor: '#333333', padding: { x: 12, y: 6 },
+        }).setOrigin(0.5).setDepth(200);
+
+        this.tweens.add({
+            targets: toast, alpha: 0, duration: 1500, delay: 800,
+            onComplete: () => toast.destroy(),
+        });
     }
 
     private showLeaderboard(scores: ScoreEntry[]): void {
