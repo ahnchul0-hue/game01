@@ -74,7 +74,7 @@ export class EffectManager {
         });
     }
 
-    /** 장애물 충돌 이펙트: 빨간 플래시 + 강화된 카메라 흔들림 */
+    /** 장애물 충돌 이펙트: 빨간 플래시 + 수직 카메라 셰이크 */
     onObstacleHit(): void {
         // 빨간 플래시
         this.flashOverlay.setAlpha(1);
@@ -85,11 +85,12 @@ export class EffectManager {
             ease: 'Power1',
         });
 
-        // 카메라 흔들림 (강화)
-        this.scene.cameras.main.shake(150, 0.01);
+        // 수직 카메라 셰이크 (의사-3D에서 더 효과적)
+        const cam = this.scene.cameras.main;
+        cam.shake(200, 0.015);
     }
 
-    /** 파워업 획득 이펙트: 깜빡임 + 슬로우모션 */
+    /** 파워업 획득 이펙트: 깜빡임 + 줌 펄스 + 슬로우모션 */
     onPowerUpCollected(player: Phaser.GameObjects.Sprite): void {
         // 깜빡임
         this.scene.tweens.add({
@@ -98,6 +99,16 @@ export class EffectManager {
             duration: 80,
             yoyo: true,
             repeat: 2,
+        });
+
+        // 줌 펄스 (카메라가 살짝 줌인 후 복귀)
+        const cam = this.scene.cameras.main;
+        this.scene.tweens.add({
+            targets: cam,
+            zoom: 1.05,
+            duration: 150,
+            yoyo: true,
+            ease: 'Power2',
         });
 
         // 슬로우모션 활성화

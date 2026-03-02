@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Item } from '../objects/Item';
-import { ITEM_POOL_SIZE } from '../utils/Constants';
+import { ITEM_POOL_SIZE_3D } from '../utils/Constants';
 import type { ItemType } from '../utils/Constants';
 
 export class ItemPool {
@@ -9,17 +9,17 @@ export class ItemPool {
     constructor(scene: Phaser.Scene) {
         this.group = scene.physics.add.group({
             classType: Item,
-            maxSize: ITEM_POOL_SIZE,
+            maxSize: ITEM_POOL_SIZE_3D,
             runChildUpdate: true,
             active: false,
             visible: false,
         });
     }
 
-    spawn(x: number, y: number, type: ItemType, speed: number): Item | null {
+    spawn(lane: number, z: number, type: ItemType, zSpeed: number): Item | null {
         const item = this.group.get() as Item | null;
         if (!item) return null;
-        item.activate(x, y, type, speed);
+        item.activate(lane, z, type, zSpeed);
         return item;
     }
 

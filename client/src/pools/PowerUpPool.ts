@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { PowerUp } from '../objects/PowerUp';
-import { POWERUP_POOL_SIZE } from '../utils/Constants';
+import { POWERUP_POOL_SIZE_3D } from '../utils/Constants';
 import type { PowerUpType } from '../utils/Constants';
 
 export class PowerUpPool {
@@ -9,17 +9,17 @@ export class PowerUpPool {
     constructor(scene: Phaser.Scene) {
         this.group = scene.physics.add.group({
             classType: PowerUp,
-            maxSize: POWERUP_POOL_SIZE,
+            maxSize: POWERUP_POOL_SIZE_3D,
             runChildUpdate: true,
             active: false,
             visible: false,
         });
     }
 
-    spawn(x: number, y: number, type: PowerUpType, speed: number): PowerUp | null {
+    spawn(lane: number, z: number, type: PowerUpType, zSpeed: number): PowerUp | null {
         const powerUp = this.group.get() as PowerUp | null;
         if (!powerUp) return null;
-        powerUp.activate(x, y, type, speed);
+        powerUp.activate(lane, z, type, zSpeed);
         return powerUp;
     }
 

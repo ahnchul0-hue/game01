@@ -55,12 +55,13 @@ describe('ITEM_WEIGHTS', () => {
 });
 
 describe('POWERUP_CONFIGS', () => {
-    it('contains 3 powerup types', () => {
+    it('contains 4 powerup types', () => {
         const keys = Object.keys(POWERUP_CONFIGS) as PowerUpType[];
-        expect(keys).toHaveLength(3);
+        expect(keys).toHaveLength(4);
         expect(keys).toContain('helmet');
         expect(keys).toContain('tube');
         expect(keys).toContain('friend');
+        expect(keys).toContain('magnet');
     });
 
     it('helmet has duration 0 (one-time use)', () => {
@@ -74,12 +75,14 @@ describe('POWERUP_CONFIGS', () => {
 });
 
 describe('OBSTACLE_CONFIGS', () => {
-    it('contains 3 obstacle types', () => {
+    it('contains 5 obstacle types', () => {
         const keys = Object.keys(OBSTACLE_CONFIGS) as ObstacleType[];
-        expect(keys).toHaveLength(3);
+        expect(keys).toHaveLength(5);
         expect(keys).toContain('rock');
         expect(keys).toContain('branch_high');
         expect(keys).toContain('puddle');
+        expect(keys).toContain('barrier');
+        expect(keys).toContain('car');
     });
 
     it('all have positive dimensions', () => {

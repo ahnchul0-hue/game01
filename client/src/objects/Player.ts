@@ -1,13 +1,15 @@
 import Phaser from 'phaser';
+import { PerspectiveCamera } from '../systems/PerspectiveCamera';
 import {
     LANE_COUNT,
-    LANE_POSITIONS,
-    PLAYER_Y,
+    PLAYER_Z,
+    LANE_OFFSETS,
     JUMP_VELOCITY,
     SLIDE_DURATION,
     LANE_MOVE_DURATION,
     POWERUP_CONFIGS,
     POWERUP_SCORE_MULTIPLIER_TUBE,
+    GRAVITY,
 } from '../utils/Constants';
 import type { PowerUpType, SkinId } from '../utils/Constants';
 
@@ -15,21 +17,33 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     private currentLane = 1; // 0=좌, 1=중, 2=우
     private isJumping = false;
     private isSliding = false;
-    private isMoving = false; // Tween 진행 중 여부
+    private isMoving = false;
     private isInvincible = false;
     private slideTimer: Phaser.Time.TimerEvent | null = null;
-    private originalBodyHeight = 0;
-    private originalBodyOffsetY = 0;
 
-    // M3: 파워업 상태
+    // 점프 시뮬레이션 (수동 — physics gravity 미사용)
+    private jumpVelocityY = 0;
+    private jumpOffsetY = 0; // 투영 Y에서의 오프셋
+
+    // 기본 투영 위치 (z=PLAYER_Z)
+    private baseScreenY: number;
+    private baseScale: number;
+
+    // 달리기 애니메이션
+    private runTime = 0;
+    private shadow: Phaser.GameObjects.Ellipse | null = null;
+
+    // 파워업 상태
     private hasHelmet = false;
     private hasTube = false;
     private hasFriend = false;
+    private hasMagnet = false;
     private scoreMultiplier = 1;
     private helmetOverlay: Phaser.GameObjects.Sprite | null = null;
     private friendSprite: Phaser.GameObjects.Sprite | null = null;
     private tubeTimerEvent: Phaser.Time.TimerEvent | null = null;
     private friendTimerEvent: Phaser.Time.TimerEvent | null = null;
+    private magnetTimerEvent: Phaser.Time.TimerEvent | null = null;
 
     constructor(scene: Phaser.Scene, x: number, y: number, skinId: SkinId = 'default') {
         super(scene, x, y, `capybara-${skinId}`);
@@ -38,11 +52,23 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         scene.physics.add.existing(this);
 
         const body = this.body as Phaser.Physics.Arcade.Body;
-        body.setGravityY(0); // Scene 전역 gravity 사용
+        body.setGravityY(0);
         body.setCollideWorldBounds(false);
 
-        this.originalBodyHeight = body.height;
-        this.originalBodyOffsetY = body.offset.y;
+        // 플레이어 z 고정 위치 계산
+        const proj = PerspectiveCamera.projectZ(PLAYER_Z);
+        this.baseScreenY = proj.screenY;
+        this.baseScale = proj.scale;
+
+        // 초기 위치 설정
+        const screenX = PerspectiveCamera.getLaneScreenX(PLAYER_Z, LANE_OFFSETS[this.currentLane]);
+        this.setPosition(screenX, this.baseScreenY);
+        this.setScale(this.baseScale);
+        this.setDepth(10);
+
+        // 그림자 타원
+        this.shadow = scene.add.ellipse(screenX, this.baseScreenY + 50 * this.baseScale, 70, 20, 0x000000, 0.3);
+        this.shadow.setDepth(9);
     }
 
     moveLeft(): void {
@@ -60,14 +86,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     jump(): void {
         if (this.isJumping || this.isSliding) return;
         this.isJumping = true;
-        this.setVelocityY(JUMP_VELOCITY);
-        // Squash/Stretch: 점프 시 세로로 늘어남
+        this.jumpVelocityY = JUMP_VELOCITY;
+        this.jumpOffsetY = 0;
+        // Squash/Stretch
         this.scene.tweens.add({
-            targets: this, scaleX: 0.85, scaleY: 1.2,
+            targets: this, scaleX: this.baseScale * 0.85, scaleY: this.baseScale * 1.2,
             duration: 100, ease: 'Power2',
             onComplete: () => {
                 this.scene.tweens.add({
-                    targets: this, scaleX: 1, scaleY: 1,
+                    targets: this, scaleX: this.baseScale, scaleY: this.baseScale,
                     duration: 150, ease: 'Power1',
                 });
             },
@@ -78,15 +105,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         if (this.isSliding || this.isJumping) return;
         this.isSliding = true;
 
-        // 히트박스 높이 절반으로 축소
-        const body = this.body as Phaser.Physics.Arcade.Body;
-        body.setSize(body.width, this.originalBodyHeight / 2);
-        body.setOffset(body.offset.x, this.originalBodyOffsetY + this.originalBodyHeight / 2);
-
-        // 시각적 피드백: Y 스케일 축소 + 위치 보정 (origin 변경 없이)
-        const halfH = this.displayHeight * 0.25;
-        this.setScale(this.scaleX, 0.5);
-        this.y += halfH;
+        // 시각적 축소
+        this.setScale(this.baseScale, this.baseScale * 0.5);
 
         this.slideTimer = this.scene.time.delayedCall(SLIDE_DURATION, () => {
             this.endSlide();
@@ -95,25 +115,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     private endSlide(): void {
         this.isSliding = false;
-
-        // 히트박스 복원
-        const body = this.body as Phaser.Physics.Arcade.Body;
-        body.setSize(body.width, this.originalBodyHeight);
-        body.setOffset(body.offset.x, this.originalBodyOffsetY);
-
-        // 시각적 복원: 위치를 원래로 되돌림
-        const halfH = this.displayHeight * 0.5;
-        this.setScale(this.scaleX, 1);
-        this.y -= halfH;
-
+        this.setScale(this.baseScale);
         this.slideTimer = null;
     }
 
     private tweenToLane(): void {
         this.isMoving = true;
+        const targetX = PerspectiveCamera.getLaneScreenX(PLAYER_Z, LANE_OFFSETS[this.currentLane]);
         this.scene.tweens.add({
             targets: this,
-            x: LANE_POSITIONS[this.currentLane],
+            x: targetX,
             duration: LANE_MOVE_DURATION,
             ease: 'Power2',
             onComplete: () => {
@@ -123,43 +134,58 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     update(): void {
-        // 착지 체크
-        if (this.isJumping && this.y >= PLAYER_Y) {
-            this.y = PLAYER_Y;
-            this.setVelocityY(0);
-            this.isJumping = false;
-            // Squash/Stretch: 착지 시 납작해짐
-            this.scene.tweens.add({
-                targets: this, scaleX: 1.25, scaleY: 0.75,
-                duration: 80, ease: 'Power2',
-                onComplete: () => {
-                    this.scene.tweens.add({
-                        targets: this, scaleX: 1, scaleY: 1,
-                        duration: 150, ease: 'Bounce.easeOut',
-                    });
-                },
-            });
+        const dt = this.scene.game.loop.delta / 1000;
+
+        // 달리기 보빙 애니메이션 (sin 곡선)
+        this.runTime += dt * 10;
+        const runBob = this.isJumping || this.isSliding ? 0 : Math.sin(this.runTime) * 3;
+
+        // 점프 시뮬레이션 (수동 중력)
+        if (this.isJumping) {
+            this.jumpVelocityY += GRAVITY * dt;
+            this.jumpOffsetY += this.jumpVelocityY * dt;
+
+            if (this.jumpOffsetY >= 0) {
+                this.jumpOffsetY = 0;
+                this.jumpVelocityY = 0;
+                this.isJumping = false;
+                this.scene.tweens.add({
+                    targets: this, scaleX: this.baseScale * 1.25, scaleY: this.baseScale * 0.75,
+                    duration: 80, ease: 'Power2',
+                    onComplete: () => {
+                        this.scene.tweens.add({
+                            targets: this, scaleX: this.baseScale, scaleY: this.baseScale,
+                            duration: 150, ease: 'Bounce.easeOut',
+                        });
+                    },
+                });
+            }
         }
 
-        // 바닥 고정 (점프/슬라이드 아닐 때 중력에 의해 떨어지는 것 방지)
-        if (!this.isJumping && !this.isSliding && this.y > PLAYER_Y) {
-            this.y = PLAYER_Y;
-            this.setVelocityY(0);
+        // Y 위치: 기본 투영 Y + 점프 오프셋 + 달리기 보빙
+        this.y = this.baseScreenY + this.jumpOffsetY + runBob;
+
+        // 그림자 위치 동기화 (항상 바닥에)
+        if (this.shadow) {
+            this.shadow.setPosition(this.x, this.baseScreenY + 50 * this.baseScale);
+            // 점프 시 그림자 축소
+            const shadowScale = this.isJumping ? 0.5 : 1;
+            this.shadow.setScale(this.baseScale * shadowScale, this.baseScale * shadowScale * 0.3);
         }
 
-        // M3: 파워업 오버레이/동반자 위치 동기화
+        // 파워업 오버레이/동반자 위치 동기화
         if (this.helmetOverlay) {
-            this.helmetOverlay.setPosition(this.x, this.y - 70);
+            this.helmetOverlay.setPosition(this.x, this.y - 70 * this.baseScale);
+            this.helmetOverlay.setScale(this.baseScale);
         }
         if (this.friendSprite) {
-            this.friendSprite.setPosition(this.x - 70, this.y + 10);
+            this.friendSprite.setPosition(this.x - 70 * this.baseScale, this.y + 10 * this.baseScale);
+            this.friendSprite.setScale(this.baseScale);
         }
     }
 
     setInvincible(duration: number): void {
         this.isInvincible = true;
-
-        // 깜빡임
         this.scene.tweens.add({
             targets: this,
             alpha: 0.3,
@@ -167,38 +193,27 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             yoyo: true,
             repeat: Math.floor(duration / 200),
         });
-
         this.scene.time.delayedCall(duration, () => {
             this.isInvincible = false;
             this.setAlpha(1);
         });
     }
 
-    getIsInvincible(): boolean {
-        return this.isInvincible;
-    }
+    getIsInvincible(): boolean { return this.isInvincible; }
+    getIsSliding(): boolean { return this.isSliding; }
+    getIsJumping(): boolean { return this.isJumping; }
+    getCurrentLane(): number { return this.currentLane; }
 
-    getIsSliding(): boolean {
-        return this.isSliding;
-    }
-
-    getIsJumping(): boolean {
-        return this.isJumping;
-    }
-
-    getCurrentLane(): number {
-        return this.currentLane;
-    }
-
-    // ========== M3: 파워업 메서드 ==========
+    // ========== 파워업 메서드 ==========
 
     applyPowerUp(type: PowerUpType): void {
         switch (type) {
             case 'helmet':
                 this.hasHelmet = true;
                 if (!this.helmetOverlay) {
-                    this.helmetOverlay = this.scene.add.sprite(this.x, this.y - 70, 'helmet-overlay');
+                    this.helmetOverlay = this.scene.add.sprite(this.x, this.y - 70 * this.baseScale, 'helmet-overlay');
                     this.helmetOverlay.setDepth(this.depth + 1);
+                    this.helmetOverlay.setScale(this.baseScale);
                 }
                 this.helmetOverlay.setVisible(true);
                 break;
@@ -207,7 +222,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
                 this.hasTube = true;
                 this.scoreMultiplier = POWERUP_SCORE_MULTIPLIER_TUBE;
                 this.setTint(0x64B5F6);
-
                 if (this.tubeTimerEvent) this.tubeTimerEvent.destroy();
                 this.tubeTimerEvent = this.scene.time.delayedCall(
                     POWERUP_CONFIGS.tube.duration,
@@ -218,29 +232,39 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             case 'friend':
                 this.hasFriend = true;
                 this.isInvincible = true;
-
                 if (!this.friendSprite) {
-                    this.friendSprite = this.scene.add.sprite(this.x - 70, this.y + 10, 'friend-sprite');
+                    this.friendSprite = this.scene.add.sprite(
+                        this.x - 70 * this.baseScale,
+                        this.y + 10 * this.baseScale,
+                        'friend-sprite'
+                    );
                     this.friendSprite.setDepth(this.depth);
+                    this.friendSprite.setScale(this.baseScale);
                 }
                 this.friendSprite.setVisible(true);
-
                 if (this.friendTimerEvent) this.friendTimerEvent.destroy();
                 this.friendTimerEvent = this.scene.time.delayedCall(
                     POWERUP_CONFIGS.friend.duration,
                     () => this.clearFriend(),
                 );
                 break;
+
+            case 'magnet':
+                this.hasMagnet = true;
+                this.setTint(0xFF4444);
+                if (this.magnetTimerEvent) this.magnetTimerEvent.destroy();
+                this.magnetTimerEvent = this.scene.time.delayedCall(
+                    POWERUP_CONFIGS.magnet.duration,
+                    () => this.clearMagnet(),
+                );
+                break;
         }
     }
 
-    /** 헬멧 소모. 보유 시 true 반환, 미보유 시 false */
     consumeHelmet(): boolean {
         if (!this.hasHelmet) return false;
         this.hasHelmet = false;
-        if (this.helmetOverlay) {
-            this.helmetOverlay.setVisible(false);
-        }
+        if (this.helmetOverlay) this.helmetOverlay.setVisible(false);
         return true;
     }
 
@@ -254,57 +278,44 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     private clearFriend(): void {
         this.hasFriend = false;
         this.isInvincible = false;
-        if (this.friendSprite) {
-            this.friendSprite.setVisible(false);
-        }
+        if (this.friendSprite) this.friendSprite.setVisible(false);
         this.friendTimerEvent = null;
+    }
+
+    private clearMagnet(): void {
+        this.hasMagnet = false;
+        if (!this.hasTube) this.clearTint();
+        this.magnetTimerEvent = null;
     }
 
     clearAllPowerUps(): void {
         if (this.hasHelmet) this.consumeHelmet();
         if (this.hasTube) {
-            if (this.tubeTimerEvent) {
-                this.tubeTimerEvent.destroy();
-                this.tubeTimerEvent = null;
-            }
+            if (this.tubeTimerEvent) { this.tubeTimerEvent.destroy(); this.tubeTimerEvent = null; }
             this.clearTube();
         }
         if (this.hasFriend) {
-            if (this.friendTimerEvent) {
-                this.friendTimerEvent.destroy();
-                this.friendTimerEvent = null;
-            }
+            if (this.friendTimerEvent) { this.friendTimerEvent.destroy(); this.friendTimerEvent = null; }
             this.clearFriend();
+        }
+        if (this.hasMagnet) {
+            if (this.magnetTimerEvent) { this.magnetTimerEvent.destroy(); this.magnetTimerEvent = null; }
+            this.clearMagnet();
         }
     }
 
-    getScoreMultiplier(): number {
-        return this.scoreMultiplier;
-    }
-
-    getHasFriend(): boolean {
-        return this.hasFriend;
-    }
-
-    getHasHelmet(): boolean {
-        return this.hasHelmet;
-    }
+    getScoreMultiplier(): number { return this.scoreMultiplier; }
+    getHasFriend(): boolean { return this.hasFriend; }
+    getHasHelmet(): boolean { return this.hasHelmet; }
+    getHasMagnet(): boolean { return this.hasMagnet; }
 
     destroy(fromScene?: boolean): void {
         if (!this.scene) return;
-        if (this.slideTimer) {
-            this.slideTimer.destroy();
-            this.slideTimer = null;
-        }
+        if (this.slideTimer) { this.slideTimer.destroy(); this.slideTimer = null; }
         this.clearAllPowerUps();
-        if (this.helmetOverlay) {
-            this.helmetOverlay.destroy();
-            this.helmetOverlay = null;
-        }
-        if (this.friendSprite) {
-            this.friendSprite.destroy();
-            this.friendSprite = null;
-        }
+        if (this.helmetOverlay) { this.helmetOverlay.destroy(); this.helmetOverlay = null; }
+        if (this.friendSprite) { this.friendSprite.destroy(); this.friendSprite = null; }
+        if (this.shadow) { this.shadow.destroy(); this.shadow = null; }
         super.destroy(fromScene);
     }
 }

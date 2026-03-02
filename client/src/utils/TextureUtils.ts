@@ -4,8 +4,8 @@ import type { StageType, SkinId } from './Constants';
 
 /**
  * 스테이지 배경 텍스처 lazy 생성.
- * 이미 존재하면 스킵 (중복 방지).
- * CPU가 좋은 환경에서 메모리 절약을 위해 필요 시점에 호출.
+ * 의사-3D에서는 RoadRenderer가 도로를 그리므로,
+ * 스테이지 텍스처는 참조용으로만 유지.
  */
 export function ensureStageTextures(scene: Phaser.Scene, stage: StageType): void {
     const skyKey = `bg-sky-${stage}`;
@@ -13,14 +13,12 @@ export function ensureStageTextures(scene: Phaser.Scene, stage: StageType): void
 
     const colors = STAGE_COLORS[stage];
 
-    // sky (64x64)
     const skyGfx = scene.make.graphics({ x: 0, y: 0 }, false);
     skyGfx.fillStyle(colors.sky, 1);
     skyGfx.fillRect(0, 0, 64, 64);
     skyGfx.generateTexture(skyKey, 64, 64);
     skyGfx.destroy();
 
-    // trees (512x256)
     const treesGfx = scene.make.graphics({ x: 0, y: 0 }, false);
     treesGfx.fillStyle(colors.trees, 1);
     treesGfx.fillTriangle(0, 256, 128, 40, 256, 256);
@@ -34,7 +32,6 @@ export function ensureStageTextures(scene: Phaser.Scene, stage: StageType): void
     treesGfx.generateTexture(`bg-trees-${stage}`, 512, 256);
     treesGfx.destroy();
 
-    // ground (512x256)
     const groundGfx = scene.make.graphics({ x: 0, y: 0 }, false);
     groundGfx.fillStyle(colors.ground, 1);
     groundGfx.fillRect(0, 0, 512, 256);
@@ -47,8 +44,12 @@ export function ensureStageTextures(scene: Phaser.Scene, stage: StageType): void
 }
 
 /**
- * 스킨 텍스처 lazy 생성.
- * 이미 존재하면 스킵.
+ * 카피바라 뒷모습 스킨 텍스처 생성.
+ * 의사-3D에서 플레이어는 뒤에서 보이므로:
+ * - 둥근 갈색 몸체
+ * - 작은 귀 2개 (상단)
+ * - 뒷모습이라 눈/코 없음
+ * - 짧은 꼬리 (하단)
  */
 export function ensureSkinTexture(scene: Phaser.Scene, skinId: SkinId): void {
     const key = `capybara-${skinId}`;
@@ -59,28 +60,34 @@ export function ensureSkinTexture(scene: Phaser.Scene, skinId: SkinId): void {
 
     const bodyColor = config.color;
     const gfx = scene.make.graphics({ x: 0, y: 0 }, false);
+
+    // 몸체 (둥근 사각형)
     gfx.fillStyle(bodyColor, 1);
-    gfx.fillRoundedRect(0, 0, 100, 130, 16);
+    gfx.fillRoundedRect(10, 20, 80, 100, 20);
+
+    // 귀
     const earColor = Phaser.Display.Color.ValueToColor(bodyColor);
     earColor.darken(15);
     gfx.fillStyle(earColor.color, 1);
-    gfx.fillRoundedRect(10, 0, 20, 16, 6);
-    gfx.fillRoundedRect(70, 0, 20, 16, 6);
-    gfx.fillStyle(0x000000, 1);
-    gfx.fillCircle(35, 45, 6);
-    gfx.fillCircle(65, 45, 6);
-    gfx.fillStyle(0xFFFFFF, 1);
-    gfx.fillCircle(37, 43, 2);
-    gfx.fillCircle(67, 43, 2);
-    gfx.fillStyle(0x654321, 1);
-    gfx.fillCircle(50, 65, 10);
-    gfx.fillStyle(0x4A3015, 1);
-    gfx.fillCircle(46, 65, 3);
-    gfx.fillCircle(54, 65, 3);
-    gfx.lineStyle(2, 0x654321, 1);
-    gfx.beginPath();
-    gfx.arc(50, 72, 12, Phaser.Math.DegToRad(10), Phaser.Math.DegToRad(170), false);
-    gfx.strokePath();
+    gfx.fillRoundedRect(18, 8, 18, 20, 8);
+    gfx.fillRoundedRect(64, 8, 18, 20, 8);
+
+    // 귀 안쪽 (밝은 색)
+    earColor.brighten(25);
+    gfx.fillStyle(earColor.color, 1);
+    gfx.fillRoundedRect(22, 12, 10, 12, 4);
+    gfx.fillRoundedRect(68, 12, 10, 12, 4);
+
+    // 뒷목 톤 변화
+    const darkBody = Phaser.Display.Color.ValueToColor(bodyColor);
+    darkBody.darken(8);
+    gfx.fillStyle(darkBody.color, 1);
+    gfx.fillRoundedRect(25, 25, 50, 30, 12);
+
+    // 꼬리 (작은 타원)
+    gfx.fillStyle(bodyColor, 1);
+    gfx.fillCircle(50, 118, 8);
+
     gfx.generateTexture(key, 100, 130);
     gfx.destroy();
 }

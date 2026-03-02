@@ -39,12 +39,14 @@ export const LANE_MOVE_DURATION = 150; // ms
 export type GameMode = 'normal' | 'relax';
 
 // ========== M2: 장애물 시스템 ==========
-export type ObstacleType = 'rock' | 'branch_high' | 'puddle';
+export type ObstacleType = 'rock' | 'branch_high' | 'puddle' | 'barrier' | 'car';
 
 export const OBSTACLE_CONFIGS: Record<ObstacleType, { width: number; height: number; color: number }> = {
     rock:        { width: 80, height: 80, color: 0x808080 },
     branch_high: { width: 100, height: 40, color: 0x8B4513 },
     puddle:      { width: 100, height: 30, color: 0x4FC3F7 },
+    barrier:     { width: 160, height: 60, color: 0xFF4444 },  // 2레인 차단
+    car:         { width: 80, height: 100, color: 0x3366CC },   // 점프 회피
 };
 
 export const OBSTACLE_POOL_SIZE = 6;
@@ -98,12 +100,13 @@ export const LS_KEY_TOKEN = 'capybara_token';
 export const LS_KEY_USER_ID = 'capybara_user_id';
 
 // ========== M3: 파워업 시스템 ==========
-export type PowerUpType = 'helmet' | 'tube' | 'friend';
+export type PowerUpType = 'helmet' | 'tube' | 'friend' | 'magnet';
 
 export const POWERUP_CONFIGS: Record<PowerUpType, { width: number; height: number; color: number; duration: number }> = {
-    helmet: { width: 50, height: 50, color: 0x2E7D32, duration: 0 },      // 1회용 (duration 미사용)
+    helmet: { width: 50, height: 50, color: 0x2E7D32, duration: 0 },      // 1회용
     tube:   { width: 50, height: 50, color: 0x1565C0, duration: 5000 },    // 5초
     friend: { width: 50, height: 50, color: 0xFF6F00, duration: 8000 },    // 8초
+    magnet: { width: 50, height: 50, color: 0xCC0000, duration: 6000 },    // 6초
 };
 
 export const POWERUP_POOL_SIZE = 3;
@@ -229,6 +232,43 @@ export const ONSEN_ITEM_DISPLAY_SIZE = 60;
 // ========== M4: localStorage 키 (maxDistance) ==========
 export const LS_KEY_MAX_DISTANCE = 'capybara_max_distance';
 export const LS_KEY_TUTORIAL_DONE = 'capybara_tutorial_done';
+
+// ========== 의사-3D 원근 시스템 ==========
+export const VANISH_Y = 350;       // 소실점 Y (화면 상단)
+export const CAMERA_Y = 1100;      // 카메라 Y (화면 하단)
+export const CENTER_X = 360;       // 화면 가로 중앙
+export const ROAD_HEIGHT = CAMERA_Y - VANISH_Y; // 750
+export const ROAD_WIDTH_NEAR = 600; // 카메라 근처 도로 폭
+export const ROAD_WIDTH_FAR = 80;   // 소실점 근처 도로 폭
+export const LANE_SPREAD = 170;     // 레인 오프셋 배율 (near)
+
+// z좌표 체계: 1.0 = 소실점(멀리), 0.0 = 카메라(가까이)
+export const SPAWN_Z = 0.92;        // 오브젝트 스폰 z
+export const DESPAWN_Z = -0.05;     // 오브젝트 디스폰 z
+export const PLAYER_Z = 0.08;       // 플레이어 고정 z
+
+// 충돌 밴드 (z 범위 내에서만 physics body 활성)
+export const COLLISION_BAND = 0.08;
+
+// 도로 렌더링
+export const ROAD_SEGMENTS = 60;    // 도로 세그먼트 수
+export const DASH_LENGTH = 0.03;    // 대시 마킹 z 길이
+export const ROAD_STRIPE_COUNT = 8; // 이동 대시 마킹 개수
+
+// 코인 라인 (골드런 스타일)
+export const COIN_LINE_LENGTH = 6;    // 코인 줄 길이
+export const COIN_LINE_Z_GAP = 0.04;  // 코인 간 z 간격
+
+// 코인 패턴 종류
+export type CoinPattern = 'line' | 'arc' | 'zigzag';
+
+// 풀 사이즈 증가 (z-스폰으로 동시 활성 오브젝트 증가)
+export const OBSTACLE_POOL_SIZE_3D = 12;
+export const ITEM_POOL_SIZE_3D = 30;
+export const POWERUP_POOL_SIZE_3D = 6;
+
+// 레인 오프셋: -1, 0, +1
+export const LANE_OFFSETS = [-1, 0, 1];
 
 // ========== M4: 온천 버프 시스템 ==========
 export interface OnsenBuff {

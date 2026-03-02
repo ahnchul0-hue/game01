@@ -4,6 +4,7 @@ import {
     shouldSpawnPowerUp,
     weightedRandomItem,
     randomPowerUpType,
+    randomCoinPattern,
 } from '../utils/GameLogic';
 import { POWERUP_MIN_DISTANCE, POWERUP_SPAWN_CHANCE } from '../utils/Constants';
 
@@ -92,18 +93,52 @@ describe('weightedRandomItem', () => {
 });
 
 describe('randomPowerUpType', () => {
-    it('returns helmet for random in [0, 0.33)', () => {
+    it('returns helmet for random in [0, 0.25)', () => {
         expect(randomPowerUpType(0)).toBe('helmet');
-        expect(randomPowerUpType(0.32)).toBe('helmet');
+        expect(randomPowerUpType(0.24)).toBe('helmet');
     });
 
-    it('returns tube for random in [0.33, 0.66)', () => {
-        expect(randomPowerUpType(0.34)).toBe('tube');
-        expect(randomPowerUpType(0.65)).toBe('tube');
+    it('returns tube for random in [0.25, 0.5)', () => {
+        expect(randomPowerUpType(0.26)).toBe('tube');
+        expect(randomPowerUpType(0.49)).toBe('tube');
     });
 
-    it('returns friend for random in [0.66, 1)', () => {
-        expect(randomPowerUpType(0.67)).toBe('friend');
-        expect(randomPowerUpType(0.99)).toBe('friend');
+    it('returns friend for random in [0.5, 0.75)', () => {
+        expect(randomPowerUpType(0.51)).toBe('friend');
+        expect(randomPowerUpType(0.74)).toBe('friend');
+    });
+
+    it('returns magnet for random in [0.75, 1)', () => {
+        expect(randomPowerUpType(0.76)).toBe('magnet');
+        expect(randomPowerUpType(0.99)).toBe('magnet');
+    });
+});
+
+describe('randomCoinPattern', () => {
+    it('returns line for low random (weighted higher)', () => {
+        expect(randomCoinPattern(0)).toBe('line');
+        expect(randomCoinPattern(0.24)).toBe('line');
+    });
+
+    it('returns line for random in [0.25, 0.5)', () => {
+        expect(randomCoinPattern(0.26)).toBe('line');
+        expect(randomCoinPattern(0.49)).toBe('line');
+    });
+
+    it('returns arc for random in [0.5, 0.75)', () => {
+        expect(randomCoinPattern(0.51)).toBe('arc');
+        expect(randomCoinPattern(0.74)).toBe('arc');
+    });
+
+    it('returns zigzag for random in [0.75, 1)', () => {
+        expect(randomCoinPattern(0.76)).toBe('zigzag');
+        expect(randomCoinPattern(0.99)).toBe('zigzag');
+    });
+
+    it('returns a valid CoinPattern type', () => {
+        for (let i = 0; i < 10; i++) {
+            const pattern = randomCoinPattern(Math.random());
+            expect(['line', 'arc', 'zigzag']).toContain(pattern);
+        }
     });
 });

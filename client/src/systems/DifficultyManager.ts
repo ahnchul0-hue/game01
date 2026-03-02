@@ -36,7 +36,8 @@ export class DifficultyManager {
 
     getAvailableObstacleTypes(level: DifficultyLevel): ObstacleType[] {
         if (level === 'easy') return ['rock'];
-        return ['rock', 'branch_high', 'puddle'];
+        if (level === 'medium') return ['rock', 'branch_high', 'puddle'];
+        return ['rock', 'branch_high', 'puddle', 'barrier', 'car'];
     }
 
     getMaxObstaclesPerSpawn(level: DifficultyLevel): number {

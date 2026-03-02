@@ -5,7 +5,7 @@ import {
     POWERUP_SPAWN_CHANCE,
     ITEM_WEIGHTS,
 } from './Constants';
-import type { StageType, ItemType, PowerUpType } from './Constants';
+import type { StageType, ItemType, PowerUpType, CoinPattern } from './Constants';
 
 /** 거리에 해당하는 스테이지 계산 (STAGE_LOOP_DISTANCE 이후 루프) */
 export function getStageForDistance(distance: number): StageType {
@@ -42,9 +42,16 @@ export function weightedRandomItem(random: number): ItemType {
     return entries[0][0];
 }
 
-/** 균등 확률 파워업 타입 선택 */
+/** 균등 확률 파워업 타입 선택 (magnet 포함) */
 export function randomPowerUpType(random: number): PowerUpType {
-    const types: PowerUpType[] = ['helmet', 'tube', 'friend'];
+    const types: PowerUpType[] = ['helmet', 'tube', 'friend', 'magnet'];
     const index = Math.min(Math.floor(random * types.length), types.length - 1);
     return types[index];
+}
+
+/** 랜덤 코인 패턴 선택 */
+export function randomCoinPattern(random: number): CoinPattern {
+    const patterns: CoinPattern[] = ['line', 'line', 'arc', 'zigzag']; // line 확률 높음
+    const index = Math.min(Math.floor(random * patterns.length), patterns.length - 1);
+    return patterns[index];
 }

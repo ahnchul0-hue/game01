@@ -114,20 +114,23 @@ export class Preloader extends Phaser.Scene {
         groundGfx.generateTexture('bg-ground', 512, 256);
         groundGfx.destroy();
 
-        // M2: 장애물 텍스처 3종
+        // 장애물 텍스처 5종
         this.createObstacleTexture('rock', OBSTACLE_CONFIGS.rock);
         this.createObstacleTexture('branch_high', OBSTACLE_CONFIGS.branch_high);
         this.createObstacleTexture('puddle', OBSTACLE_CONFIGS.puddle);
+        this.createObstacleTexture('barrier', OBSTACLE_CONFIGS.barrier);
+        this.createObstacleTexture('car', OBSTACLE_CONFIGS.car);
 
         // M2: 아이템 텍스처 3종
         this.createItemTexture('mandarin', 0xFF8C00);
         this.createItemTexture('watermelon', 0x2E8B57);
         this.createItemTexture('hotspring_material', 0xFF69B4);
 
-        // M3: 파워업 텍스처 3종
+        // 파워업 텍스처 4종
         this.createPowerUpTexture('helmet');
         this.createPowerUpTexture('tube');
         this.createPowerUpTexture('friend');
+        this.createPowerUpTexture('magnet');
 
         // M3: 스테이지 배경 — 시작 스테이지만 생성 (나머지는 StageManager에서 lazy 생성)
         ensureStageTextures(this, 'forest');

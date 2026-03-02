@@ -83,8 +83,8 @@ describe('DifficultyManager.getAvailableObstacleTypes', () => {
         expect(dm.getAvailableObstacleTypes('medium')).toEqual(['rock', 'branch_high', 'puddle']);
     });
 
-    it('returns all 3 types for hard', () => {
-        expect(dm.getAvailableObstacleTypes('hard')).toEqual(['rock', 'branch_high', 'puddle']);
+    it('returns all 5 types for hard', () => {
+        expect(dm.getAvailableObstacleTypes('hard')).toEqual(['rock', 'branch_high', 'puddle', 'barrier', 'car']);
     });
 });
 
