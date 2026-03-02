@@ -50,23 +50,26 @@ export class SoundManager {
         }
     }
 
-    private _t(): number { return this.ctx!.currentTime; }
+    private _t(): number {
+        if (!this.ctx) return 0;
+        return this.ctx.currentTime;
+    }
 
     /** Schedule one oscillator tone with exponential fade-out. */
     private _tone(
         type: OscillatorType, freq: number, dur: number,
         freqEnd?: number, at: number = this._t(),
     ): void {
-        const ctx = this.ctx!;
-        const osc = ctx.createOscillator();
-        const env = ctx.createGain();
+        if (!this.ctx || !this.sfxGain) return;
+        const osc = this.ctx.createOscillator();
+        const env = this.ctx.createGain();
         osc.type = type;
         osc.frequency.setValueAtTime(freq, at);
         if (freqEnd !== undefined) osc.frequency.linearRampToValueAtTime(freqEnd, at + dur);
         env.gain.setValueAtTime(0.8, at);
         env.gain.exponentialRampToValueAtTime(0.001, at + dur);
         osc.connect(env);
-        env.connect(this.sfxGain!);
+        env.connect(this.sfxGain);
         osc.start(at);
         osc.stop(at + dur + 0.01);
     }
@@ -78,21 +81,21 @@ export class SoundManager {
     }
 
     private _hit(): void {
-        const ctx = this.ctx!;
+        if (!this.ctx || !this.sfxGain) return;
         const t = this._t();
         this._tone('square', 150, 0.15, 80, t);
         // White noise burst for impact texture
-        const bufSize = Math.floor(ctx.sampleRate * 0.12);
-        const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+        const bufSize = Math.floor(this.ctx.sampleRate * 0.12);
+        const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
         const data = buf.getChannelData(0);
         for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.4;
-        const noise = ctx.createBufferSource();
+        const noise = this.ctx.createBufferSource();
         noise.buffer = buf;
-        const g = ctx.createGain();
+        const g = this.ctx.createGain();
         g.gain.setValueAtTime(0.5, t);
         g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
         noise.connect(g);
-        g.connect(this.sfxGain!);
+        g.connect(this.sfxGain);
         noise.start(t);
     }
 
@@ -123,11 +126,12 @@ export class SoundManager {
 
     /** Soft pad: C4+E4+G4 sine chord, looping. */
     private _bgmMenu(): void {
+        if (!this.ctx || !this.bgmGain) return;
         for (const freq of [261.63, 329.63, 392.0]) {
-            const osc = this.ctx!.createOscillator();
+            const osc = this.ctx.createOscillator();
             osc.type = 'sine';
             osc.frequency.value = freq;
-            osc.connect(this.bgmGain!);
+            osc.connect(this.bgmGain);
             osc.start();
             this.bgmNodes.push(osc);
         }
@@ -135,24 +139,24 @@ export class SoundManager {
 
     /** Bass drone + LFO tremolo for a rhythmic pulse. */
     private _bgmGame(): void {
-        const ctx = this.ctx!;
-        const drone = ctx.createOscillator();
+        if (!this.ctx || !this.bgmGain) return;
+        const drone = this.ctx.createOscillator();
         drone.type = 'sine';
         drone.frequency.value = 110;
 
-        const lfo = ctx.createOscillator();
+        const lfo = this.ctx.createOscillator();
         lfo.type = 'sine';
         lfo.frequency.value = 2.5;
 
-        const lfoGain = ctx.createGain();
+        const lfoGain = this.ctx.createGain();
         lfoGain.gain.value = 0.5;
         lfo.connect(lfoGain);
 
-        const pulseGain = ctx.createGain();
+        const pulseGain = this.ctx.createGain();
         pulseGain.gain.value = 0.5;
         lfoGain.connect(pulseGain.gain);
         drone.connect(pulseGain);
-        pulseGain.connect(this.bgmGain!);
+        pulseGain.connect(this.bgmGain);
 
         drone.start(); lfo.start();
         this.bgmNodes.push(drone, lfo, lfoGain, pulseGain);
@@ -160,23 +164,23 @@ export class SoundManager {
 
     /** Bandpass-filtered looping white noise for water ambience. */
     private _bgmOnsen(): void {
-        const ctx = this.ctx!;
-        const bufSize = ctx.sampleRate * 4;
-        const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+        if (!this.ctx || !this.bgmGain) return;
+        const bufSize = this.ctx.sampleRate * 4;
+        const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
         const data = buf.getChannelData(0);
         for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
 
-        const source = ctx.createBufferSource();
+        const source = this.ctx.createBufferSource();
         source.buffer = buf;
         source.loop = true;
 
-        const filter = ctx.createBiquadFilter();
+        const filter = this.ctx.createBiquadFilter();
         filter.type = 'bandpass';
         filter.frequency.value = 600;
         filter.Q.value = 0.8;
 
         source.connect(filter);
-        filter.connect(this.bgmGain!);
+        filter.connect(this.bgmGain);
         source.start();
         this.bgmNodes.push(source, filter);
     }

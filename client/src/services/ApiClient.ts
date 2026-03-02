@@ -29,6 +29,29 @@ export interface ScoreEntry {
     created_at: string;
 }
 
+export interface Mission {
+    id: number;
+    mission_type: string;
+    target_value: number;
+    current_value: number;
+    completed: number;
+    reward_claimed: number;
+    reward_type: string;
+    reward_amount: number;
+}
+
+export interface StreakInfo {
+    current_streak: number;
+    longest_streak: number;
+    last_play_date: string | null;
+    today_reward_claimed: boolean;
+}
+
+export interface DailyMissionsResponse {
+    missions: Mission[];
+    streak: StreakInfo;
+}
+
 const API_TIMEOUT_MS = 5000;
 
 let _instance: ApiClient | null = null;
@@ -225,6 +248,65 @@ export class ApiClient {
                     selected_skin: selectedSkin,
                     unlocked_skins: JSON.stringify(unlockedSkins),
                 }),
+            });
+            if (res.status === 401) await this.handleAuthError();
+        } catch {
+            // fire-and-forget
+        }
+    }
+
+    async getDailyMissions(): Promise<DailyMissionsResponse | null> {
+        const token = this.getToken();
+        if (!token) return null;
+        try {
+            const res = await this.fetchWithTimeout(
+                `${this.baseUrl}/api/missions/daily`,
+                { headers: this.authHeaders() },
+            );
+            if (res.status === 401) { await this.handleAuthError(); return null; }
+            if (!res.ok) return null;
+            return await res.json();
+        } catch {
+            return null;
+        }
+    }
+
+    async updateMissionProgress(missionType: string, progress: number): Promise<void> {
+        const token = this.getToken();
+        if (!token) return;
+        try {
+            const res = await this.fetchWithTimeout(`${this.baseUrl}/api/missions/progress`, {
+                method: 'POST',
+                headers: this.authHeaders(),
+                body: JSON.stringify({ mission_type: missionType, progress }),
+            });
+            if (res.status === 401) await this.handleAuthError();
+        } catch {
+            // fire-and-forget
+        }
+    }
+
+    async claimMissionReward(missionId: number): Promise<void> {
+        const token = this.getToken();
+        if (!token) return;
+        try {
+            const res = await this.fetchWithTimeout(`${this.baseUrl}/api/missions/${missionId}/claim`, {
+                method: 'POST',
+                headers: this.authHeaders(),
+            });
+            if (res.status === 401) await this.handleAuthError();
+        } catch {
+            // fire-and-forget
+        }
+    }
+
+    async claimStreakReward(): Promise<void> {
+        const token = this.getToken();
+        if (!token) return;
+        try {
+            const res = await this.fetchWithTimeout(`${this.baseUrl}/api/missions/streak/claim`, {
+                method: 'POST',
+                headers: this.authHeaders(),
             });
             if (res.status === 401) await this.handleAuthError();
         } catch {

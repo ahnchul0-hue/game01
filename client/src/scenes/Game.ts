@@ -74,6 +74,9 @@ export class Game extends Phaser.Scene {
     // M2: 수집 아이템 카운트
     private collectedItems: CollectedItems = { mandarin: 0, watermelon: 0, hotspring_material: 0 };
 
+    // 미션: 회피한 장애물 수
+    private dodgedObstacles = 0;
+
     // 입력
     private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
     private swipeStart: { x: number; y: number } | null = null;
@@ -99,6 +102,9 @@ export class Game extends Phaser.Scene {
     // 착지 감지 (먼지 파티클용)
     private wasJumping = false;
 
+    // 미션: 이전 프레임에 활성 상태였던 장애물 집합 (회피 감지용)
+    private prevActiveObstacles: Set<Obstacle> = new Set();
+
     constructor() {
         super(SCENE_GAME);
     }
@@ -112,6 +118,8 @@ export class Game extends Phaser.Scene {
         this.swipeStart = null;
         this.revivesUsed = 0;
         this.collectedItems = { mandarin: 0, watermelon: 0, hotspring_material: 0 };
+        this.dodgedObstacles = 0;
+        this.prevActiveObstacles = new Set();
         this.reviveContainer = null;
         this.reviveHitZones = [];
         this.tutorialContainer = null;
@@ -143,6 +151,7 @@ export class Game extends Phaser.Scene {
             if (t.scene) t.destroy();
         }
         this.popupTexts = [];
+        if (this.effectManager) this.effectManager.destroy();
         if (this.roadRenderer) this.roadRenderer.destroy();
         if (this.sceneryManager) this.sceneryManager.destroy();
         if (this.speedLineRenderer) this.speedLineRenderer.destroy();
@@ -436,6 +445,23 @@ export class Game extends Phaser.Scene {
             this.autoCollectItems(this.onsenBuff.itemMagnetRange);
         }
 
+        // 회피 감지: 이전 프레임 활성 장애물 중 현재 비활성으로 전환된 것 = 플레이어가 회피
+        const currentActive = new Set<Obstacle>();
+        const obstacleChildren = this.obstaclePool.getGroup().getChildren();
+        for (const child of obstacleChildren) {
+            const obs = child as Obstacle;
+            if (obs.active) currentActive.add(obs);
+        }
+        for (const obs of this.prevActiveObstacles) {
+            if (!obs.active) {
+                // 충돌로 비활성화된 것이 아니라 디스폰으로 통과한 경우 카운트
+                // (충돌 시에는 state가 'playing' 에서 'revivePrompt'/'gameOver'로 바뀌어
+                //  이 라인에 도달하지 않으므로 안전하게 카운트 가능)
+                this.dodgedObstacles++;
+            }
+        }
+        this.prevActiveObstacles = currentActive;
+
         // HUD 업데이트 (값 변경 시에만)
         const scoreStr = `${this.score}`;
         if (this.scoreText.text !== scoreStr) this.scoreText.setText(scoreStr);
@@ -657,6 +683,7 @@ export class Game extends Phaser.Scene {
                 distance: Math.floor(this.distance),
                 mode: this.mode,
                 collectedItems: { ...this.collectedItems },
+                dodgedObstacles: this.dodgedObstacles,
             });
         });
     }

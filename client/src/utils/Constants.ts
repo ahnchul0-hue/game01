@@ -69,10 +69,6 @@ export const ITEM_WEIGHTS: Record<ItemType, number> = {
 export const ITEM_SIZE = 50;
 export const ITEM_POOL_SIZE = 8;
 
-// ========== M2: 스폰/디스폰 ==========
-export const SPAWN_Y = -100;
-export const DESPAWN_Y = GAME_HEIGHT + 100;
-
 // ========== M2: 난이도 곡선 ==========
 export const SPAWN_INTERVAL_START = 2000; // ms
 export const SPAWN_INTERVAL_MIN = 600;    // ms
@@ -283,3 +279,15 @@ export const ONSEN_BUFF_CONFIGS: Record<OnsenLevel, OnsenBuff> = {
     snow:   { scoreMultiplier: 1.2, startingShield: true,  itemMagnetRange: 100 },
     luxury: { scoreMultiplier: 1.3, startingShield: true,  itemMagnetRange: 150 },
 };
+
+// ========== 일일 미션 ==========
+export const SCENE_MISSIONS = 'Missions';
+export type MissionType = 'collect_mandarins' | 'run_distance' | 'dodge_obstacles';
+export const MISSION_LABELS: Record<MissionType, string> = {
+    collect_mandarins: '귤 수집',
+    run_distance: '달리기 거리',
+    dodge_obstacles: '장애물 회피',
+};
+
+export const LS_KEY_DAILY_MISSIONS = 'capybara_daily_missions';
+export const LS_KEY_STREAK = 'capybara_streak';

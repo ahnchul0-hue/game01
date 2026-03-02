@@ -8,6 +8,7 @@ pub enum AppError {
     NotFound(String),
     BadRequest(String),
     Unauthorized,
+    TooManyRequests,
     Internal(String),
 }
 
@@ -17,7 +18,8 @@ impl IntoResponse for AppError {
             AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
             AppError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized".to_string()),
-            AppError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            AppError::TooManyRequests => (StatusCode::TOO_MANY_REQUESTS, "Too many requests".to_string()),
+            AppError::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string()),
         };
 
         (status, Json(json!({ "error": message }))).into_response()
@@ -29,7 +31,7 @@ impl From<sqlx::Error> for AppError {
         match err {
             sqlx::Error::RowNotFound => AppError::NotFound("Not found".to_string()),
             _ => {
-                eprintln!("DB error: {:?}", err);
+                tracing::error!("DB error: {:?}", err);
                 AppError::Internal("Internal server error".to_string())
             }
         }

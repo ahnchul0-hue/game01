@@ -10,12 +10,12 @@
         "test": "vitest run"
     },
     "devDependencies": {
+        "terser": "^5.39.0",
         "typescript": "~5.7.2",
         "vite": "^6.3.1",
         "vitest": "^4.0.18"
     },
     "dependencies": {
-        "phaser": "^3.90.0",
-        "terser": "^5.39.0"
+        "phaser": "^3.90.0"
     }
 }

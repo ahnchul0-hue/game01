@@ -55,64 +55,7 @@ export class Preloader extends Phaser.Scene {
     }
 
     private createPlaceholderTextures(): void {
-        // 카피바라 (100x130, 갈색 둥근 사각형 + 얼굴)
-        const capyGfx = this.make.graphics({ x: 0, y: 0 }, false);
-        capyGfx.fillStyle(0x8B6914, 1);
-        capyGfx.fillRoundedRect(0, 0, 100, 130, 16);
-        // 귀
-        capyGfx.fillStyle(0x7A5C10, 1);
-        capyGfx.fillRoundedRect(10, 0, 20, 16, 6);
-        capyGfx.fillRoundedRect(70, 0, 20, 16, 6);
-        // 눈
-        capyGfx.fillStyle(0x000000, 1);
-        capyGfx.fillCircle(35, 45, 6);
-        capyGfx.fillCircle(65, 45, 6);
-        // 눈 하이라이트
-        capyGfx.fillStyle(0xFFFFFF, 1);
-        capyGfx.fillCircle(37, 43, 2);
-        capyGfx.fillCircle(67, 43, 2);
-        // 코
-        capyGfx.fillStyle(0x654321, 1);
-        capyGfx.fillCircle(50, 65, 10);
-        // 콧구멍
-        capyGfx.fillStyle(0x4A3015, 1);
-        capyGfx.fillCircle(46, 65, 3);
-        capyGfx.fillCircle(54, 65, 3);
-        // 입 (미소)
-        capyGfx.lineStyle(2, 0x654321, 1);
-        capyGfx.beginPath();
-        capyGfx.arc(50, 72, 12, Phaser.Math.DegToRad(10), Phaser.Math.DegToRad(170), false);
-        capyGfx.strokePath();
-        capyGfx.generateTexture('capybara', 100, 130);
-        capyGfx.destroy();
-
-        // 배경 하늘 (64x64 POT 단색 — TileSprite에서 반복됨)
-        const skyGfx = this.make.graphics({ x: 0, y: 0 }, false);
-        skyGfx.fillStyle(0x87CEEB, 1);
-        skyGfx.fillRect(0, 0, 64, 64);
-        skyGfx.generateTexture('bg-sky', 64, 64);
-        skyGfx.destroy();
-
-        // 중간 배경 (512x256 POT, 나무/산)
-        const treesGfx = this.make.graphics({ x: 0, y: 0 }, false);
-        treesGfx.fillStyle(0x228B22, 1);
-        treesGfx.fillTriangle(0, 256, 128, 40, 256, 256);
-        treesGfx.fillStyle(0x2E8B2E, 1);
-        treesGfx.fillTriangle(150, 256, 300, 60, 450, 256);
-        treesGfx.fillStyle(0x1E7B1E, 1);
-        treesGfx.fillTriangle(350, 256, 480, 90, 512, 256);
-        treesGfx.generateTexture('bg-trees', 512, 256);
-        treesGfx.destroy();
-
-        // 땅 (512x256 POT, 진한 갈색)
-        const groundGfx = this.make.graphics({ x: 0, y: 0 }, false);
-        groundGfx.fillStyle(0x8B4513, 1);
-        groundGfx.fillRect(0, 0, 512, 256);
-        // 상단 경계선 (풀 느낌)
-        groundGfx.fillStyle(0x5D8A2D, 1);
-        groundGfx.fillRect(0, 0, 512, 8);
-        groundGfx.generateTexture('bg-ground', 512, 256);
-        groundGfx.destroy();
+        // 레거시 2D 배경 텍스처는 의사-3D RoadRenderer가 대체하므로 생성하지 않음
 
         // 장애물 텍스처 5종
         this.createObstacleTexture('rock', OBSTACLE_CONFIGS.rock);
@@ -180,18 +123,7 @@ export class Preloader extends Phaser.Scene {
         this.createOnsenDecoTexture('watermelon', 0x2E8B57);
         this.createOnsenDecoTexture('hotspring_material', 0xFF69B4);
 
-        // M4: 온천 배경 (단색 플레이스홀더)
-        const onsenPoolGfx = this.make.graphics({ x: 0, y: 0 }, false);
-        onsenPoolGfx.fillStyle(0x87CEEB, 1);
-        onsenPoolGfx.fillRoundedRect(0, 0, 500, 300, 40);
-        onsenPoolGfx.generateTexture('onsen-pool', 500, 300);
-        onsenPoolGfx.destroy();
-
-        const onsenBgGfx = this.make.graphics({ x: 0, y: 0 }, false);
-        onsenBgGfx.fillStyle(0xD2B48C, 1);
-        onsenBgGfx.fillRect(0, 0, 64, 64);
-        onsenBgGfx.generateTexture('onsen-bg', 64, 64);
-        onsenBgGfx.destroy();
+        // (온천 배경은 Onsen Scene에서 Graphics로 직접 렌더링 — 데드 텍스처 제거됨)
     }
 
     private createObstacleTexture(

@@ -180,4 +180,10 @@ export class EffectManager {
         this.isSlowmo = false;
         this.flashOverlay.setAlpha(0);
     }
+
+    destroy(): void {
+        this.flashOverlay.destroy();
+        this.particleEmitter.destroy();
+        this.dustEmitter.destroy();
+    }
 }

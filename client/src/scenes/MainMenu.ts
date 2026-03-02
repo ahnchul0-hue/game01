@@ -6,6 +6,7 @@ import {
     SCENE_GAME,
     SCENE_ONSEN,
     SCENE_SKIN_SELECT,
+    SCENE_MISSIONS,
 } from '../utils/Constants';
 import { ApiClient } from '../services/ApiClient';
 import { InventoryManager } from '../services/InventoryManager';
@@ -70,30 +71,37 @@ export class MainMenu extends Phaser.Scene {
 
         // 시작 버튼
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.52,
-            label: 'START', color: 0x4CAF50, width: 280, height: 64, fontSize: '28px', radius: 16,
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.48,
+            label: 'START', color: 0x4CAF50, width: 280, height: 60, fontSize: '28px', radius: 16,
             callback: () => fadeToScene(this, SCENE_GAME, { mode: 'normal' }),
         });
 
         // 릴렉스 모드 버튼
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.62,
-            label: 'RELAX MODE', color: 0x81C784, width: 280, height: 64, fontSize: '28px', radius: 16,
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.57,
+            label: 'RELAX MODE', color: 0x81C784, width: 280, height: 60, fontSize: '28px', radius: 16,
             callback: () => fadeToScene(this, SCENE_GAME, { mode: 'relax' }),
         });
 
         // 온천 버튼
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.72,
-            label: 'ONSEN', color: 0xFF8C00, width: 280, height: 64, fontSize: '28px', radius: 16,
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.66,
+            label: 'ONSEN', color: 0xFF8C00, width: 280, height: 60, fontSize: '28px', radius: 16,
             callback: () => fadeToScene(this, SCENE_ONSEN),
         });
 
         // 스킨 버튼
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.82,
-            label: 'SKINS', color: 0x8B008B, width: 280, height: 64, fontSize: '28px', radius: 16,
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.75,
+            label: 'SKINS', color: 0x8B008B, width: 280, height: 60, fontSize: '28px', radius: 16,
             callback: () => fadeToScene(this, SCENE_SKIN_SELECT),
+        });
+
+        // 미션 버튼
+        createButton(this, {
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.84,
+            label: '미션', color: 0x1565C0, width: 280, height: 60, fontSize: '28px', radius: 16,
+            callback: () => fadeToScene(this, SCENE_MISSIONS),
         });
 
         // 음소거 토글 버튼

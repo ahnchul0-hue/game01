@@ -49,9 +49,9 @@ pub async fn add_inventory(
         "INSERT INTO inventories (id, user_id, mandarin, watermelon, hotspring_material, updated_at)
          VALUES (?, ?, ?, ?, ?, datetime('now'))
          ON CONFLICT(user_id) DO UPDATE SET
-           mandarin = mandarin + excluded.mandarin,
-           watermelon = watermelon + excluded.watermelon,
-           hotspring_material = hotspring_material + excluded.hotspring_material,
+           mandarin = MIN(mandarin + excluded.mandarin, 99999),
+           watermelon = MIN(watermelon + excluded.watermelon, 99999),
+           hotspring_material = MIN(hotspring_material + excluded.hotspring_material, 99999),
            updated_at = datetime('now')",
     )
     .bind(&id)

@@ -48,6 +48,18 @@ async fn create_score(
         .await
         .map_err(|_| AppError::Unauthorized)?;
 
+    // 점수 제출 빈도 제한: 60초 내 5회 초과 시 429
+    let recent_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM scores WHERE user_id = ? AND created_at > datetime('now', '-60 seconds')",
+    )
+    .bind(&u.id)
+    .fetch_one(&state.pool)
+    .await?;
+
+    if recent_count >= 5 {
+        return Err(AppError::TooManyRequests);
+    }
+
     // 점수 저장
     let s = score::create_score(&state.pool, &u.id, &req).await?;
     Ok(Json(s))

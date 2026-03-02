@@ -21,6 +21,7 @@ interface GameOverData {
     distance?: number;
     mode?: GameMode;
     collectedItems?: CollectedItems;
+    dodgedObstacles?: number;
 }
 
 export class GameOver extends Phaser.Scene {
@@ -28,6 +29,7 @@ export class GameOver extends Phaser.Scene {
     private finalDistance = 0;
     private lastMode: GameMode = 'normal';
     private collectedItems: CollectedItems = { mandarin: 0, watermelon: 0, hotspring_material: 0 };
+    private dodgedObstacles = 0;
 
     constructor() {
         super(SCENE_GAME_OVER);
@@ -42,6 +44,7 @@ export class GameOver extends Phaser.Scene {
         this.finalDistance = data.distance ?? 0;
         this.lastMode = data.mode ?? 'normal';
         this.collectedItems = data.collectedItems ?? { mandarin: 0, watermelon: 0, hotspring_material: 0 };
+        this.dodgedObstacles = data.dodgedObstacles ?? 0;
     }
 
     create(): void {
@@ -58,8 +61,21 @@ export class GameOver extends Phaser.Scene {
         const api = ApiClient.getInstance();
         api.submitScore(this.finalScore, this.finalDistance, totalItems)
             .then(() => api.getTopScores(5))
-            .then(scores => this.showLeaderboard(scores))
+            .then(scores => {
+                if (this.scene && this.scene.isActive()) this.showLeaderboard(scores);
+            })
             .catch(() => {});
+
+        // 일일 미션 진행도 업데이트 (fire-and-forget)
+        if (this.collectedItems.mandarin > 0) {
+            api.updateMissionProgress('collect_mandarins', this.collectedItems.mandarin);
+        }
+        if (this.finalDistance > 0) {
+            api.updateMissionProgress('run_distance', this.finalDistance);
+        }
+        if (this.dodgedObstacles > 0) {
+            api.updateMissionProgress('dodge_obstacles', this.dodgedObstacles);
+        }
 
         // M4: 인벤토리 누적 + 최고 거리 갱신
         const inventoryMgr = InventoryManager.getInstance();
