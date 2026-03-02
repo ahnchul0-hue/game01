@@ -4,8 +4,11 @@ import {
     STAGE_LOOP_DISTANCE,
     ITEM_WEIGHTS,
     POWERUP_CONFIGS,
+    OBSTACLE_CONFIGS,
+    DIFFICULTY_EASY_MAX,
+    DIFFICULTY_MEDIUM_MAX,
 } from '../utils/Constants';
-import type { ItemType, PowerUpType } from '../utils/Constants';
+import type { ItemType, PowerUpType, ObstacleType } from '../utils/Constants';
 
 describe('STAGE_THRESHOLDS', () => {
     it('has minDistance in ascending order', () => {
@@ -20,9 +23,9 @@ describe('STAGE_THRESHOLDS', () => {
         expect(STAGE_THRESHOLDS[0].minDistance).toBe(0);
     });
 
-    it('has STAGE_LOOP_DISTANCE equal to last threshold', () => {
+    it('has STAGE_LOOP_DISTANCE greater than last threshold (all stages reachable)', () => {
         const last = STAGE_THRESHOLDS[STAGE_THRESHOLDS.length - 1];
-        expect(STAGE_LOOP_DISTANCE).toBe(last.minDistance);
+        expect(STAGE_LOOP_DISTANCE).toBeGreaterThan(last.minDistance);
     });
 
     it('contains 4 stages', () => {
@@ -67,5 +70,28 @@ describe('POWERUP_CONFIGS', () => {
     it('tube and friend have positive durations', () => {
         expect(POWERUP_CONFIGS.tube.duration).toBeGreaterThan(0);
         expect(POWERUP_CONFIGS.friend.duration).toBeGreaterThan(0);
+    });
+});
+
+describe('OBSTACLE_CONFIGS', () => {
+    it('contains 3 obstacle types', () => {
+        const keys = Object.keys(OBSTACLE_CONFIGS) as ObstacleType[];
+        expect(keys).toHaveLength(3);
+        expect(keys).toContain('rock');
+        expect(keys).toContain('branch_high');
+        expect(keys).toContain('puddle');
+    });
+
+    it('all have positive dimensions', () => {
+        for (const config of Object.values(OBSTACLE_CONFIGS)) {
+            expect(config.width).toBeGreaterThan(0);
+            expect(config.height).toBeGreaterThan(0);
+        }
+    });
+});
+
+describe('Difficulty constants consistency', () => {
+    it('DIFFICULTY_EASY_MAX < DIFFICULTY_MEDIUM_MAX', () => {
+        expect(DIFFICULTY_EASY_MAX).toBeLessThan(DIFFICULTY_MEDIUM_MAX);
     });
 });

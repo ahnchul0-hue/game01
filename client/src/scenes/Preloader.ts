@@ -8,8 +8,10 @@ import {
     ITEM_SIZE,
     POWERUP_CONFIGS,
     STAGE_COLORS,
+    SKIN_CONFIGS,
+    ONSEN_ITEM_DISPLAY_SIZE,
 } from '../utils/Constants';
-import type { ObstacleType, PowerUpType, StageType } from '../utils/Constants';
+import type { ObstacleType, PowerUpType, StageType, SkinId, ItemType } from '../utils/Constants';
 
 export class Preloader extends Phaser.Scene {
     constructor() {
@@ -161,6 +163,29 @@ export class Preloader extends Phaser.Scene {
         helmetGfx.lineBetween(40, 5, 40, 35);
         helmetGfx.generateTexture('helmet-overlay', 50, 40);
         helmetGfx.destroy();
+
+        // M4: 스킨별 카피바라 텍스처
+        for (const skin of SKIN_CONFIGS) {
+            this.createSkinTexture(skin.id, skin.color);
+        }
+
+        // M4: 온천 장식 아이템 텍스처 (원형)
+        this.createOnsenDecoTexture('mandarin', 0xFF8C00);
+        this.createOnsenDecoTexture('watermelon', 0x2E8B57);
+        this.createOnsenDecoTexture('hotspring_material', 0xFF69B4);
+
+        // M4: 온천 배경 (단색 플레이스홀더)
+        const onsenPoolGfx = this.make.graphics({ x: 0, y: 0 }, false);
+        onsenPoolGfx.fillStyle(0x87CEEB, 1);
+        onsenPoolGfx.fillRoundedRect(0, 0, 500, 300, 40);
+        onsenPoolGfx.generateTexture('onsen-pool', 500, 300);
+        onsenPoolGfx.destroy();
+
+        const onsenBgGfx = this.make.graphics({ x: 0, y: 0 }, false);
+        onsenBgGfx.fillStyle(0xD2B48C, 1);
+        onsenBgGfx.fillRect(0, 0, 64, 64);
+        onsenBgGfx.generateTexture('onsen-bg', 64, 64);
+        onsenBgGfx.destroy();
     }
 
     private createObstacleTexture(
@@ -243,6 +268,51 @@ export class Preloader extends Phaser.Scene {
         }
 
         gfx.generateTexture(`powerup-${type}`, w, h);
+        gfx.destroy();
+    }
+
+    // M4: 스킨 텍스처 (카피바라와 동일 형태, 바디 색상만 다름)
+    private createSkinTexture(skinId: SkinId, bodyColor: number): void {
+        const gfx = this.make.graphics({ x: 0, y: 0 }, false);
+        gfx.fillStyle(bodyColor, 1);
+        gfx.fillRoundedRect(0, 0, 100, 130, 16);
+        // 귀
+        const earColor = Phaser.Display.Color.ValueToColor(bodyColor);
+        earColor.darken(15);
+        gfx.fillStyle(earColor.color, 1);
+        gfx.fillRoundedRect(10, 0, 20, 16, 6);
+        gfx.fillRoundedRect(70, 0, 20, 16, 6);
+        // 눈
+        gfx.fillStyle(0x000000, 1);
+        gfx.fillCircle(35, 45, 6);
+        gfx.fillCircle(65, 45, 6);
+        gfx.fillStyle(0xFFFFFF, 1);
+        gfx.fillCircle(37, 43, 2);
+        gfx.fillCircle(67, 43, 2);
+        // 코
+        gfx.fillStyle(0x654321, 1);
+        gfx.fillCircle(50, 65, 10);
+        gfx.fillStyle(0x4A3015, 1);
+        gfx.fillCircle(46, 65, 3);
+        gfx.fillCircle(54, 65, 3);
+        // 입
+        gfx.lineStyle(2, 0x654321, 1);
+        gfx.beginPath();
+        gfx.arc(50, 72, 12, Phaser.Math.DegToRad(10), Phaser.Math.DegToRad(170), false);
+        gfx.strokePath();
+        gfx.generateTexture(`capybara-${skinId}`, 100, 130);
+        gfx.destroy();
+    }
+
+    // M4: 온천 장식 아이템 텍스처
+    private createOnsenDecoTexture(name: ItemType, color: number): void {
+        const s = ONSEN_ITEM_DISPLAY_SIZE;
+        const gfx = this.make.graphics({ x: 0, y: 0 }, false);
+        gfx.fillStyle(color, 1);
+        gfx.fillCircle(s / 2, s / 2, s / 2);
+        gfx.fillStyle(0xFFFFFF, 0.3);
+        gfx.fillCircle(s / 2 - 6, s / 2 - 6, s / 5);
+        gfx.generateTexture(`onsen-deco-${name}`, s, s);
         gfx.destroy();
     }
 

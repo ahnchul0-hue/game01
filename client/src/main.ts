@@ -5,6 +5,8 @@ import { Preloader } from './scenes/Preloader';
 import { MainMenu } from './scenes/MainMenu';
 import { Game } from './scenes/Game';
 import { GameOver } from './scenes/GameOver';
+import { Onsen } from './scenes/Onsen';
+import { SkinSelect } from './scenes/SkinSelect';
 
 const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
@@ -23,7 +25,7 @@ const config: Phaser.Types.Core.GameConfig = {
             debug: false,
         },
     },
-    scene: [Boot, Preloader, MainMenu, Game, GameOver],
+    scene: [Boot, Preloader, MainMenu, Game, GameOver, Onsen, SkinSelect],
 };
 
 new Phaser.Game(config);

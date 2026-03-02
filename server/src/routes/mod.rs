@@ -1,3 +1,4 @@
+pub mod inventory;
 pub mod scores;
 pub mod users;
 
@@ -15,5 +16,6 @@ pub fn create_router(pool: SqlitePool) -> Router {
     Router::new()
         .merge(users::router())
         .merge(scores::router())
+        .merge(inventory::router())
         .with_state(state)
 }

@@ -18,7 +18,7 @@ async fn main() {
 
     let cors = CorsLayer::new()
         .allow_origin(Any)
-        .allow_methods([Method::GET, Method::POST])
+        .allow_methods([Method::GET, Method::POST, Method::PUT])
         .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]);
 
     let app = routes::create_router(pool).layer(cors);

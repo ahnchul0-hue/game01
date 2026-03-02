@@ -24,6 +24,7 @@ import {
     EFFECT_SLOWMO_SCALE,
 } from '../utils/Constants';
 import type { GameMode, CollectedItems } from '../utils/Constants';
+import { InventoryManager } from '../services/InventoryManager';
 
 type GameState = 'playing' | 'revivePrompt' | 'gameOver';
 
@@ -107,8 +108,12 @@ export class Game extends Phaser.Scene {
         laneLines.lineBetween(laneX1, GAME_HEIGHT - 256, laneX1, GAME_HEIGHT);
         laneLines.lineBetween(laneX2, GAME_HEIGHT - 256, laneX2, GAME_HEIGHT);
 
+        // M4: 선택된 스킨 읽기
+        const inventoryMgr = InventoryManager.getInstance();
+        const skinId = inventoryMgr.getSelectedSkin();
+
         // 플레이어
-        this.player = new Player(this, LANE_POSITIONS[1], PLAYER_Y);
+        this.player = new Player(this, LANE_POSITIONS[1], PLAYER_Y, skinId);
         this.player.setDepth(10);
 
         // M2: 오브젝트 풀 + 매니저

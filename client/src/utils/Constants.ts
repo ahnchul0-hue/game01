@@ -121,7 +121,7 @@ export const STAGE_THRESHOLDS: { stage: StageType; minDistance: number }[] = [
     { stage: 'onsen',   minDistance: 3000 },
 ];
 
-export const STAGE_LOOP_DISTANCE = 3000;
+export const STAGE_LOOP_DISTANCE = 4000;
 
 export const STAGE_COLORS: Record<StageType, { sky: number; trees: number; ground: number }> = {
     forest:  { sky: 0x87CEEB, trees: 0x228B22, ground: 0x8B4513 },
@@ -147,3 +147,84 @@ export const EFFECT_PARTICLE_LIFESPAN = 400;
 export const EFFECT_STAGE_TEXT_DURATION = 2000;
 export const DEPTH_EFFECT_OVERLAY = 50;
 export const DEPTH_STAGE_TEXT = 250;
+
+// ========== M4: Scene 키 ==========
+export const SCENE_ONSEN = 'Onsen';
+export const SCENE_SKIN_SELECT = 'SkinSelect';
+
+// ========== M4: localStorage 키 ==========
+export const LS_KEY_INVENTORY = 'capybara_inventory';
+export const LS_KEY_ONSEN_LAYOUT = 'capybara_onsen_layout';
+export const LS_KEY_SELECTED_SKIN = 'capybara_selected_skin';
+export const LS_KEY_UNLOCKED_SKINS = 'capybara_unlocked_skins';
+
+// ========== M4: 인벤토리 ==========
+export interface Inventory {
+    mandarin: number;
+    watermelon: number;
+    hotspring_material: number;
+}
+
+// ========== M4: 온천 꾸미기 ==========
+export type OnsenLevel = 'basic' | 'forest' | 'snow' | 'luxury';
+
+export interface PlacedItem {
+    itemType: ItemType;
+    x: number;
+    y: number;
+}
+
+export interface OnsenLayout {
+    placedItems: PlacedItem[];
+}
+
+export const ONSEN_LEVEL_THRESHOLDS: { level: OnsenLevel; minItems: number }[] = [
+    { level: 'basic', minItems: 0 },
+    { level: 'forest', minItems: 3 },
+    { level: 'snow', minItems: 6 },
+    { level: 'luxury', minItems: 10 },
+];
+
+export const ONSEN_LEVEL_COLORS: Record<OnsenLevel, { bg: number; water: number; rim: number }> = {
+    basic:  { bg: 0xD2B48C, water: 0x87CEEB, rim: 0x8B7355 },
+    forest: { bg: 0x228B22, water: 0x4FC3F7, rim: 0x6B8E23 },
+    snow:   { bg: 0xF0F0F0, water: 0xB0E0E6, rim: 0xC0C0C0 },
+    luxury: { bg: 0xFFD700, water: 0xFF69B4, rim: 0xDAA520 },
+};
+
+export const ONSEN_LEVEL_NAMES: Record<OnsenLevel, string> = {
+    basic:  '기본 온천',
+    forest: '숲속 온천',
+    snow:   '설경 온천',
+    luxury: '럭셔리 온천',
+};
+
+// ========== M4: 캐릭터 스킨 ==========
+export type SkinId = 'default' | 'towel' | 'yukata' | 'santa';
+export type UnlockCondition = 'always' | 'distance_5000' | 'onsen_level_3' | 'items_1000';
+
+export interface SkinConfig {
+    id: SkinId;
+    name: string;
+    color: number;
+    unlockCondition: UnlockCondition;
+    unlockDescription: string;
+}
+
+export const SKIN_CONFIGS: SkinConfig[] = [
+    { id: 'default', name: '기본 카피바라',  color: 0x8B6914, unlockCondition: 'always', unlockDescription: '기본' },
+    { id: 'towel',   name: '수건 카피바라',  color: 0xF5F5DC, unlockCondition: 'distance_5000', unlockDescription: '5,000m 달리기' },
+    { id: 'yukata',  name: '유카타 카피바라', color: 0x8B008B, unlockCondition: 'onsen_level_3', unlockDescription: '온천 레벨 3 (설경)' },
+    { id: 'santa',   name: '산타 카피바라',   color: 0xCC0000, unlockCondition: 'items_1000', unlockDescription: '아이템 1,000개 수집' },
+];
+
+// ========== M4: 온천 Scene 상수 ==========
+export const ONSEN_POOL_X = 110;
+export const ONSEN_POOL_Y = 150;
+export const ONSEN_POOL_W = 500;
+export const ONSEN_POOL_H = 300;
+export const ONSEN_INVENTORY_START_Y = 590;
+export const ONSEN_ITEM_DISPLAY_SIZE = 60;
+
+// ========== M4: localStorage 키 (maxDistance) ==========
+export const LS_KEY_MAX_DISTANCE = 'capybara_max_distance';

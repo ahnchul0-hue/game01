@@ -30,6 +30,11 @@ describe('DifficultyManager.getSpeed', () => {
         const relax = dm.getSpeed(500, true);
         expect(relax).toBeCloseTo(normal * RELAX_SPEED_MULTIPLIER);
     });
+
+    it('relax mode also respects MAX_SPEED cap', () => {
+        const relax = dm.getSpeed(1_000_000, true);
+        expect(relax).toBeLessThanOrEqual(MAX_SPEED);
+    });
 });
 
 describe('DifficultyManager.getSpawnInterval', () => {

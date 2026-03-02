@@ -9,7 +9,7 @@ import {
     POWERUP_CONFIGS,
     POWERUP_SCORE_MULTIPLIER_TUBE,
 } from '../utils/Constants';
-import type { PowerUpType } from '../utils/Constants';
+import type { PowerUpType, SkinId } from '../utils/Constants';
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
     private currentLane = 1; // 0=좌, 1=중, 2=우
@@ -31,8 +31,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     private tubeTimerEvent: Phaser.Time.TimerEvent | null = null;
     private friendTimerEvent: Phaser.Time.TimerEvent | null = null;
 
-    constructor(scene: Phaser.Scene, x: number, y: number) {
-        super(scene, x, y, 'capybara');
+    constructor(scene: Phaser.Scene, x: number, y: number, skinId: SkinId = 'default') {
+        super(scene, x, y, `capybara-${skinId}`);
 
         scene.add.existing(this);
         scene.physics.add.existing(this);

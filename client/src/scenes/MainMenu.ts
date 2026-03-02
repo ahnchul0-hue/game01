@@ -4,8 +4,11 @@ import {
     GAME_HEIGHT,
     SCENE_MAIN_MENU,
     SCENE_GAME,
+    SCENE_ONSEN,
+    SCENE_SKIN_SELECT,
 } from '../utils/Constants';
 import { ApiClient } from '../services/ApiClient';
+import { InventoryManager } from '../services/InventoryManager';
 
 export class MainMenu extends Phaser.Scene {
     constructor() {
@@ -13,14 +16,16 @@ export class MainMenu extends Phaser.Scene {
     }
 
     create(): void {
-        // 게스트 유저 생성 (fire-and-forget, 2차 리뷰 C2)
-        new ApiClient().ensureUser();
+        // 게스트 유저 생성 후 서버 동기화 (ensureUser 완료 대기 후 sync)
+        const api = ApiClient.getInstance();
+        const inventoryMgr = InventoryManager.getInstance();
+        api.ensureUser().then(() => inventoryMgr.syncFromServer());
 
         // 배경
         this.cameras.main.setBackgroundColor('#87CEEB');
 
         // 타이틀
-        const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.25, 'Capybara Runner', {
+        const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.2, 'Capybara Runner', {
             fontFamily: 'Arial',
             fontSize: '48px',
             color: '#5D4037',
@@ -39,14 +44,15 @@ export class MainMenu extends Phaser.Scene {
             repeat: -1,
         });
 
-        // 카피바라 캐릭터 표시
-        const capybara = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT * 0.4, 'capybara');
+        // 카피바라 캐릭터 표시 (선택된 스킨)
+        const selectedSkin = inventoryMgr.getSelectedSkin();
+        const capybara = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT * 0.35, `capybara-${selectedSkin}`);
         capybara.setScale(2);
 
         // 시작 버튼
         this.createButton(
             GAME_WIDTH / 2,
-            GAME_HEIGHT * 0.6,
+            GAME_HEIGHT * 0.52,
             'START',
             0x4CAF50,
             () => this.scene.start(SCENE_GAME, { mode: 'normal' }),
@@ -55,10 +61,28 @@ export class MainMenu extends Phaser.Scene {
         // 릴렉스 모드 버튼
         this.createButton(
             GAME_WIDTH / 2,
-            GAME_HEIGHT * 0.7,
+            GAME_HEIGHT * 0.62,
             'RELAX MODE',
             0x81C784,
             () => this.scene.start(SCENE_GAME, { mode: 'relax' }),
+        );
+
+        // 온천 버튼
+        this.createButton(
+            GAME_WIDTH / 2,
+            GAME_HEIGHT * 0.72,
+            'ONSEN',
+            0xFF8C00,
+            () => this.scene.start(SCENE_ONSEN),
+        );
+
+        // 스킨 버튼
+        this.createButton(
+            GAME_WIDTH / 2,
+            GAME_HEIGHT * 0.82,
+            'SKINS',
+            0x8B008B,
+            () => this.scene.start(SCENE_SKIN_SELECT),
         );
     }
 

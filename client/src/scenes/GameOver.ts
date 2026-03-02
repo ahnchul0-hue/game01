@@ -5,9 +5,12 @@ import {
     SCENE_GAME_OVER,
     SCENE_GAME,
     SCENE_MAIN_MENU,
+    SCENE_ONSEN,
+    LS_KEY_MAX_DISTANCE,
 } from '../utils/Constants';
 import type { GameMode, CollectedItems } from '../utils/Constants';
 import { ApiClient } from '../services/ApiClient';
+import { InventoryManager } from '../services/InventoryManager';
 
 interface GameOverData {
     score?: number;
@@ -38,8 +41,13 @@ export class GameOver extends Phaser.Scene {
         const totalItems = this.collectedItems.mandarin
             + this.collectedItems.watermelon
             + this.collectedItems.hotspring_material;
-        const api = new ApiClient();
+        const api = ApiClient.getInstance();
         api.submitScore(this.finalScore, this.finalDistance, totalItems);
+
+        // M4: 인벤토리 누적 + 최고 거리 갱신
+        const inventoryMgr = InventoryManager.getInstance();
+        inventoryMgr.addItems(this.collectedItems);
+        this.updateMaxDistance(this.finalDistance);
 
         // 어두운 오버레이
         const overlay = this.add.graphics();
@@ -96,17 +104,35 @@ export class GameOver extends Phaser.Scene {
 
         // 재시작 버튼
         this.createButton(
-            GAME_WIDTH / 2, GAME_HEIGHT * 0.78,
+            GAME_WIDTH / 2, GAME_HEIGHT * 0.73,
             'RETRY', 0x4CAF50,
             () => this.scene.start(SCENE_GAME, { mode: this.lastMode }),
         );
 
+        // 온천 버튼
+        this.createButton(
+            GAME_WIDTH / 2, GAME_HEIGHT * 0.82,
+            'GO TO ONSEN', 0xFF8C00,
+            () => this.scene.start(SCENE_ONSEN),
+        );
+
         // 메뉴 버튼
         this.createButton(
-            GAME_WIDTH / 2, GAME_HEIGHT * 0.88,
+            GAME_WIDTH / 2, GAME_HEIGHT * 0.91,
             'MENU', 0x757575,
             () => this.scene.start(SCENE_MAIN_MENU),
         );
+    }
+
+    private updateMaxDistance(distance: number): void {
+        try {
+            const prev = parseInt(localStorage.getItem(LS_KEY_MAX_DISTANCE) ?? '0', 10);
+            if (distance > prev) {
+                localStorage.setItem(LS_KEY_MAX_DISTANCE, distance.toString());
+            }
+        } catch {
+            // ignore
+        }
     }
 
     private createItemDisplay(x: number, y: number, texture: string, count: number): void {

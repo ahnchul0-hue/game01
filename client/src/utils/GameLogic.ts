@@ -45,5 +45,6 @@ export function weightedRandomItem(random: number): ItemType {
 /** 균등 확률 파워업 타입 선택 */
 export function randomPowerUpType(random: number): PowerUpType {
     const types: PowerUpType[] = ['helmet', 'tube', 'friend'];
-    return types[Math.floor(random * types.length)];
+    const index = Math.min(Math.floor(random * types.length), types.length - 1);
+    return types[index];
 }

@@ -24,21 +24,28 @@ describe('getStageForDistance', () => {
         expect(getStageForDistance(1500)).toBe('village');
     });
 
-    it('returns village just before 3000m (onsen threshold)', () => {
-        // 2999 < 3000 (onsen threshold), so still village
-        expect(getStageForDistance(2999)).toBe('village');
+    it('returns onsen at 3000m', () => {
+        expect(getStageForDistance(3000)).toBe('onsen');
     });
 
-    it('loops back to forest at 3000m', () => {
-        expect(getStageForDistance(3000)).toBe('forest');
+    it('returns onsen just before loop', () => {
+        expect(getStageForDistance(3999)).toBe('onsen');
     });
 
-    it('loops correctly at 3500m (river)', () => {
-        expect(getStageForDistance(3500)).toBe('river');
+    it('loops back to forest at STAGE_LOOP_DISTANCE', () => {
+        expect(getStageForDistance(4000)).toBe('forest');
     });
 
-    it('loops correctly at 6000m (forest again)', () => {
-        expect(getStageForDistance(6000)).toBe('forest');
+    it('loops correctly at 4500m (river)', () => {
+        expect(getStageForDistance(4500)).toBe('river');
+    });
+
+    it('loops correctly at 8000m (forest again)', () => {
+        expect(getStageForDistance(8000)).toBe('forest');
+    });
+
+    it('returns forest for negative distance', () => {
+        expect(getStageForDistance(-100)).toBe('forest');
     });
 });
 
@@ -81,10 +88,6 @@ describe('weightedRandomItem', () => {
 
     it('returns hotspring_material for random near 0.95', () => {
         expect(weightedRandomItem(0.95)).toBe('hotspring_material');
-    });
-
-    it('returns mandarin for random=0 (fallback)', () => {
-        expect(weightedRandomItem(0)).toBe('mandarin');
     });
 });
 
