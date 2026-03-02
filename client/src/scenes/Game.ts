@@ -30,7 +30,7 @@ import { InventoryManager } from '../services/InventoryManager';
 import { SoundManager } from '../services/SoundManager';
 import { fadeToScene } from '../ui/UIFactory';
 
-type GameState = 'playing' | 'revivePrompt' | 'gameOver';
+type GameState = 'playing' | 'paused' | 'revivePrompt' | 'gameOver';
 
 interface GameInitData {
     mode?: GameMode;
@@ -84,6 +84,9 @@ export class Game extends Phaser.Scene {
     // 튜토리얼
     private tutorialContainer: Phaser.GameObjects.Container | null = null;
 
+    // 일시정지
+    private pauseContainer: Phaser.GameObjects.Container | null = null;
+
     // 착지 감지 (먼지 파티클용)
     private wasJumping = false;
 
@@ -103,6 +106,7 @@ export class Game extends Phaser.Scene {
         this.reviveContainer = null;
         this.reviveHitZones = [];
         this.tutorialContainer = null;
+        this.pauseContainer = null;
         this.wasJumping = false;
     }
 
@@ -121,6 +125,10 @@ export class Game extends Phaser.Scene {
         if (this.tutorialContainer) {
             this.tutorialContainer.destroy();
             this.tutorialContainer = null;
+        }
+        if (this.pauseContainer) {
+            this.pauseContainer.destroy();
+            this.pauseContainer = null;
         }
     }
 
@@ -249,13 +257,59 @@ export class Game extends Phaser.Scene {
             }).setScrollFactor(0).setDepth(100);
         }
 
-        // 게임 BGM
-        SoundManager.getInstance().playBgm('bgm-game');
+        // 일시정지 버튼 (HUD 우측 하단)
+        const pauseBtn = this.add.text(GAME_WIDTH - 20, GAME_HEIGHT - 40, '❚❚', {
+            fontFamily: 'Arial', fontSize: '32px', color: '#FFFFFF',
+            stroke: '#000000', strokeThickness: 3,
+        }).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100).setInteractive({ useHandCursor: true });
+        pauseBtn.on('pointerdown', () => {
+            if (this.state === 'playing') this.pauseGame();
+        });
+
+        // 게임 BGM (릴랙스 모드면 온천 BGM)
+        SoundManager.getInstance().playBgm(this.mode === 'relax' ? 'bgm-onsen' : 'bgm-game');
 
         // 첫 플레이 튜토리얼
         if (!localStorage.getItem(LS_KEY_TUTORIAL_DONE)) {
             this.showTutorial();
         }
+    }
+
+    private pauseGame(): void {
+        this.state = 'paused';
+        this.physics.pause();
+
+        this.pauseContainer = this.add.container(0, 0).setDepth(400);
+
+        const overlay = this.add.graphics();
+        overlay.fillStyle(0x000000, 0.5);
+        overlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+        this.pauseContainer.add(overlay);
+
+        const pauseText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40, '일시정지', {
+            fontFamily: 'Arial', fontSize: '48px', color: '#FFFFFF', fontStyle: 'bold',
+        }).setOrigin(0.5);
+        this.pauseContainer.add(pauseText);
+
+        const resumeText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30, '탭하여 재개', {
+            fontFamily: 'Arial', fontSize: '24px', color: '#AAAAAA',
+        }).setOrigin(0.5);
+        this.pauseContainer.add(resumeText);
+        this.tweens.add({ targets: resumeText, alpha: 0.3, duration: 600, yoyo: true, repeat: -1 });
+
+        const dismissZone = this.add.zone(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT)
+            .setInteractive();
+        this.pauseContainer.add(dismissZone);
+        dismissZone.once('pointerdown', () => this.resumeGame());
+    }
+
+    private resumeGame(): void {
+        if (this.pauseContainer) {
+            this.pauseContainer.destroy();
+            this.pauseContainer = null;
+        }
+        this.physics.resume();
+        this.state = 'playing';
     }
 
     private showTutorial(): void {
@@ -309,6 +363,7 @@ export class Game extends Phaser.Scene {
 
     update(time: number, delta: number): void {
         if (this.state !== 'playing') return;
+        if (!this.player || !this.player.active) return;
 
         // M3: 슬로우모션 적용
         this.effectManager.update(time);

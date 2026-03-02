@@ -1,0 +1,17 @@
+[Unit]
+Description=Capybara Runner API Server
+After=network.target
+
+[Service]
+Type=simple
+User=cc2
+WorkingDirectory=/home/cc2/game01/server
+Environment=DATABASE_URL=sqlite:data.db
+Environment=HOST=127.0.0.1
+Environment=PORT=3000
+ExecStart=/home/cc2/game01/server/target/release/capybara-server
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

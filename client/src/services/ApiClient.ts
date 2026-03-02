@@ -20,6 +20,15 @@ export interface SkinsResponse {
     unlocked_skins: string;
 }
 
+export interface ScoreEntry {
+    id: string;
+    user_id: string;
+    score: number;
+    distance: number;
+    items_collected: number;
+    created_at: string;
+}
+
 const API_TIMEOUT_MS = 5000;
 
 let _instance: ApiClient | null = null;
@@ -80,6 +89,19 @@ export class ApiClient {
             }
         }
         // 오프라인 — localStorage 모드로 진행
+    }
+
+    async getTopScores(limit = 10): Promise<ScoreEntry[]> {
+        try {
+            const res = await this.fetchWithTimeout(
+                `${this.baseUrl}/api/scores/top?limit=${limit}`,
+                {},
+            );
+            if (!res.ok) return [];
+            return await res.json();
+        } catch {
+            return [];
+        }
     }
 
     async submitScore(score: number, distance: number, itemsCollected: number): Promise<void> {

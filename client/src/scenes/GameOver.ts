@@ -10,8 +10,9 @@ import {
 import type { GameMode, CollectedItems, SkinConfig } from '../utils/Constants';
 import { SKIN_CONFIGS } from '../utils/Constants';
 import { getUnlockProgress, getOnsenLevelIndex, getTotalItems, getOnsenLevel, type UnlockStats } from '../utils/OnsenLogic';
-import { ApiClient } from '../services/ApiClient';
+import { ApiClient, type ScoreEntry } from '../services/ApiClient';
 import { InventoryManager } from '../services/InventoryManager';
+import { SoundManager } from '../services/SoundManager';
 import { createButton, fadeToScene, fadeIn } from '../ui/UIFactory';
 
 interface GameOverData {
@@ -46,12 +47,18 @@ export class GameOver extends Phaser.Scene {
         // 페이드인
         fadeIn(this);
 
-        // 점수 API 전송 (fire-and-forget)
+        // BGM 정지 (Game에서 이미 했지만 안전장치)
+        SoundManager.getInstance().stopBgm();
+
+        // 점수 API 전송 후 리더보드 로드
         const totalItems = this.collectedItems.mandarin
             + this.collectedItems.watermelon
             + this.collectedItems.hotspring_material;
         const api = ApiClient.getInstance();
-        api.submitScore(this.finalScore, this.finalDistance, totalItems);
+        api.submitScore(this.finalScore, this.finalDistance, totalItems)
+            .then(() => api.getTopScores(5))
+            .then(scores => this.showLeaderboard(scores))
+            .catch(() => {});
 
         // M4: 인벤토리 누적 + 최고 거리 갱신
         const inventoryMgr = InventoryManager.getInstance();
@@ -104,7 +111,7 @@ export class GameOver extends Phaser.Scene {
         }).setOrigin(0.5);
 
         // M2: 수집 아이템 표시
-        const itemY = GAME_HEIGHT * 0.60;
+        const itemY = GAME_HEIGHT * 0.52;
         const itemSpacing = 140;
         const startX = GAME_WIDTH / 2 - itemSpacing;
 
@@ -112,37 +119,39 @@ export class GameOver extends Phaser.Scene {
         this.createItemDisplay(startX + itemSpacing, itemY, 'item-watermelon', this.collectedItems.watermelon);
         this.createItemDisplay(startX + itemSpacing * 2, itemY, 'item-hotspring_material', this.collectedItems.hotspring_material);
 
-        // 최고 거리
+        // 최고 거리 (거리 옆에 인라인)
         const bestDistance = inventoryMgr.getMaxDistance();
-        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.65, `BEST: ${bestDistance}m`, {
-            fontFamily: 'Arial', fontSize: '20px', color: '#AAAAAA',
+        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.57, `BEST: ${bestDistance}m`, {
+            fontFamily: 'Arial', fontSize: '18px', color: '#AAAAAA',
         }).setOrigin(0.5);
 
         // 다음 스킨 잠금해제 힌트
         const hint = this.getNextUnlockHint(inventoryMgr);
         if (hint) {
-            this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.69, hint, {
-                fontFamily: 'Arial', fontSize: '16px', color: '#81C784',
+            this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.60, hint, {
+                fontFamily: 'Arial', fontSize: '14px', color: '#81C784',
             }).setOrigin(0.5);
         }
 
+        // 리더보드 영역 (비동기 로드 — 0.65~0.75 사이 표시됨)
+
         // 재시작 버튼
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.73,
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.80,
             label: 'RETRY', color: 0x4CAF50,
             callback: () => fadeToScene(this, SCENE_GAME, { mode: this.lastMode }),
         });
 
         // 온천 버튼
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.82,
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.88,
             label: 'GO TO ONSEN', color: 0xFF8C00,
             callback: () => fadeToScene(this, SCENE_ONSEN),
         });
 
         // 메뉴 버튼
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.91,
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.96,
             label: 'MENU', color: 0x757575,
             callback: () => fadeToScene(this, SCENE_MAIN_MENU),
         });
@@ -183,6 +192,27 @@ export class GameOver extends Phaser.Scene {
             fontFamily: 'Arial', fontSize: '20px', color: '#FFFFFF',
             stroke: '#000000', strokeThickness: 2,
         }).setOrigin(0.5);
+    }
+
+    private showLeaderboard(scores: ScoreEntry[]): void {
+        if (scores.length === 0) return;
+
+        const startY = GAME_HEIGHT * 0.65;
+        const userId = localStorage.getItem('capybara_user_id');
+
+        this.add.text(GAME_WIDTH / 2, startY, 'TOP SCORES', {
+            fontFamily: 'Arial', fontSize: '18px', color: '#FFD700', fontStyle: 'bold',
+        }).setOrigin(0.5);
+
+        scores.forEach((entry, i) => {
+            const isMe = entry.user_id === userId;
+            const color = isMe ? '#FFD700' : '#CCCCCC';
+            const prefix = isMe ? '▶ ' : '  ';
+            const label = `${prefix}#${i + 1}  ${entry.score.toLocaleString()}  ${entry.distance}m`;
+            this.add.text(GAME_WIDTH / 2, startY + 22 + i * 20, label, {
+                fontFamily: 'Arial', fontSize: '15px', color,
+            }).setOrigin(0.5);
+        });
     }
 
 }
