@@ -1,3 +1,4 @@
+pub mod health;
 pub mod inventory;
 pub mod scores;
 pub mod users;
@@ -14,6 +15,7 @@ pub fn create_router(pool: SqlitePool) -> Router {
     let state = AppState { pool };
 
     Router::new()
+        .merge(health::router())
         .merge(users::router())
         .merge(scores::router())
         .merge(inventory::router())

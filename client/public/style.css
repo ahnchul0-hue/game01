@@ -32,3 +32,25 @@ canvas {
     -webkit-tap-highlight-color: transparent;
     outline: none;
 }
+
+/* 가로 모드 경고 오버레이 */
+#landscape-warning {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #0f0f0f;
+    color: #fff;
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    font-family: Arial, sans-serif;
+    text-align: center;
+}
+#landscape-warning .icon { font-size: 64px; margin-bottom: 16px; }
+#landscape-warning .msg { font-size: 20px; }
+
+@media (orientation: landscape) and (max-height: 600px) {
+    #landscape-warning { display: flex; }
+    #app { display: none; }
+}

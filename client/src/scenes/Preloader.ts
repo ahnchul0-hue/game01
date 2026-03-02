@@ -37,8 +37,11 @@ export class Preloader extends Phaser.Scene {
             fillBar.fillRect(barX, barY, barW * value, barH);
         });
 
-        // 프로토타입에서는 로드할 에셋이 없으므로 progress가 즉시 1.0
-        // 실제 에셋 추가 시 this.load.image(...) 등을 여기에 배치
+        // 카피바라 스킨 PNG 로드 (assets/capybara-*.png)
+        this.load.image('capybara-default', 'assets/capybara-default.png');
+        this.load.image('capybara-towel',   'assets/capybara-towel.png');
+        this.load.image('capybara-yukata',  'assets/capybara-yukata.png');
+        this.load.image('capybara-santa',   'assets/capybara-santa.png');
     }
 
     create(): void {

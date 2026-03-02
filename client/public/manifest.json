@@ -1,0 +1,22 @@
+{
+    "name": "Capybara Runner",
+    "short_name": "CapyRun",
+    "description": "A healing endless runner game with capybara",
+    "start_url": "/",
+    "display": "fullscreen",
+    "orientation": "portrait",
+    "background_color": "#87CEEB",
+    "theme_color": "#8B6914",
+    "icons": [
+        {
+            "src": "/favicon.png",
+            "sizes": "64x64",
+            "type": "image/png"
+        },
+        {
+            "src": "/assets/favicon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        }
+    ]
+}

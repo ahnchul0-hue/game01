@@ -4,6 +4,7 @@ pub struct Config {
     pub database_url: String,
     pub host: String,
     pub port: u16,
+    pub cors_origins: Vec<String>,
 }
 
 impl Config {
@@ -16,10 +17,18 @@ impl Config {
             .parse()
             .expect("PORT must be a number");
 
+        let cors_origins: Vec<String> = env::var("CORS_ORIGINS")
+            .unwrap_or_else(|_| "http://localhost:5173,http://localhost".to_string())
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+
         Config {
             database_url,
             host,
             port,
+            cors_origins,
         }
     }
 }

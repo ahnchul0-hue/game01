@@ -9,6 +9,7 @@ WorkingDirectory=/home/cc2/game01/server
 Environment=DATABASE_URL=sqlite:data.db
 Environment=HOST=127.0.0.1
 Environment=PORT=3000
+Environment=CORS_ORIGINS=http://localhost
 ExecStart=/home/cc2/game01/server/target/release/capybara-server
 Restart=on-failure
 RestartSec=5

@@ -16,11 +16,11 @@ async fn main() {
     let config = Config::from_env();
     let pool = db::init_db(&config.database_url).await;
 
+    let origins: Vec<HeaderValue> = config.cors_origins.iter()
+        .filter_map(|o| o.parse::<HeaderValue>().ok())
+        .collect();
     let cors = CorsLayer::new()
-        .allow_origin(AllowOrigin::list([
-            HeaderValue::from_static("http://localhost:5173"),
-            HeaderValue::from_static("http://localhost"),
-        ]))
+        .allow_origin(AllowOrigin::list(origins))
         .allow_methods([Method::GET, Method::POST, Method::PUT])
         .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]);
 

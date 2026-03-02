@@ -35,3 +35,9 @@ const config: Phaser.Types.Core.GameConfig = {
 };
 
 new Phaser.Game(config);
+
+// Screen orientation lock (portrait) — API may not be available in all browsers
+const orient = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
+if (orient?.lock) {
+    orient.lock('portrait').catch(() => {});
+}
