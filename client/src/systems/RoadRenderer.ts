@@ -12,17 +12,34 @@ import {
 } from '../utils/Constants';
 import type { StageType } from '../utils/Constants';
 
+/** 사전 계산된 세그먼트 투영 좌표 */
+interface SegmentCache {
+    z0: number;
+    z1: number;
+    y0: number;
+    y1: number;
+    leftX0: number;
+    rightX0: number;
+    leftX1: number;
+    rightX1: number;
+}
+
 /**
- * 의사-3D 원근 도로 렌더러.
- * Phaser Graphics로 매 프레임 도로를 다시 그린다:
- * - 하늘 그라데이션 배경
- * - 소실점으로 수렴하는 사다리꼴 도로
- * - 수렴하는 레인 구분선
- * - 속도에 맞춰 이동하는 대시 마킹
+ * 의사-3D 원근 도로 렌더러 (최적화 버전).
+ *
+ * 최적화 전략:
+ * - 세그먼트 투영 좌표를 생성자에서 1회만 계산 (segmentCache)
+ * - 정적 도로(사다리꼴+가장자리)와 동적 대시를 별도 Graphics로 분리
+ * - 하늘/도로는 dirty flag로 색상 전환 시에만 재그리기
+ * - 대시 마킹만 매 프레임 갱신
  */
 export class RoadRenderer {
-    private roadGraphics: Phaser.GameObjects.Graphics;
+    private staticRoadGfx: Phaser.GameObjects.Graphics;
+    private stripeGfx: Phaser.GameObjects.Graphics;
     private skyGraphics: Phaser.GameObjects.Graphics;
+
+    // 세그먼트 투영 좌표 캐시 (생성자에서 1회 계산)
+    private segmentCache: SegmentCache[] = [];
 
     // 대시 마킹 이동용 오프셋 (0~1 루프)
     private dashOffset = 0;
@@ -44,6 +61,10 @@ export class RoadRenderer {
     private transitionDuration = 0;
     private transitionElapsed = 0;
 
+    // dirty flags: 정적 레이어 재그리기 필요 여부
+    private skyDirty = true;
+    private roadDirty = true;
+
     constructor(scene: Phaser.Scene, initialStage: StageType = 'forest') {
         const colors = STAGE_COLORS[initialStage];
         this.skyColor = colors.sky;
@@ -58,18 +79,38 @@ export class RoadRenderer {
         this.startGroundColor = this.groundColor;
         this.startRoadColor = this.roadColor;
 
-        // 하늘 배경 (뒤) + 도로 (위)
+        // 하늘(뒤) + 정적 도로(중간) + 동적 대시(위)
         this.skyGraphics = scene.add.graphics().setDepth(0);
-        this.roadGraphics = scene.add.graphics().setDepth(1);
+        this.staticRoadGfx = scene.add.graphics().setDepth(1);
+        this.stripeGfx = scene.add.graphics().setDepth(1);
+
+        // 세그먼트 투영 좌표 사전 계산 (z값은 고정이므로 1회만)
+        this.buildSegmentCache();
+    }
+
+    /** 세그먼트별 투영 좌표를 1회 계산하여 캐시 */
+    private buildSegmentCache(): void {
+        this.segmentCache = [];
+        for (let i = 0; i < ROAD_SEGMENTS; i++) {
+            const z0 = i / ROAD_SEGMENTS;
+            const z1 = (i + 1) / ROAD_SEGMENTS;
+            const edge0 = PerspectiveCamera.getRoadEdgeX(z0);
+            const edge1 = PerspectiveCamera.getRoadEdgeX(z1);
+            const y0 = PerspectiveCamera.projectZ(z0).screenY;
+            const y1 = PerspectiveCamera.projectZ(z1).screenY;
+            this.segmentCache.push({
+                z0, z1, y0, y1,
+                leftX0: edge0.left, rightX0: edge0.right,
+                leftX1: edge1.left, rightX1: edge1.right,
+            });
+        }
     }
 
     /**
-     * 매 프레임 호출. 도로를 다시 그린다.
-     * @param gameSpeed 현재 게임 속도 (px/s)
-     * @param dt 델타 시간 (초)
+     * 매 프레임 호출.
      */
     update(gameSpeed: number, dt: number): void {
-        // 대시 오프셋 이동 (속도에 비례)
+        // 대시 오프셋 이동
         this.dashOffset += gameSpeed * dt * 0.0004;
         if (this.dashOffset > 1) this.dashOffset -= 1;
 
@@ -87,18 +128,29 @@ export class RoadRenderer {
                 this.groundColor = this.targetGroundColor;
                 this.roadColor = this.targetRoadColor;
             }
+
+            // 색상 전환 중에만 정적 레이어 갱신
+            this.skyDirty = true;
+            this.roadDirty = true;
         }
 
-        this.drawSky();
-        this.drawRoad();
+        // 정적 레이어: dirty일 때만 재그리기
+        if (this.skyDirty) {
+            this.drawSky();
+            this.skyDirty = false;
+        }
+        if (this.roadDirty) {
+            this.drawStaticRoad();
+            this.roadDirty = false;
+        }
+
+        // 동적 레이어: 매 프레임 대시 마킹만 갱신
+        this.drawStripes();
     }
 
-    /**
-     * 스테이지 전환 — 색상 크로스페이드 시작
-     */
+    /** 스테이지 전환 — 색상 크로스페이드 시작 */
     transitionToStage(stage: StageType, duration: number): void {
         const colors = STAGE_COLORS[stage];
-        // Save current colors as lerp start point
         this.startSkyColor = this.skyColor;
         this.startGroundColor = this.groundColor;
         this.startRoadColor = this.roadColor;
@@ -110,9 +162,7 @@ export class RoadRenderer {
         this.transitionElapsed = 0;
     }
 
-    /**
-     * 즉시 스테이지 색상 설정 (부활 등)
-     */
+    /** 즉시 스테이지 색상 설정 (부활 등) */
     setStage(stage: StageType): void {
         const colors = STAGE_COLORS[stage];
         this.skyColor = colors.sky;
@@ -125,19 +175,21 @@ export class RoadRenderer {
         this.startGroundColor = this.groundColor;
         this.startRoadColor = this.roadColor;
         this.transitionProgress = 1;
+        this.skyDirty = true;
+        this.roadDirty = true;
     }
 
     destroy(): void {
         this.skyGraphics.destroy();
-        this.roadGraphics.destroy();
+        this.staticRoadGfx.destroy();
+        this.stripeGfx.destroy();
     }
 
-    // ===== Private =====
+    // ===== Private: 정적 레이어 =====
 
     private drawSky(): void {
         this.skyGraphics.clear();
 
-        // 하늘 그라데이션: 상단(밝은 하늘) → 소실점(하늘색) → 하단(땅색)
         const steps = 20;
         const topColor = this.lighten(this.skyColor, 15);
         const stepH = VANISH_Y / steps;
@@ -149,42 +201,39 @@ export class RoadRenderer {
             this.skyGraphics.fillRect(0, i * stepH, GAME_WIDTH, stepH + 1);
         }
 
-        // 소실점 아래는 지면색 (도로가 위에 그려짐)
+        // 소실점 아래는 지면색
         this.skyGraphics.fillStyle(this.groundColor, 1);
         this.skyGraphics.fillRect(0, VANISH_Y, GAME_WIDTH, CAMERA_Y - VANISH_Y + 200);
     }
 
-    private drawRoad(): void {
-        this.roadGraphics.clear();
+    private drawStaticRoad(): void {
+        this.staticRoadGfx.clear();
 
-        // 도로 본체: 세그먼트별 사다리꼴
-        for (let i = 0; i < ROAD_SEGMENTS; i++) {
-            const z0 = i / ROAD_SEGMENTS;       // near z (0=camera)
-            const z1 = (i + 1) / ROAD_SEGMENTS; // far z
-
-            const edge0 = PerspectiveCamera.getRoadEdgeX(z0);
-            const edge1 = PerspectiveCamera.getRoadEdgeX(z1);
-            const y0 = PerspectiveCamera.projectZ(z0).screenY;
-            const y1 = PerspectiveCamera.projectZ(z1).screenY;
-
-            // 도로 색상 (가까울수록 약간 밝게)
-            const brightness = (1 - z0) * 5;
+        // 도로 본체: 캐시된 세그먼트 좌표 사용
+        for (const seg of this.segmentCache) {
+            const brightness = (1 - seg.z0) * 5;
             const segColor = this.lighten(this.roadColor, brightness);
 
-            this.roadGraphics.fillStyle(segColor, 1);
-            this.roadGraphics.beginPath();
-            this.roadGraphics.moveTo(edge0.left, y0);
-            this.roadGraphics.lineTo(edge1.left, y1);
-            this.roadGraphics.lineTo(edge1.right, y1);
-            this.roadGraphics.lineTo(edge0.right, y0);
-            this.roadGraphics.closePath();
-            this.roadGraphics.fillPath();
+            this.staticRoadGfx.fillStyle(segColor, 1);
+            this.staticRoadGfx.beginPath();
+            this.staticRoadGfx.moveTo(seg.leftX0, seg.y0);
+            this.staticRoadGfx.lineTo(seg.leftX1, seg.y1);
+            this.staticRoadGfx.lineTo(seg.rightX1, seg.y1);
+            this.staticRoadGfx.lineTo(seg.rightX0, seg.y0);
+            this.staticRoadGfx.closePath();
+            this.staticRoadGfx.fillPath();
         }
 
-        // 도로 가장자리 (흰색 실선)
-        this.roadGraphics.lineStyle(2, 0xFFFFFF, 0.6);
-        this.drawRoadEdgeLine(-1); // 좌
-        this.drawRoadEdgeLine(1);  // 우
+        // 도로 가장자리 (흰색 실선) — 캐시 사용
+        this.staticRoadGfx.lineStyle(2, 0xFFFFFF, 0.6);
+        this.drawRoadEdgeLine(-1);
+        this.drawRoadEdgeLine(1);
+    }
+
+    // ===== Private: 동적 레이어 (매 프레임) =====
+
+    private drawStripes(): void {
+        this.stripeGfx.clear();
 
         // 레인 구분선 (점선)
         this.drawLaneDashes(-0.5);
@@ -194,23 +243,30 @@ export class RoadRenderer {
         this.drawMovingDashes();
     }
 
-    /** 도로 가장자리 연속선 */
+    /** 도로 가장자리 연속선 — 캐시 사용 */
     private drawRoadEdgeLine(side: -1 | 1): void {
-        this.roadGraphics.beginPath();
+        this.staticRoadGfx.beginPath();
         for (let i = 0; i <= ROAD_SEGMENTS; i++) {
-            const z = i / ROAD_SEGMENTS;
-            const edge = PerspectiveCamera.getRoadEdgeX(z);
-            const y = PerspectiveCamera.projectZ(z).screenY;
-            const x = side === -1 ? edge.left : edge.right;
-            if (i === 0) this.roadGraphics.moveTo(x, y);
-            else this.roadGraphics.lineTo(x, y);
+            // 캐시에서 가장자리 좌표 조회 (마지막 세그먼트의 far edge 사용)
+            let x: number, y: number;
+            if (i < ROAD_SEGMENTS) {
+                const seg = this.segmentCache[i];
+                x = side === -1 ? seg.leftX0 : seg.rightX0;
+                y = seg.y0;
+            } else {
+                const seg = this.segmentCache[i - 1];
+                x = side === -1 ? seg.leftX1 : seg.rightX1;
+                y = seg.y1;
+            }
+            if (i === 0) this.staticRoadGfx.moveTo(x, y);
+            else this.staticRoadGfx.lineTo(x, y);
         }
-        this.roadGraphics.strokePath();
+        this.staticRoadGfx.strokePath();
     }
 
-    /** 레인 사이 점선 (좌/우 1/3, 2/3 위치) */
+    /** 레인 사이 점선 */
     private drawLaneDashes(lanePos: number): void {
-        this.roadGraphics.lineStyle(1, this.laneColor, 0.25);
+        this.stripeGfx.lineStyle(1, this.laneColor, 0.25);
 
         for (let i = 0; i < ROAD_STRIPE_COUNT; i++) {
             const baseZ = (i / ROAD_STRIPE_COUNT + this.dashOffset) % 1;
@@ -220,22 +276,21 @@ export class RoadRenderer {
             const { screenY: y0 } = PerspectiveCamera.projectZ(z0);
             const { screenY: y1 } = PerspectiveCamera.projectZ(z1);
 
-            // lanePos를 도로 폭 내 비율로 X 계산
             const edge0 = PerspectiveCamera.getRoadEdgeX(z0);
             const edge1 = PerspectiveCamera.getRoadEdgeX(z1);
             const x0 = CENTER_X + (edge0.right - CENTER_X) * lanePos * 2 / 3 * 2;
             const x1 = CENTER_X + (edge1.right - CENTER_X) * lanePos * 2 / 3 * 2;
 
-            this.roadGraphics.beginPath();
-            this.roadGraphics.moveTo(x0, y0);
-            this.roadGraphics.lineTo(x1, y1);
-            this.roadGraphics.strokePath();
+            this.stripeGfx.beginPath();
+            this.stripeGfx.moveTo(x0, y0);
+            this.stripeGfx.lineTo(x1, y1);
+            this.stripeGfx.strokePath();
         }
     }
 
     /** 속도에 맞춰 이동하는 중앙 대시 마킹 */
     private drawMovingDashes(): void {
-        this.roadGraphics.lineStyle(2, 0xFFFF00, 0.4);
+        this.stripeGfx.lineStyle(2, 0xFFFF00, 0.4);
 
         for (let i = 0; i < ROAD_STRIPE_COUNT; i++) {
             const baseZ = (i / ROAD_STRIPE_COUNT + this.dashOffset) % 1;
@@ -245,10 +300,10 @@ export class RoadRenderer {
             const { screenY: y0 } = PerspectiveCamera.projectZ(z0);
             const { screenY: y1 } = PerspectiveCamera.projectZ(z1);
 
-            this.roadGraphics.beginPath();
-            this.roadGraphics.moveTo(CENTER_X, y0);
-            this.roadGraphics.lineTo(CENTER_X, y1);
-            this.roadGraphics.strokePath();
+            this.stripeGfx.beginPath();
+            this.stripeGfx.moveTo(CENTER_X, y0);
+            this.stripeGfx.lineTo(CENTER_X, y1);
+            this.stripeGfx.strokePath();
         }
     }
 

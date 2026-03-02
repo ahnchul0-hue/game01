@@ -179,6 +179,8 @@ export class EffectManager {
     reset(): void {
         this.isSlowmo = false;
         this.flashOverlay.setAlpha(0);
+        this.particleEmitter.stop();
+        this.dustEmitter.stop();
     }
 
     destroy(): void {

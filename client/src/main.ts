@@ -8,6 +8,7 @@ import { GameOver } from './scenes/GameOver';
 import { Onsen } from './scenes/Onsen';
 import { SkinSelect } from './scenes/SkinSelect';
 import { Missions } from './scenes/Missions';
+import { CompanionSelect } from './scenes/CompanionSelect';
 
 const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
@@ -32,7 +33,7 @@ const config: Phaser.Types.Core.GameConfig = {
             debug: false,
         },
     },
-    scene: [Boot, Preloader, MainMenu, Game, GameOver, Onsen, SkinSelect, Missions],
+    scene: [Boot, Preloader, MainMenu, Game, GameOver, Onsen, SkinSelect, Missions, CompanionSelect],
 };
 
 new Phaser.Game(config);

@@ -4,12 +4,16 @@ import {
     type Inventory,
     type OnsenLayout,
     type SkinId,
+    type CompanionId,
     SKIN_CONFIGS,
+    VALID_COMPANION_IDS,
     LS_KEY_INVENTORY,
     LS_KEY_ONSEN_LAYOUT,
     LS_KEY_SELECTED_SKIN,
     LS_KEY_UNLOCKED_SKINS,
     LS_KEY_MAX_DISTANCE,
+    LS_KEY_SELECTED_COMPANION,
+    LS_KEY_UNLOCKED_COMPANIONS,
 } from '../utils/Constants';
 
 const VALID_SKIN_IDS = new Set<string>(SKIN_CONFIGS.map(s => s.id));
@@ -130,14 +134,42 @@ export class InventoryManager {
         this.api.saveSkins(this.getSelectedSkin(), skins);
     }
 
+    // --- Companions ---
+
+    getSelectedCompanion(): CompanionId {
+        const raw = localStorage.getItem(LS_KEY_SELECTED_COMPANION);
+        return raw && VALID_COMPANION_IDS.has(raw) ? (raw as CompanionId) : 'none';
+    }
+
+    saveSelectedCompanion(companionId: CompanionId): void {
+        localStorage.setItem(LS_KEY_SELECTED_COMPANION, companionId);
+        this.api.saveCompanions(companionId, this.getUnlockedCompanions());
+    }
+
+    getUnlockedCompanions(): CompanionId[] {
+        try {
+            const raw = localStorage.getItem(LS_KEY_UNLOCKED_COMPANIONS);
+            if (!raw) return [];
+            return JSON.parse(raw) as CompanionId[];
+        } catch {
+            return [];
+        }
+    }
+
+    saveUnlockedCompanions(companions: CompanionId[]): void {
+        localStorage.setItem(LS_KEY_UNLOCKED_COMPANIONS, JSON.stringify(companions));
+        this.api.saveCompanions(this.getSelectedCompanion(), companions);
+    }
+
     // --- Server sync ---
 
     async syncFromServer(): Promise<void> {
         try {
-            const [inv, layoutJson, skins] = await Promise.all([
+            const [inv, layoutJson, skins, companions] = await Promise.all([
                 this.api.getInventory(),
                 this.api.getOnsenLayout(),
                 this.api.getSkins(),
+                this.api.getCompanions(),
             ]);
 
             if (inv) {
@@ -157,6 +189,11 @@ export class InventoryManager {
             if (skins) {
                 localStorage.setItem(LS_KEY_SELECTED_SKIN, skins.selected_skin);
                 localStorage.setItem(LS_KEY_UNLOCKED_SKINS, skins.unlocked_skins);
+            }
+
+            if (companions) {
+                localStorage.setItem(LS_KEY_SELECTED_COMPANION, companions.selected_companion);
+                localStorage.setItem(LS_KEY_UNLOCKED_COMPANIONS, companions.unlocked_companions);
             }
         } catch {
             // offline — use localStorage values

@@ -8,7 +8,9 @@ use sqlx::{FromRow, SqlitePool};
 
 #[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
 pub struct Mission {
+    #[serde(skip_serializing)]
     pub id: i64,
+    #[serde(skip_serializing)]
     pub user_id: String,
     pub mission_date: String,
     pub mission_type: String,
@@ -34,6 +36,7 @@ pub struct Streak {
 /// Public response type that includes `today_reward_claimed` derived field.
 #[derive(Debug, Serialize, Clone)]
 pub struct StreakResponse {
+    #[serde(skip_serializing)]
     pub user_id: String,
     pub current_streak: i64,
     pub longest_streak: i64,
@@ -185,7 +188,8 @@ pub async fn update_mission_progress(
     sqlx::query(
         "UPDATE daily_missions
          SET current_value = MIN(current_value + ?, target_value),
-             completed = CASE WHEN (current_value + ?) >= target_value THEN 1 ELSE completed END
+             completed = CASE WHEN (current_value + ?) >= target_value THEN 1 ELSE completed END,
+             updated_at = datetime('now')
          WHERE user_id = ? AND mission_date = ? AND mission_type = ? AND reward_claimed = 0",
     )
     .bind(progress_delta)
@@ -228,43 +232,65 @@ pub async fn get_mission_by_id(
 }
 
 /// Claims the reward for a completed, unclaimed mission.
-/// S2: Wraps UPDATE daily_missions + INSERT/UPDATE inventories in a transaction.
-/// Returns an error (mapped to AppError by the caller) on logical failures.
+/// Atomic TOCTOU fix: transaction starts FIRST, then an atomic UPDATE with
+/// conditions (completed=1 AND reward_claimed=0) prevents double-claim races.
 pub async fn claim_mission_reward(
     pool: &SqlitePool,
     user_id: &str,
     mission_id: i64,
 ) -> Result<Mission, ClaimError> {
-    let mission = get_mission_by_id(pool, mission_id, user_id)
-        .await
-        .map_err(|_| ClaimError::NotFound)?;
-
-    if mission.completed == 0 {
-        return Err(ClaimError::NotCompleted);
-    }
-    if mission.reward_claimed != 0 {
-        return Err(ClaimError::AlreadyClaimed);
-    }
-
-    let (add_mandarin, add_watermelon, add_hotspring_material) = match mission.reward_type.as_str()
-    {
-        "mandarin" => (mission.reward_amount, 0i64, 0i64),
-        "watermelon" => (0i64, mission.reward_amount, 0i64),
-        "hotspring_material" => (0i64, 0i64, mission.reward_amount),
-        _ => (0i64, 0i64, 0i64),
-    };
-
-    // S2: Wrap mark-claimed + inventory update in a transaction.
     let mut tx = pool.begin().await.map_err(ClaimError::Db)?;
 
-    sqlx::query(
-        "UPDATE daily_missions SET reward_claimed = 1 WHERE id = ? AND user_id = ?",
+    // Atomic: mark claimed only if completed=1 AND reward_claimed=0
+    let result = sqlx::query(
+        "UPDATE daily_missions SET reward_claimed = 1
+         WHERE id = ? AND user_id = ? AND completed = 1 AND reward_claimed = 0",
     )
     .bind(mission_id)
     .bind(user_id)
     .execute(&mut *tx)
     .await
     .map_err(ClaimError::Db)?;
+
+    if result.rows_affected() == 0 {
+        // Could be: not found, not completed, or already claimed
+        // Check which case it is
+        let mission = sqlx::query_as::<_, Mission>(
+            "SELECT id, user_id, mission_date, mission_type, target_value, current_value,
+                    completed, reward_claimed, reward_type, reward_amount
+             FROM daily_missions WHERE id = ? AND user_id = ?",
+        )
+        .bind(mission_id)
+        .bind(user_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(ClaimError::Db)?;
+
+        return match mission {
+            None => Err(ClaimError::NotFound),
+            Some(m) if m.completed == 0 => Err(ClaimError::NotCompleted),
+            Some(_) => Err(ClaimError::AlreadyClaimed),
+        };
+    }
+
+    // Get the mission to determine reward
+    let mission = sqlx::query_as::<_, Mission>(
+        "SELECT id, user_id, mission_date, mission_type, target_value, current_value,
+                completed, reward_claimed, reward_type, reward_amount
+         FROM daily_missions WHERE id = ? AND user_id = ?",
+    )
+    .bind(mission_id)
+    .bind(user_id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(ClaimError::Db)?;
+
+    let (add_mandarin, add_watermelon, add_hotspring_material) = match mission.reward_type.as_str() {
+        "mandarin" => (mission.reward_amount, 0i64, 0i64),
+        "watermelon" => (0i64, mission.reward_amount, 0i64),
+        "hotspring_material" => (0i64, 0i64, mission.reward_amount),
+        _ => (0i64, 0i64, 0i64),
+    };
 
     let inv_id = uuid::Uuid::new_v4().to_string();
     sqlx::query(
@@ -287,7 +313,6 @@ pub async fn claim_mission_reward(
 
     tx.commit().await.map_err(ClaimError::Db)?;
 
-    // Return updated mission (outside transaction)
     get_mission_by_id(pool, mission_id, user_id)
         .await
         .map_err(ClaimError::Db)

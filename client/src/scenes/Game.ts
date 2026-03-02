@@ -28,9 +28,11 @@ import {
     SCENE_GAME_OVER,
     EFFECT_SLOWMO_SCALE,
     LS_KEY_TUTORIAL_DONE,
+    ROAD_HEIGHT,
 } from '../utils/Constants';
-import type { GameMode, CollectedItems, OnsenBuff } from '../utils/Constants';
-import { getOnsenLevel, getOnsenBuff } from '../utils/OnsenLogic';
+import type { GameMode, CollectedItems, OnsenBuff, CompanionAbility } from '../utils/Constants';
+import { NO_COMPANION_ABILITY } from '../utils/Constants';
+import { getOnsenLevel, getOnsenBuff, getCompanionAbility } from '../utils/OnsenLogic';
 import { InventoryManager } from '../services/InventoryManager';
 import { SoundManager } from '../services/SoundManager';
 import { fadeToScene } from '../ui/UIFactory';
@@ -67,6 +69,9 @@ export class Game extends Phaser.Scene {
 
     // M4: 온천 버프
     private onsenBuff: OnsenBuff = { scoreMultiplier: 1, startingShield: false, itemMagnetRange: 0 };
+
+    // M5: 동물 친구 버프
+    private companionBuff: CompanionAbility = NO_COMPANION_ABILITY;
 
     // M2: 부활
     private revivesUsed = 0;
@@ -130,6 +135,7 @@ export class Game extends Phaser.Scene {
         this.pauseContainer = null;
         this.wasJumping = false;
         this.popupTexts = [];
+        this.resumeCooldown = false;
     }
 
     shutdown(): void {
@@ -174,8 +180,12 @@ export class Game extends Phaser.Scene {
         const onsenLevel = getOnsenLevel(layout.placedItems.length);
         this.onsenBuff = getOnsenBuff(onsenLevel);
 
+        // M5: 동물 친구 버프 읽기
+        const companionId = inventoryMgr.getSelectedCompanion();
+        this.companionBuff = getCompanionAbility(companionId);
+
         // 플레이어
-        this.player = new Player(this, LANE_POSITIONS[1], PLAYER_Y, skinId);
+        this.player = new Player(this, LANE_POSITIONS[1], PLAYER_Y, skinId, companionId);
         this.player.setDepth(10);
 
         // 온천 버프: 시작 방어막
@@ -404,7 +414,7 @@ export class Game extends Phaser.Scene {
         this.distance += this.gameSpeed * dt;
 
         // 의사-3D 렌더링 업데이트
-        const zSpeed = this.gameSpeed / 750;
+        const zSpeed = this.gameSpeed / ROAD_HEIGHT;
         this.roadRenderer.update(this.gameSpeed, dt);
         this.sceneryManager.update(zSpeed, dt);
         this.speedLineRenderer.update(this.gameSpeed, dt);
@@ -443,13 +453,15 @@ export class Game extends Phaser.Scene {
             }
         }
 
-        // 자동 수집: magnet(전레인) > friend(같은 레인 200) > 온천 버프
+        // 자동 수집: magnet(전레인) > friend(같은 레인 200) > 온천 버프 > 동물 친구
         if (this.player.getHasMagnet()) {
             this.autoCollectAllLanes(0.3);
         } else if (this.player.getHasFriend()) {
             this.autoCollectItems(200);
         } else if (this.onsenBuff.itemMagnetRange > 0) {
             this.autoCollectItems(this.onsenBuff.itemMagnetRange);
+        } else if (this.companionBuff.itemMagnetRange > 0) {
+            this.autoCollectItems(this.companionBuff.itemMagnetRange);
         }
 
         // 회피 감지: 이전 프레임 활성 장애물 중 현재 비활성으로 전환된 것 = 플레이어가 회피
@@ -504,6 +516,15 @@ export class Game extends Phaser.Scene {
             return false;
         }
 
+        // 동물 친구 확률 방어 (거북이)
+        if (shouldCollide && this.companionBuff.shieldChance > 0) {
+            if (Math.random() < this.companionBuff.shieldChance) {
+                obstacle.deactivate();
+                this.effectManager.onHelmetBreak(obstacle.x, obstacle.y);
+                return false;
+            }
+        }
+
         return shouldCollide;
     }
 
@@ -524,7 +545,7 @@ export class Game extends Phaser.Scene {
     // M2: 아이템 수집
     private onCollectItem(item: Item): void {
         SoundManager.getInstance().playSfx('collect');
-        const points = Math.floor(item.points * this.player.getScoreMultiplier() * this.onsenBuff.scoreMultiplier);
+        const points = Math.floor(item.points * this.player.getScoreMultiplier() * this.onsenBuff.scoreMultiplier * this.companionBuff.scoreMultiplier);
         this.score += points;
         this.collectedItems[item.itemType]++;
 
@@ -565,7 +586,7 @@ export class Game extends Phaser.Scene {
         const playerLaneOffset = LANE_OFFSETS[this.player.getCurrentLane()];
         const children = this.itemPool.getGroup().getChildren();
         // range를 z 범위로 변환 (200px → ~0.27z)
-        const zRange = range / 750;
+        const zRange = range / ROAD_HEIGHT;
 
         for (let i = 0; i < children.length; i++) {
             const child = children[i] as Item;
@@ -670,7 +691,7 @@ export class Game extends Phaser.Scene {
     }
 
     triggerGameOver(): void {
-        if (this.state === 'gameOver') return;
+        if (this.state === 'gameOver' || this.state === 'paused') return;
         this.state = 'gameOver';
 
         const snd = SoundManager.getInstance();

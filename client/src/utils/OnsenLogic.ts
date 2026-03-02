@@ -3,8 +3,13 @@ import {
     type OnsenLevel,
     type OnsenBuff,
     type UnlockCondition,
+    type CompanionId,
+    type CompanionUnlockCondition,
+    type CompanionAbility,
     ONSEN_LEVEL_THRESHOLDS,
     ONSEN_BUFF_CONFIGS,
+    COMPANION_CONFIGS,
+    NO_COMPANION_ABILITY,
 } from './Constants';
 
 export function getOnsenLevel(placedItemCount: number): OnsenLevel {
@@ -58,5 +63,33 @@ export function isSkinUnlocked(condition: UnlockCondition, stats: UnlockStats): 
             return stats.totalItemsCollected >= 1000;
         default:
             return false;
+    }
+}
+
+// ========== 동물 친구 ==========
+
+export function getCompanionAbility(companionId: CompanionId): CompanionAbility {
+    if (companionId === 'none') return NO_COMPANION_ABILITY;
+    const config = COMPANION_CONFIGS.find(c => c.id === companionId);
+    return config ? config.ability : NO_COMPANION_ABILITY;
+}
+
+export function isCompanionUnlocked(condition: CompanionUnlockCondition, stats: UnlockStats): boolean {
+    switch (condition) {
+        case 'always':          return true;
+        case 'distance_2000':   return stats.maxDistance >= 2000;
+        case 'items_500':       return stats.totalItemsCollected >= 500;
+        case 'onsen_level_2':   return stats.onsenLevelIndex >= 1;
+        default:                return false;
+    }
+}
+
+export function getCompanionUnlockProgress(condition: CompanionUnlockCondition, stats: UnlockStats): number {
+    switch (condition) {
+        case 'always':          return 1;
+        case 'distance_2000':   return Math.min(1, stats.maxDistance / 2000);
+        case 'items_500':       return Math.min(1, stats.totalItemsCollected / 500);
+        case 'onsen_level_2':   return Math.min(1, stats.onsenLevelIndex / 1);
+        default:                return 0;
     }
 }

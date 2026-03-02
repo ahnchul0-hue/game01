@@ -10,8 +10,9 @@ import {
     POWERUP_CONFIGS,
     POWERUP_SCORE_MULTIPLIER_TUBE,
     GRAVITY,
+    COMPANION_CONFIGS,
 } from '../utils/Constants';
-import type { PowerUpType, SkinId } from '../utils/Constants';
+import type { PowerUpType, SkinId, CompanionId } from '../utils/Constants';
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
     private currentLane = 1; // 0=좌, 1=중, 2=우
@@ -33,6 +34,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     private runTime = 0;
     private shadow: Phaser.GameObjects.Ellipse | null = null;
 
+    // 동물 친구 (영구 스프라이트)
+    private companionSprite: Phaser.GameObjects.Graphics | null = null;
+
     // 파워업 상태
     private hasHelmet = false;
     private hasTube = false;
@@ -45,7 +49,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     private friendTimerEvent: Phaser.Time.TimerEvent | null = null;
     private magnetTimerEvent: Phaser.Time.TimerEvent | null = null;
 
-    constructor(scene: Phaser.Scene, x: number, y: number, skinId: SkinId = 'default') {
+    constructor(scene: Phaser.Scene, x: number, y: number, skinId: SkinId = 'default', companionId: CompanionId = 'none') {
         super(scene, x, y, `capybara-${skinId}`);
 
         scene.add.existing(this);
@@ -69,6 +73,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         // 그림자 타원
         this.shadow = scene.add.ellipse(screenX, this.baseScreenY + 50 * this.baseScale, 70, 20, 0x000000, 0.3);
         this.shadow.setDepth(9);
+
+        // 동물 친구 스프라이트 (항상 표시)
+        if (companionId !== 'none') {
+            this.createCompanionSprite(companionId);
+        }
     }
 
     moveLeft(): void {
@@ -182,6 +191,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             this.friendSprite.setPosition(this.x - 70 * this.baseScale, this.y + 10 * this.baseScale);
             this.friendSprite.setScale(this.baseScale);
         }
+
+        // 동물 친구 위치 동기화 (플레이어 오른쪽 뒤)
+        if (this.companionSprite) {
+            const bobOffset = Math.sin(this.runTime * 0.7) * 4;
+            this.companionSprite.setPosition(
+                this.x + 65 * this.baseScale,
+                this.y + 20 * this.baseScale + bobOffset,
+            );
+            this.companionSprite.setScale(this.baseScale * 0.8);
+        }
     }
 
     setInvincible(duration: number): void {
@@ -197,6 +216,26 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             this.isInvincible = false;
             this.setAlpha(1);
         });
+    }
+
+    private createCompanionSprite(id: CompanionId): void {
+        const config = COMPANION_CONFIGS.find(c => c.id === id);
+        if (!config) return;
+
+        const gfx = this.scene.add.graphics();
+        // 작은 원형 동물 친구 (색상으로 구별)
+        gfx.fillStyle(config.color, 1);
+        gfx.fillCircle(0, 0, 18);
+        // 눈
+        gfx.fillStyle(0xFFFFFF, 1);
+        gfx.fillCircle(-6, -5, 5);
+        gfx.fillCircle(6, -5, 5);
+        gfx.fillStyle(0x000000, 1);
+        gfx.fillCircle(-5, -5, 2.5);
+        gfx.fillCircle(7, -5, 2.5);
+
+        gfx.setDepth(this.depth - 1);
+        this.companionSprite = gfx;
     }
 
     getIsInvincible(): boolean { return this.isInvincible; }
@@ -316,6 +355,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         this.scene.tweens.killTweensOf(this);
         if (this.helmetOverlay) { this.helmetOverlay.destroy(); this.helmetOverlay = null; }
         if (this.friendSprite) { this.friendSprite.destroy(); this.friendSprite = null; }
+        if (this.companionSprite) { this.companionSprite.destroy(); this.companionSprite = null; }
         if (this.shadow) { this.shadow.destroy(); this.shadow = null; }
         super.destroy(fromScene);
     }

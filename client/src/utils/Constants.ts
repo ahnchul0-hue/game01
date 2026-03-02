@@ -291,3 +291,57 @@ export const MISSION_LABELS: Record<MissionType, string> = {
 
 export const LS_KEY_DAILY_MISSIONS = 'capybara_daily_missions';
 export const LS_KEY_STREAK = 'capybara_streak';
+
+// ========== M5: 동물 친구 시스템 ==========
+export const SCENE_COMPANION_SELECT = 'CompanionSelect';
+export const LS_KEY_SELECTED_COMPANION = 'capybara_selected_companion';
+export const LS_KEY_UNLOCKED_COMPANIONS = 'capybara_unlocked_companions';
+
+export type CompanionId = 'none' | 'otter' | 'duck' | 'turtle';
+export type CompanionUnlockCondition = 'always' | 'distance_2000' | 'items_500' | 'onsen_level_2';
+
+export interface CompanionAbility {
+    scoreMultiplier: number;
+    shieldChance: number;
+    itemMagnetRange: number;
+}
+
+export interface CompanionConfig {
+    id: CompanionId;
+    name: string;
+    color: number;
+    emoji: string;
+    unlockCondition: CompanionUnlockCondition;
+    unlockDescription: string;
+    abilityDescription: string;
+    ability: CompanionAbility;
+}
+
+export const COMPANION_CONFIGS: CompanionConfig[] = [
+    {
+        id: 'otter', name: '수달', color: 0x6B4226, emoji: '🦦',
+        unlockCondition: 'distance_2000', unlockDescription: '2,000m 달리기',
+        abilityDescription: '아이템 자석 (100px)',
+        ability: { scoreMultiplier: 1.0, shieldChance: 0, itemMagnetRange: 100 },
+    },
+    {
+        id: 'duck', name: '오리', color: 0xFFD700, emoji: '🦆',
+        unlockCondition: 'items_500', unlockDescription: '아이템 500개 수집',
+        abilityDescription: '점수 1.2배',
+        ability: { scoreMultiplier: 1.2, shieldChance: 0, itemMagnetRange: 0 },
+    },
+    {
+        id: 'turtle', name: '거북이', color: 0x2E8B57, emoji: '🐢',
+        unlockCondition: 'onsen_level_2', unlockDescription: '온천 레벨 2 (숲속)',
+        abilityDescription: '15% 확률 방어',
+        ability: { scoreMultiplier: 1.0, shieldChance: 0.15, itemMagnetRange: 0 },
+    },
+];
+
+export const NO_COMPANION_ABILITY: CompanionAbility = {
+    scoreMultiplier: 1.0, shieldChance: 0, itemMagnetRange: 0,
+};
+
+export const VALID_COMPANION_IDS = new Set<string>(
+    ['none', ...COMPANION_CONFIGS.map(c => c.id)]
+);

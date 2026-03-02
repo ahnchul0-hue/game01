@@ -15,11 +15,15 @@ pub fn router() -> Router<AppState> {
 }
 
 fn extract_token(headers: &HeaderMap) -> Result<&str, AppError> {
-    headers
+    let token = headers
         .get("authorization")
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.strip_prefix("Bearer "))
-        .ok_or(AppError::Unauthorized)
+        .ok_or(AppError::Unauthorized)?;
+    if token.len() > 64 {
+        return Err(AppError::Unauthorized);
+    }
+    Ok(token)
 }
 
 async fn get_inventory(

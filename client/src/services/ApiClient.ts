@@ -20,6 +20,11 @@ export interface SkinsResponse {
     unlocked_skins: string;
 }
 
+export interface CompanionsResponse {
+    selected_companion: string;
+    unlocked_companions: string;
+}
+
 export interface ScoreEntry {
     id: string;
     user_id: string;
@@ -247,6 +252,40 @@ export class ApiClient {
                 body: JSON.stringify({
                     selected_skin: selectedSkin,
                     unlocked_skins: JSON.stringify(unlockedSkins),
+                }),
+            });
+            if (res.status === 401) await this.handleAuthError();
+        } catch {
+            // fire-and-forget
+        }
+    }
+
+    async getCompanions(): Promise<CompanionsResponse | null> {
+        const token = this.getToken();
+        if (!token) return null;
+        try {
+            const res = await this.fetchWithTimeout(
+                `${this.baseUrl}/api/companions`,
+                { headers: this.authHeaders() },
+            );
+            if (res.status === 401) { await this.handleAuthError(); return null; }
+            if (!res.ok) return null;
+            return await res.json();
+        } catch {
+            return null;
+        }
+    }
+
+    async saveCompanions(selectedCompanion: string, unlockedCompanions: string[]): Promise<void> {
+        const token = this.getToken();
+        if (!token) return;
+        try {
+            const res = await this.fetchWithTimeout(`${this.baseUrl}/api/companions`, {
+                method: 'PUT',
+                headers: this.authHeaders(),
+                body: JSON.stringify({
+                    selected_companion: selectedCompanion,
+                    unlocked_companions: JSON.stringify(unlockedCompanions),
                 }),
             });
             if (res.status === 401) await this.handleAuthError();

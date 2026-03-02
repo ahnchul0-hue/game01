@@ -6,7 +6,9 @@ use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct InventoryRow {
+    #[serde(skip_serializing)]
     pub id: String,
+    #[serde(skip_serializing)]
     pub user_id: String,
     pub mandarin: i64,
     pub watermelon: i64,
@@ -69,7 +71,9 @@ pub async fn add_inventory(
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct OnsenLayoutRow {
+    #[serde(skip_serializing)]
     pub id: String,
+    #[serde(skip_serializing)]
     pub user_id: String,
     pub layout_json: String,
     pub updated_at: String,
@@ -121,7 +125,9 @@ pub async fn upsert_layout(
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct UserSkinRow {
+    #[serde(skip_serializing)]
     pub id: String,
+    #[serde(skip_serializing)]
     pub user_id: String,
     pub selected_skin: String,
     pub unlocked_skins: String,

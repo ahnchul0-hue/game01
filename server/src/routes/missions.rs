@@ -49,7 +49,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/missions/daily", get(get_daily_missions))
         .route("/api/missions/progress", post(update_progress))
-        .route("/api/missions/claim/:mission_id", post(claim_mission))
+        .route("/api/missions/claim/{mission_id}", post(claim_mission))
         // C1: Fixed URL — was "/api/missions/streak-claim", now "/api/missions/streak/claim"
         .route("/api/missions/streak/claim", post(claim_streak))
 }
@@ -59,11 +59,15 @@ pub fn router() -> Router<AppState> {
 // ---------------------------------------------------------------------------
 
 fn extract_token(headers: &HeaderMap) -> Result<&str, AppError> {
-    headers
+    let token = headers
         .get("authorization")
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.strip_prefix("Bearer "))
-        .ok_or(AppError::Unauthorized)
+        .ok_or(AppError::Unauthorized)?;
+    if token.len() > 64 {
+        return Err(AppError::Unauthorized);
+    }
+    Ok(token)
 }
 
 fn today_utc() -> String {
@@ -130,31 +134,15 @@ async fn update_progress(
 
     let today = today_utc();
 
-    // S1: Frequency limit — max 10 progress updates per user per 60 seconds.
-    // Uses daily_missions rows updated today as a proxy (updated_at not present),
-    // so we count recent scores-style via a dedicated counter on the scores table.
-    // Simpler approach: count total progress POST requests in the last 60 seconds
-    // by querying daily_missions updated today where current_value > 0.
-    // Since daily_missions has no updated_at, we use a lightweight scores-table
-    // equivalent: count rows in daily_missions for this user+date that are
-    // already at max (completed), and also enforce via the model's early-return.
-    // Full rate check: query a rolling count from a timestamp-bearing table.
-    // We reuse the scores table pattern but on a simpler proxy:
-    // Count how many daily_missions rows for this user+today have been
-    // modified at all — but without updated_at we can't. So we use an
-    // explicit separate rate-limit query on scores (timestamp available there).
-    // Best available: count rows in scores within 60s as a coarse user-level guard.
-    // Real fix would require adding updated_at to daily_missions (future migration).
-    // For now, cap at 10 progress calls per 60s using scores table timestamp:
-    let recent_score_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM scores WHERE user_id = ? AND created_at > datetime('now', '-60 seconds')",
+    // Rate limit: max 10 mission progress updates per user per 60 seconds
+    let recent_update_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM daily_missions WHERE user_id = ? AND updated_at > datetime('now', '-60 seconds')",
     )
     .bind(&u.id)
     .fetch_one(&state.pool)
     .await?;
 
-    // Use a more permissive limit here (10) since progress updates happen during gameplay
-    if recent_score_count >= 10 {
+    if recent_update_count >= 10 {
         return Err(AppError::TooManyRequests);
     }
 

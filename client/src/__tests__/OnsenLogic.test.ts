@@ -6,6 +6,9 @@ import {
     getTotalItems,
     isSkinUnlocked,
     getUnlockProgress,
+    getCompanionAbility,
+    isCompanionUnlocked,
+    getCompanionUnlockProgress,
     type UnlockStats,
 } from '../utils/OnsenLogic';
 
@@ -200,5 +203,89 @@ describe('getOnsenBuff', () => {
             expect(getOnsenBuff(levels[i]).itemMagnetRange)
                 .toBeGreaterThan(getOnsenBuff(levels[i - 1]).itemMagnetRange);
         }
+    });
+});
+
+// ========== 동물 친구 ==========
+
+describe('getCompanionAbility', () => {
+    it('returns no-ability for "none"', () => {
+        const ability = getCompanionAbility('none');
+        expect(ability.scoreMultiplier).toBe(1.0);
+        expect(ability.shieldChance).toBe(0);
+        expect(ability.itemMagnetRange).toBe(0);
+    });
+
+    it('returns magnet ability for otter', () => {
+        const ability = getCompanionAbility('otter');
+        expect(ability.itemMagnetRange).toBe(100);
+        expect(ability.scoreMultiplier).toBe(1.0);
+        expect(ability.shieldChance).toBe(0);
+    });
+
+    it('returns score multiplier for duck', () => {
+        const ability = getCompanionAbility('duck');
+        expect(ability.scoreMultiplier).toBe(1.2);
+        expect(ability.shieldChance).toBe(0);
+        expect(ability.itemMagnetRange).toBe(0);
+    });
+
+    it('returns shield chance for turtle', () => {
+        const ability = getCompanionAbility('turtle');
+        expect(ability.shieldChance).toBe(0.15);
+        expect(ability.scoreMultiplier).toBe(1.0);
+        expect(ability.itemMagnetRange).toBe(0);
+    });
+
+    it('returns no-ability for unknown id', () => {
+        const ability = getCompanionAbility('dragon' as any);
+        expect(ability.scoreMultiplier).toBe(1.0);
+    });
+});
+
+describe('isCompanionUnlocked', () => {
+    it('always unlocks "always" condition', () => {
+        expect(isCompanionUnlocked('always', { maxDistance: 0, onsenLevelIndex: 0, totalItemsCollected: 0 })).toBe(true);
+    });
+
+    it('unlocks otter at 2000m', () => {
+        expect(isCompanionUnlocked('distance_2000', { maxDistance: 1999, onsenLevelIndex: 0, totalItemsCollected: 0 })).toBe(false);
+        expect(isCompanionUnlocked('distance_2000', { maxDistance: 2000, onsenLevelIndex: 0, totalItemsCollected: 0 })).toBe(true);
+    });
+
+    it('unlocks duck at 500 items', () => {
+        expect(isCompanionUnlocked('items_500', { maxDistance: 0, onsenLevelIndex: 0, totalItemsCollected: 499 })).toBe(false);
+        expect(isCompanionUnlocked('items_500', { maxDistance: 0, onsenLevelIndex: 0, totalItemsCollected: 500 })).toBe(true);
+    });
+
+    it('unlocks turtle at onsen level 2', () => {
+        expect(isCompanionUnlocked('onsen_level_2', { maxDistance: 0, onsenLevelIndex: 0, totalItemsCollected: 0 })).toBe(false);
+        expect(isCompanionUnlocked('onsen_level_2', { maxDistance: 0, onsenLevelIndex: 1, totalItemsCollected: 0 })).toBe(true);
+    });
+});
+
+describe('getCompanionUnlockProgress', () => {
+    it('returns 1 for always', () => {
+        expect(getCompanionUnlockProgress('always', { maxDistance: 0, onsenLevelIndex: 0, totalItemsCollected: 0 })).toBe(1);
+    });
+
+    it('returns 0.5 for distance_2000 at 1000m', () => {
+        expect(getCompanionUnlockProgress('distance_2000', { maxDistance: 1000, onsenLevelIndex: 0, totalItemsCollected: 0 })).toBe(0.5);
+    });
+
+    it('returns 0.4 for items_500 at 200 items', () => {
+        expect(getCompanionUnlockProgress('items_500', { maxDistance: 0, onsenLevelIndex: 0, totalItemsCollected: 200 })).toBeCloseTo(0.4);
+    });
+
+    it('clamps at 1', () => {
+        expect(getCompanionUnlockProgress('distance_2000', { maxDistance: 5000, onsenLevelIndex: 0, totalItemsCollected: 0 })).toBe(1);
+    });
+
+    it('returns 0 for onsen_level_2 at index 0', () => {
+        expect(getCompanionUnlockProgress('onsen_level_2', { maxDistance: 0, onsenLevelIndex: 0, totalItemsCollected: 0 })).toBe(0);
+    });
+
+    it('returns 1 for onsen_level_2 at index 1', () => {
+        expect(getCompanionUnlockProgress('onsen_level_2', { maxDistance: 0, onsenLevelIndex: 1, totalItemsCollected: 0 })).toBe(1);
     });
 });

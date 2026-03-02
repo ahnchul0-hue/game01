@@ -19,17 +19,25 @@ pub fn router() -> Router<AppState> {
         .route("/api/scores/top", get(get_top_scores))
 }
 
+fn extract_token(headers: &HeaderMap) -> Result<&str, AppError> {
+    let token = headers
+        .get("authorization")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
+        .ok_or(AppError::Unauthorized)?;
+    if token.len() > 64 {
+        return Err(AppError::Unauthorized);
+    }
+    Ok(token)
+}
+
 async fn create_score(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(req): Json<score::CreateScoreRequest>,
 ) -> Result<Json<score::Score>, AppError> {
     // Bearer token 추출
-    let token = headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.strip_prefix("Bearer "))
-        .ok_or(AppError::Unauthorized)?;
+    let token = extract_token(&headers)?;
 
     // 입력 값 검증
     if req.score < 0 || req.distance < 0 || req.items_collected < 0 {
