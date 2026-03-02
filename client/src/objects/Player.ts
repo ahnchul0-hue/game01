@@ -6,7 +6,10 @@ import {
     JUMP_VELOCITY,
     SLIDE_DURATION,
     LANE_MOVE_DURATION,
+    POWERUP_CONFIGS,
+    POWERUP_SCORE_MULTIPLIER_TUBE,
 } from '../utils/Constants';
+import type { PowerUpType } from '../utils/Constants';
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
     private currentLane = 1; // 0=좌, 1=중, 2=우
@@ -17,6 +20,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     private slideTimer: Phaser.Time.TimerEvent | null = null;
     private originalBodyHeight = 0;
     private originalBodyOffsetY = 0;
+
+    // M3: 파워업 상태
+    private hasHelmet = false;
+    private hasTube = false;
+    private hasFriend = false;
+    private scoreMultiplier = 1;
+    private helmetOverlay: Phaser.GameObjects.Sprite | null = null;
+    private friendSprite: Phaser.GameObjects.Sprite | null = null;
+    private tubeTimerEvent: Phaser.Time.TimerEvent | null = null;
+    private friendTimerEvent: Phaser.Time.TimerEvent | null = null;
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
         super(scene, x, y, 'capybara');
@@ -111,6 +124,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             this.y = PLAYER_Y;
             this.setVelocityY(0);
         }
+
+        // M3: 파워업 오버레이/동반자 위치 동기화
+        if (this.helmetOverlay) {
+            this.helmetOverlay.setPosition(this.x, this.y - 70);
+        }
+        if (this.friendSprite) {
+            this.friendSprite.setPosition(this.x - 70, this.y + 10);
+        }
     }
 
     setInvincible(duration: number): void {
@@ -147,10 +168,119 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         return this.currentLane;
     }
 
+    // ========== M3: 파워업 메서드 ==========
+
+    applyPowerUp(type: PowerUpType): void {
+        switch (type) {
+            case 'helmet':
+                this.hasHelmet = true;
+                if (!this.helmetOverlay) {
+                    this.helmetOverlay = this.scene.add.sprite(this.x, this.y - 70, 'helmet-overlay');
+                    this.helmetOverlay.setDepth(this.depth + 1);
+                }
+                this.helmetOverlay.setVisible(true);
+                break;
+
+            case 'tube':
+                this.hasTube = true;
+                this.scoreMultiplier = POWERUP_SCORE_MULTIPLIER_TUBE;
+                this.setTint(0x64B5F6);
+
+                if (this.tubeTimerEvent) this.tubeTimerEvent.destroy();
+                this.tubeTimerEvent = this.scene.time.delayedCall(
+                    POWERUP_CONFIGS.tube.duration,
+                    () => this.clearTube(),
+                );
+                break;
+
+            case 'friend':
+                this.hasFriend = true;
+                this.isInvincible = true;
+
+                if (!this.friendSprite) {
+                    this.friendSprite = this.scene.add.sprite(this.x - 70, this.y + 10, 'friend-sprite');
+                    this.friendSprite.setDepth(this.depth);
+                }
+                this.friendSprite.setVisible(true);
+
+                if (this.friendTimerEvent) this.friendTimerEvent.destroy();
+                this.friendTimerEvent = this.scene.time.delayedCall(
+                    POWERUP_CONFIGS.friend.duration,
+                    () => this.clearFriend(),
+                );
+                break;
+        }
+    }
+
+    /** 헬멧 소모. 보유 시 true 반환, 미보유 시 false */
+    consumeHelmet(): boolean {
+        if (!this.hasHelmet) return false;
+        this.hasHelmet = false;
+        if (this.helmetOverlay) {
+            this.helmetOverlay.setVisible(false);
+        }
+        return true;
+    }
+
+    private clearTube(): void {
+        this.hasTube = false;
+        this.scoreMultiplier = 1;
+        this.clearTint();
+        this.tubeTimerEvent = null;
+    }
+
+    private clearFriend(): void {
+        this.hasFriend = false;
+        this.isInvincible = false;
+        if (this.friendSprite) {
+            this.friendSprite.setVisible(false);
+        }
+        this.friendTimerEvent = null;
+    }
+
+    clearAllPowerUps(): void {
+        if (this.hasHelmet) this.consumeHelmet();
+        if (this.hasTube) {
+            if (this.tubeTimerEvent) {
+                this.tubeTimerEvent.destroy();
+                this.tubeTimerEvent = null;
+            }
+            this.clearTube();
+        }
+        if (this.hasFriend) {
+            if (this.friendTimerEvent) {
+                this.friendTimerEvent.destroy();
+                this.friendTimerEvent = null;
+            }
+            this.clearFriend();
+        }
+    }
+
+    getScoreMultiplier(): number {
+        return this.scoreMultiplier;
+    }
+
+    getHasFriend(): boolean {
+        return this.hasFriend;
+    }
+
+    getHasHelmet(): boolean {
+        return this.hasHelmet;
+    }
+
     destroy(fromScene?: boolean): void {
         if (this.slideTimer) {
             this.slideTimer.destroy();
             this.slideTimer = null;
+        }
+        this.clearAllPowerUps();
+        if (this.helmetOverlay) {
+            this.helmetOverlay.destroy();
+            this.helmetOverlay = null;
+        }
+        if (this.friendSprite) {
+            this.friendSprite.destroy();
+            this.friendSprite = null;
         }
         super.destroy(fromScene);
     }

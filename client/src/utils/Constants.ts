@@ -96,3 +96,54 @@ export const INVINCIBLE_DURATION = 2000; // ms
 export const API_BASE_URL = '';  // 프록시 사용 시 빈 문자열
 export const LS_KEY_TOKEN = 'capybara_token';
 export const LS_KEY_USER_ID = 'capybara_user_id';
+
+// ========== M3: 파워업 시스템 ==========
+export type PowerUpType = 'helmet' | 'tube' | 'friend';
+
+export const POWERUP_CONFIGS: Record<PowerUpType, { width: number; height: number; color: number; duration: number }> = {
+    helmet: { width: 50, height: 50, color: 0x2E7D32, duration: 0 },      // 1회용 (duration 미사용)
+    tube:   { width: 50, height: 50, color: 0x1565C0, duration: 5000 },    // 5초
+    friend: { width: 50, height: 50, color: 0xFF6F00, duration: 8000 },    // 8초
+};
+
+export const POWERUP_POOL_SIZE = 5;
+export const POWERUP_SPAWN_CHANCE = 0.12;
+export const POWERUP_MIN_DISTANCE = 300;
+export const POWERUP_SCORE_MULTIPLIER_TUBE = 2;
+
+// ========== M3: 스테이지 시스템 ==========
+export type StageType = 'forest' | 'river' | 'village' | 'onsen';
+
+export const STAGE_THRESHOLDS: { stage: StageType; minDistance: number }[] = [
+    { stage: 'forest',  minDistance: 0 },
+    { stage: 'river',   minDistance: 500 },
+    { stage: 'village', minDistance: 1500 },
+    { stage: 'onsen',   minDistance: 3000 },
+];
+
+export const STAGE_LOOP_DISTANCE = 3000;
+
+export const STAGE_COLORS: Record<StageType, { sky: number; trees: number; ground: number }> = {
+    forest:  { sky: 0x87CEEB, trees: 0x228B22, ground: 0x8B4513 },
+    river:   { sky: 0xB0E0E6, trees: 0x2F9E9E, ground: 0x5D7A8A },
+    village: { sky: 0xFAD6A5, trees: 0xA0522D, ground: 0xC49A6C },
+    onsen:   { sky: 0xE8B4D8, trees: 0x9C6B98, ground: 0xB07BA5 },
+};
+
+export const STAGE_NAMES: Record<StageType, string> = {
+    forest:  '숲속',
+    river:   '강가',
+    village: '마을',
+    onsen:   '온천',
+};
+
+export const STAGE_TRANSITION_DURATION = 800;
+
+// ========== M3: 이펙트 상수 ==========
+export const EFFECT_RED_FLASH_DURATION = 200;
+export const EFFECT_SLOWMO_DURATION = 500;
+export const EFFECT_SLOWMO_SCALE = 0.3;
+export const EFFECT_PARTICLE_LIFESPAN = 400;
+export const EFFECT_STAGE_TEXT_DURATION = 2000;
+export const DEPTH_EFFECT_OVERLAY = 50;
+export const DEPTH_STAGE_TEXT = 250;

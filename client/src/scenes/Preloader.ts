@@ -6,8 +6,10 @@ import {
     SCENE_MAIN_MENU,
     OBSTACLE_CONFIGS,
     ITEM_SIZE,
+    POWERUP_CONFIGS,
+    STAGE_COLORS,
 } from '../utils/Constants';
-import type { ObstacleType } from '../utils/Constants';
+import type { ObstacleType, PowerUpType, StageType } from '../utils/Constants';
 
 export class Preloader extends Phaser.Scene {
     constructor() {
@@ -116,6 +118,49 @@ export class Preloader extends Phaser.Scene {
         this.createItemTexture('mandarin', 0xFF8C00);
         this.createItemTexture('watermelon', 0x2E8B57);
         this.createItemTexture('hotspring_material', 0xFF69B4);
+
+        // M3: 파워업 텍스처 3종
+        this.createPowerUpTexture('helmet');
+        this.createPowerUpTexture('tube');
+        this.createPowerUpTexture('friend');
+
+        // M3: 스테이지별 배경 텍스처 (4 스테이지 × 3 레이어)
+        for (const stage of Object.keys(STAGE_COLORS) as StageType[]) {
+            this.createStageBgTextures(stage);
+        }
+
+        // M3: 파티클 텍스처 (8x8 흰색)
+        const particleGfx = this.make.graphics({ x: 0, y: 0 }, false);
+        particleGfx.fillStyle(0xFFFFFF, 1);
+        particleGfx.fillCircle(4, 4, 4);
+        particleGfx.generateTexture('particle', 8, 8);
+        particleGfx.destroy();
+
+        // M3: 동물 친구 스프라이트 (60x60 오렌지 원형)
+        const friendGfx = this.make.graphics({ x: 0, y: 0 }, false);
+        friendGfx.fillStyle(0xFF6F00, 1);
+        friendGfx.fillRoundedRect(0, 0, 60, 60, 12);
+        // 눈
+        friendGfx.fillStyle(0x000000, 1);
+        friendGfx.fillCircle(20, 22, 4);
+        friendGfx.fillCircle(40, 22, 4);
+        // 코
+        friendGfx.fillStyle(0x4A3015, 1);
+        friendGfx.fillCircle(30, 35, 5);
+        friendGfx.generateTexture('friend-sprite', 60, 60);
+        friendGfx.destroy();
+
+        // M3: 헬멧 오버레이 (수박 헬멧 — 50x40 초록)
+        const helmetGfx = this.make.graphics({ x: 0, y: 0 }, false);
+        helmetGfx.fillStyle(0x2E7D32, 1);
+        helmetGfx.fillRoundedRect(0, 0, 50, 40, 10);
+        // 수박 줄무늬
+        helmetGfx.lineStyle(2, 0x1B5E20, 1);
+        helmetGfx.lineBetween(10, 5, 10, 35);
+        helmetGfx.lineBetween(25, 3, 25, 37);
+        helmetGfx.lineBetween(40, 5, 40, 35);
+        helmetGfx.generateTexture('helmet-overlay', 50, 40);
+        helmetGfx.destroy();
     }
 
     private createObstacleTexture(
@@ -155,5 +200,86 @@ export class Preloader extends Phaser.Scene {
         gfx.fillCircle(ITEM_SIZE / 2 - 5, ITEM_SIZE / 2 - 5, ITEM_SIZE / 6);
         gfx.generateTexture(`item-${name}`, ITEM_SIZE, ITEM_SIZE);
         gfx.destroy();
+    }
+
+    // M3: 파워업 텍스처 (다이아몬드 모양 + 타입별 색상)
+    private createPowerUpTexture(type: PowerUpType): void {
+        const config = POWERUP_CONFIGS[type];
+        const gfx = this.make.graphics({ x: 0, y: 0 }, false);
+        const w = config.width;
+        const h = config.height;
+
+        // 외곽 다이아몬드
+        gfx.fillStyle(config.color, 1);
+        gfx.beginPath();
+        gfx.moveTo(w / 2, 2);
+        gfx.lineTo(w - 2, h / 2);
+        gfx.lineTo(w / 2, h - 2);
+        gfx.lineTo(2, h / 2);
+        gfx.closePath();
+        gfx.fillPath();
+
+        // 내부 하이라이트
+        gfx.fillStyle(0xFFFFFF, 0.3);
+        gfx.beginPath();
+        gfx.moveTo(w / 2, 10);
+        gfx.lineTo(w - 14, h / 2);
+        gfx.lineTo(w / 2, h / 2);
+        gfx.lineTo(14, h / 2);
+        gfx.closePath();
+        gfx.fillPath();
+
+        // 타입별 아이콘 심볼
+        gfx.fillStyle(0xFFFFFF, 0.8);
+        if (type === 'helmet') {
+            gfx.fillRoundedRect(w / 2 - 8, h / 2 - 4, 16, 12, 4);
+        } else if (type === 'tube') {
+            gfx.fillCircle(w / 2, h / 2 + 2, 8);
+            gfx.fillStyle(config.color, 1);
+            gfx.fillCircle(w / 2, h / 2 + 2, 4);
+        } else {
+            gfx.fillCircle(w / 2, h / 2 + 2, 6);
+            gfx.fillCircle(w / 2 - 6, h / 2 - 2, 4);
+        }
+
+        gfx.generateTexture(`powerup-${type}`, w, h);
+        gfx.destroy();
+    }
+
+    // M3: 스테이지별 배경 텍스처 세트 (sky, trees, ground)
+    private createStageBgTextures(stage: StageType): void {
+        const colors = STAGE_COLORS[stage];
+
+        // 하늘
+        const skyGfx = this.make.graphics({ x: 0, y: 0 }, false);
+        skyGfx.fillStyle(colors.sky, 1);
+        skyGfx.fillRect(0, 0, 64, 64);
+        skyGfx.generateTexture(`bg-sky-${stage}`, 64, 64);
+        skyGfx.destroy();
+
+        // 나무/산
+        const treesGfx = this.make.graphics({ x: 0, y: 0 }, false);
+        treesGfx.fillStyle(colors.trees, 1);
+        treesGfx.fillTriangle(0, 256, 128, 40, 256, 256);
+        const treeVariant = Phaser.Display.Color.ValueToColor(colors.trees);
+        treeVariant.brighten(10);
+        treesGfx.fillStyle(treeVariant.color, 1);
+        treesGfx.fillTriangle(150, 256, 300, 60, 450, 256);
+        treeVariant.darken(20);
+        treesGfx.fillStyle(treeVariant.color, 1);
+        treesGfx.fillTriangle(350, 256, 480, 90, 512, 256);
+        treesGfx.generateTexture(`bg-trees-${stage}`, 512, 256);
+        treesGfx.destroy();
+
+        // 땅
+        const groundGfx = this.make.graphics({ x: 0, y: 0 }, false);
+        groundGfx.fillStyle(colors.ground, 1);
+        groundGfx.fillRect(0, 0, 512, 256);
+        const grassColor = Phaser.Display.Color.ValueToColor(colors.trees);
+        grassColor.darken(10);
+        groundGfx.fillStyle(grassColor.color, 1);
+        groundGfx.fillRect(0, 0, 512, 8);
+        groundGfx.generateTexture(`bg-ground-${stage}`, 512, 256);
+        groundGfx.destroy();
     }
 }

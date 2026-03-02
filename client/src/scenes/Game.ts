@@ -2,10 +2,14 @@ import Phaser from 'phaser';
 import { Player } from '../objects/Player';
 import { Obstacle } from '../objects/Obstacle';
 import { Item } from '../objects/Item';
+import { PowerUp } from '../objects/PowerUp';
 import { ObstaclePool } from '../pools/ObstaclePool';
 import { ItemPool } from '../pools/ItemPool';
+import { PowerUpPool } from '../pools/PowerUpPool';
 import { DifficultyManager } from '../systems/DifficultyManager';
 import { SpawnManager } from '../systems/SpawnManager';
+import { StageManager } from '../systems/StageManager';
+import { EffectManager } from '../systems/EffectManager';
 import {
     GAME_WIDTH,
     GAME_HEIGHT,
@@ -17,6 +21,7 @@ import {
     INVINCIBLE_DURATION,
     SCENE_GAME,
     SCENE_GAME_OVER,
+    EFFECT_SLOWMO_SCALE,
 } from '../utils/Constants';
 import type { GameMode, CollectedItems } from '../utils/Constants';
 
@@ -39,6 +44,11 @@ export class Game extends Phaser.Scene {
     private itemPool!: ItemPool;
     private difficulty!: DifficultyManager;
     private spawnManager!: SpawnManager;
+
+    // M3: 파워업/스테이지/이펙트
+    private powerUpPool!: PowerUpPool;
+    private stageManager!: StageManager;
+    private effectManager!: EffectManager;
 
     // M2: 부활
     private revivesUsed = 0;
@@ -81,12 +91,12 @@ export class Game extends Phaser.Scene {
     }
 
     create(): void {
-        // 배경 (패럴랙스 3레이어)
-        this.bgSky = this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, 'bg-sky')
+        // 배경 (패럴랙스 3레이어 — M3: 스테이지별 텍스처)
+        this.bgSky = this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, 'bg-sky-forest')
             .setOrigin(0, 0).setDepth(0);
-        this.bgTrees = this.add.tileSprite(0, GAME_HEIGHT - 512, GAME_WIDTH, 256, 'bg-trees')
+        this.bgTrees = this.add.tileSprite(0, GAME_HEIGHT - 512, GAME_WIDTH, 256, 'bg-trees-forest')
             .setOrigin(0, 0).setDepth(1);
-        this.bgGround = this.add.tileSprite(0, GAME_HEIGHT - 256, GAME_WIDTH, 256, 'bg-ground')
+        this.bgGround = this.add.tileSprite(0, GAME_HEIGHT - 256, GAME_WIDTH, 256, 'bg-ground-forest')
             .setOrigin(0, 0).setDepth(2);
 
         // 레인 구분선
@@ -104,8 +114,13 @@ export class Game extends Phaser.Scene {
         // M2: 오브젝트 풀 + 매니저
         this.obstaclePool = new ObstaclePool(this);
         this.itemPool = new ItemPool(this);
+        this.powerUpPool = new PowerUpPool(this);
         this.difficulty = new DifficultyManager();
-        this.spawnManager = new SpawnManager(this.obstaclePool, this.itemPool, this.difficulty);
+        this.spawnManager = new SpawnManager(this.obstaclePool, this.itemPool, this.powerUpPool, this.difficulty);
+
+        // M3: 스테이지/이펙트 매니저
+        this.stageManager = new StageManager(this, this.bgSky, this.bgTrees, this.bgGround);
+        this.effectManager = new EffectManager(this);
 
         // M2: 충돌 감지 (processCallback 사용 — 리뷰 C3)
         this.physics.add.overlap(
@@ -119,6 +134,15 @@ export class Game extends Phaser.Scene {
             this.player,
             this.itemPool.getGroup(),
             (_p, i) => this.onCollectItem(i as unknown as Item),
+            undefined,
+            this,
+        );
+
+        // M3: 파워업 충돌 감지
+        this.physics.add.overlap(
+            this.player,
+            this.powerUpPool.getGroup(),
+            (_p, pu) => this.onCollectPowerUp(pu as unknown as PowerUp),
             undefined,
             this,
         );
@@ -173,7 +197,11 @@ export class Game extends Phaser.Scene {
     update(_time: number, delta: number): void {
         if (this.state !== 'playing') return;
 
-        const dt = delta / 1000;
+        // M3: 슬로우모션 적용
+        this.effectManager.update();
+        const effectiveDelta = this.effectManager.isSlowmo ? delta * EFFECT_SLOWMO_SCALE : delta;
+
+        const dt = effectiveDelta / 1000;
         const isRelax = this.mode === 'relax';
 
         // 속도 증가 (DifficultyManager 사용)
@@ -199,7 +227,18 @@ export class Game extends Phaser.Scene {
         this.player.update();
 
         // M2: 스폰 업데이트
-        this.spawnManager.update(delta, this.distance, this.gameSpeed, isRelax);
+        this.spawnManager.update(effectiveDelta, this.distance, this.gameSpeed, isRelax);
+
+        // M3: 스테이지 전환 체크
+        const newStage = this.stageManager.update(this.distance);
+        if (newStage) {
+            this.effectManager.onStageTransition(newStage);
+        }
+
+        // M3: friend 자동 수집
+        if (this.player.getHasFriend()) {
+            this.autoCollectItems();
+        }
 
         // HUD 업데이트
         this.scoreText.setText(`${this.score}`);
@@ -209,12 +248,24 @@ export class Game extends Phaser.Scene {
     // M2: 장애물 충돌 판정 (processCallback — 리뷰 C3)
     private shouldObstacleCollide(obstacle: Obstacle): boolean {
         if (this.player.getIsInvincible()) return false;
+
+        let shouldCollide: boolean;
         switch (obstacle.obstacleType) {
-            case 'branch_high': return !this.player.getIsSliding();
-            case 'puddle':      return !this.player.getIsJumping();
-            case 'rock':        return true;
-            default:            return true;
+            case 'branch_high': shouldCollide = !this.player.getIsSliding(); break;
+            case 'puddle':      shouldCollide = !this.player.getIsJumping(); break;
+            case 'rock':        shouldCollide = true; break;
+            default:            shouldCollide = true; break;
         }
+
+        // M3: helmet 방어 — 충돌 직전에 소모
+        if (shouldCollide && this.player.getHasHelmet()) {
+            this.player.consumeHelmet();
+            obstacle.deactivate();
+            this.effectManager.onHelmetBreak(obstacle.x, obstacle.y);
+            return false;
+        }
+
+        return shouldCollide;
     }
 
     // M2: 장애물 충돌 처리
@@ -222,8 +273,8 @@ export class Game extends Phaser.Scene {
         // 동일 프레임 중복 호출 방지 (리뷰 2차 C1)
         if (this.state !== 'playing') return;
 
-        // 카메라 흔들림
-        this.cameras.main.shake(100, 0.005);
+        // M3: 이펙트 매니저를 통한 충돌 이펙트 (빨간 플래시 + 강화 카메라 흔들림)
+        this.effectManager.onObstacleHit();
 
         if (this.revivesUsed < MAX_FREE_REVIVES) {
             this.showRevivePrompt();
@@ -234,11 +285,16 @@ export class Game extends Phaser.Scene {
 
     // M2: 아이템 수집
     private onCollectItem(item: Item): void {
-        this.score += item.points;
+        // M3: 점수 배율 적용 (tube 파워업)
+        const points = item.points * this.player.getScoreMultiplier();
+        this.score += points;
         this.collectedItems[item.itemType]++;
 
+        // M3: 수집 이펙트 (파티클 + 점수 바운스)
+        this.effectManager.onItemCollected(item.x, item.y, this.scoreText);
+
         // 팝업 텍스트
-        const popupText = this.add.text(item.x, item.y, `+${item.points}`, {
+        const popupText = this.add.text(item.x, item.y, `+${points}`, {
             fontFamily: 'Arial', fontSize: '24px', color: '#FFD700',
             fontStyle: 'bold', stroke: '#000000', strokeThickness: 2,
         }).setOrigin(0.5).setDepth(200);
@@ -253,6 +309,38 @@ export class Game extends Phaser.Scene {
         });
 
         item.deactivate();
+    }
+
+    // M3: 파워업 수집
+    private onCollectPowerUp(powerUp: PowerUp): void {
+        this.player.applyPowerUp(powerUp.powerUpType);
+        this.effectManager.onPowerUpCollected(this.player);
+        powerUp.deactivate();
+    }
+
+    // M3: friend 파워업 — 같은 레인 + Y 근접 아이템 자동 수집
+    private autoCollectItems(): void {
+        const playerLane = this.player.getCurrentLane();
+        const playerY = this.player.y;
+        const children = this.itemPool.getGroup().getChildren();
+
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i] as Item;
+            if (!child.active) continue;
+
+            // 같은 레인인지 확인 (X좌표 비교)
+            const itemLane = LANE_POSITIONS.indexOf(
+                LANE_POSITIONS.reduce((prev, curr) =>
+                    Math.abs(curr - child.x) < Math.abs(prev - child.x) ? curr : prev
+                )
+            );
+            if (itemLane !== playerLane) continue;
+
+            // Y 근접 체크 (200px 이내)
+            if (Math.abs(child.y - playerY) < 200) {
+                this.onCollectItem(child);
+            }
+        }
     }
 
     // M2: 부활 프롬프트
@@ -328,6 +416,9 @@ export class Game extends Phaser.Scene {
             this.reviveContainer = null;
         }
 
+        // M3: 파워업 초기화
+        this.player.clearAllPowerUps();
+
         // 모든 장애물/아이템 제거
         this.spawnManager.reset();
 
@@ -342,6 +433,9 @@ export class Game extends Phaser.Scene {
     triggerGameOver(): void {
         if (this.state === 'gameOver') return;
         this.state = 'gameOver';
+
+        // M3: 파워업 초기화
+        this.player.clearAllPowerUps();
 
         this.destroyReviveHitZones();
         if (this.reviveContainer) {

@@ -1,5 +1,6 @@
 import { ObstaclePool } from '../pools/ObstaclePool';
 import { ItemPool } from '../pools/ItemPool';
+import { PowerUpPool } from '../pools/PowerUpPool';
 import { DifficultyManager } from './DifficultyManager';
 import {
     LANE_POSITIONS,
@@ -7,19 +8,28 @@ import {
     ITEM_SPAWN_CHANCE,
     ITEM_WEIGHTS,
     SPAWN_INTERVAL_START,
+    POWERUP_SPAWN_CHANCE,
+    POWERUP_MIN_DISTANCE,
 } from '../utils/Constants';
-import type { ItemType } from '../utils/Constants';
+import type { ItemType, PowerUpType } from '../utils/Constants';
 
 export class SpawnManager {
     private obstaclePool: ObstaclePool;
     private itemPool: ItemPool;
+    private powerUpPool: PowerUpPool;
     private difficulty: DifficultyManager;
     private spawnTimer = 0;
     private currentInterval = SPAWN_INTERVAL_START;
 
-    constructor(obstaclePool: ObstaclePool, itemPool: ItemPool, difficulty: DifficultyManager) {
+    constructor(
+        obstaclePool: ObstaclePool,
+        itemPool: ItemPool,
+        powerUpPool: PowerUpPool,
+        difficulty: DifficultyManager,
+    ) {
         this.obstaclePool = obstaclePool;
         this.itemPool = itemPool;
+        this.powerUpPool = powerUpPool;
         this.difficulty = difficulty;
     }
 
@@ -55,9 +65,13 @@ export class SpawnManager {
             usedLanes.push(lane);
         }
 
-        // 남은 레인에 아이템 배치 (확률 기반)
+        // 남은 레인에 아이템/파워업 배치 (확률 기반)
         for (let i = obstacleCount; i < lanes.length; i++) {
-            if (Math.random() < ITEM_SPAWN_CHANCE) {
+            // 파워업 우선 체크 (300m+ 이후 12% 확률)
+            if (distance >= POWERUP_MIN_DISTANCE && Math.random() < POWERUP_SPAWN_CHANCE) {
+                const powerUpType = this.randomPowerUpType();
+                this.powerUpPool.spawn(LANE_POSITIONS[lanes[i]], SPAWN_Y, powerUpType, gameSpeed);
+            } else if (Math.random() < ITEM_SPAWN_CHANCE) {
                 const itemType = this.weightedRandom();
                 this.itemPool.spawn(LANE_POSITIONS[lanes[i]], SPAWN_Y, itemType, gameSpeed);
             }
@@ -77,9 +91,15 @@ export class SpawnManager {
         return entries[0][0];
     }
 
+    private randomPowerUpType(): PowerUpType {
+        const types: PowerUpType[] = ['helmet', 'tube', 'friend'];
+        return types[Math.floor(Math.random() * types.length)];
+    }
+
     reset(): void {
         this.spawnTimer = 0;
         this.obstaclePool.deactivateAll();
         this.itemPool.deactivateAll();
+        this.powerUpPool.deactivateAll();
     }
 }
