@@ -1,51 +1,96 @@
-// ============================================================
-// MainMenu.ts — 메인 메뉴 Scene
-// ============================================================
-// 게임 타이틀 화면. 시작 버튼과 모드 선택을 제공한다.
-//
-// [화면 레이아웃]
-//
-// ┌─────────────────────────┐
-// │                         │
-// │     🦫 카피바라 러너     │  ← 상단 1/3: 로고 + 타이틀
-// │                         │
-// │   [ ▶ 시작하기 ]        │  ← 중앙: 노말 모드 시작 버튼
-// │                         │
-// │   [ 🍃 릴렉스 모드 ]     │  ← 중앙 하단: 릴렉스 모드 버튼
-// │                         │
-// │   [ 🏆 리더보드 ]        │  ← 하단: 리더보드 버튼 (M5)
-// │   [ ♨️ 온천 ]            │  ← 하단: 온천 꾸미기 버튼 (M4)
-// │                         │
-// └─────────────────────────┘
-//
-// [create]
-//
-// 1. 배경 설정
-//    - 힐링 느낌의 배경색 또는 배경 이미지
-//    - 부드러운 파티클 이펙트 (나뭇잎, 꽃잎 등) — 선택적
-//
-// 2. 타이틀 텍스트
-//    - "카피바라 러너" 큰 글씨, 화면 상단 1/3
-//    - 카피바라 캐릭터 이미지 (또는 도형) 표시
-//    - 살짝 위아래 바운스 Tween (idle 애니메이션)
-//
-// 3. 시작 버튼 (노말 모드)
-//    - 화면 중앙에 배치
-//    - setInteractive() + 'pointerdown' 이벤트
-//    - 클릭/터치 시: this.scene.start('Game', { mode: 'normal' })
-//    - 버튼 눌림 이펙트: scale 0.95로 축소 후 복귀
-//
-// 4. 릴렉스 모드 버튼
-//    - 시작 버튼 아래 배치
-//    - 클릭/터치 시: this.scene.start('Game', { mode: 'relax' })
-//
-// 5. 리더보드 / 온천 버튼 (M4, M5에서 구현)
-//    - M1에서는 비활성 상태로 배치만 해두기
-//    - 또는 아예 빈 자리만 남겨두기
-//
-// [주의사항]
-// - 첫 방문 유저: 닉네임 입력 팝업 표시 (M2에서 구현)
-//   → M1에서는 닉네임 없이 바로 게임 시작
-// - 배경 음악 재생 시작점 (M5에서 구현)
-// - 모든 버튼은 터치/클릭 모두 대응
-// ============================================================
+import Phaser from 'phaser';
+import {
+    GAME_WIDTH,
+    GAME_HEIGHT,
+    SCENE_MAIN_MENU,
+    SCENE_GAME,
+} from '../utils/Constants';
+
+export class MainMenu extends Phaser.Scene {
+    constructor() {
+        super(SCENE_MAIN_MENU);
+    }
+
+    create(): void {
+        // 배경
+        this.cameras.main.setBackgroundColor('#87CEEB');
+
+        // 타이틀
+        const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.25, 'Capybara Runner', {
+            fontFamily: 'Arial',
+            fontSize: '48px',
+            color: '#5D4037',
+            fontStyle: 'bold',
+            stroke: '#FFFFFF',
+            strokeThickness: 4,
+        }).setOrigin(0.5);
+
+        // 타이틀 바운스 애니메이션
+        this.tweens.add({
+            targets: title,
+            y: title.y - 10,
+            duration: 1500,
+            ease: 'Sine.easeInOut',
+            yoyo: true,
+            repeat: -1,
+        });
+
+        // 카피바라 캐릭터 표시
+        const capybara = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT * 0.4, 'capybara');
+        capybara.setScale(2);
+
+        // 시작 버튼
+        this.createButton(
+            GAME_WIDTH / 2,
+            GAME_HEIGHT * 0.6,
+            'START',
+            0x4CAF50,
+            () => this.scene.start(SCENE_GAME, { mode: 'normal' }),
+        );
+
+        // 릴렉스 모드 버튼
+        this.createButton(
+            GAME_WIDTH / 2,
+            GAME_HEIGHT * 0.7,
+            'RELAX MODE',
+            0x81C784,
+            () => this.scene.start(SCENE_GAME, { mode: 'relax' }),
+        );
+    }
+
+    private createButton(
+        x: number,
+        y: number,
+        label: string,
+        color: number,
+        callback: () => void,
+    ): void {
+        const btnW = 280;
+        const btnH = 64;
+
+        const bg = this.add.graphics();
+        bg.fillStyle(color, 1);
+        bg.fillRoundedRect(x - btnW / 2, y - btnH / 2, btnW, btnH, 16);
+
+        const text = this.add.text(x, y, label, {
+            fontFamily: 'Arial',
+            fontSize: '28px',
+            color: '#FFFFFF',
+            fontStyle: 'bold',
+        }).setOrigin(0.5);
+
+        // 인터랙티브 영역
+        const hitArea = this.add.zone(x, y, btnW, btnH).setInteractive({ useHandCursor: true });
+
+        hitArea.on('pointerdown', () => {
+            this.tweens.add({
+                targets: [bg, text],
+                scaleX: 0.95,
+                scaleY: 0.95,
+                duration: 80,
+                yoyo: true,
+                onComplete: callback,
+            });
+        });
+    }
+}

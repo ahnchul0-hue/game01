@@ -1,39 +1,36 @@
-// ============================================================
-// Constants.ts — 게임 전역 상수
-// ============================================================
-// 이 파일은 게임 전체에서 사용되는 상수를 한 곳에서 관리한다.
-// 매직 넘버를 제거하고, 밸런스 조정 시 이 파일만 수정하면 된다.
-//
-// [게임 화면]
-// - 기준 해상도: 720 x 1280 (세로, Portrait)
-// - 스케일 모드: FIT + CENTER_BOTH → 모든 기기에서 비율 유지
-//
-// [레인 시스템]
-// - 3개 레인: 좌(0), 중(1), 우(2)
-// - 각 레인의 X 좌표 계산: 화면을 4등분하여 1/4, 2/4, 3/4 지점
-//   → 720 기준: 180, 360, 540
-// - 플레이어 시작 레인: 1 (중앙)
-//
-// [플레이어]
-// - Y 위치: 화면 하단에서 약 280px 위 (1000)
-// - 점프 속도: 음수값 (위로 이동) → -500 정도
-// - 슬라이드 지속 시간: 500ms
-// - 슬라이드 시 히트박스: 높이 절반으로 축소
-//
-// [물리]
-// - 중력: y 800 (점프 후 자연스러운 낙하)
-// - 바닥 충돌: 플레이어 Y가 PLAYER_Y 이하로 내려가지 않도록
-//
-// [속도 / 난이도]
-// - 기본 속도: 300 (px/s 기준, 배경 스크롤 속도)
-// - 최대 속도: 800 (캡)
-// - 속도 증가율: 거리 1당 0.05씩 증가
-//
-// [입력]
-// - 스와이프 최소 거리: 50px (이하는 무시 → 오작동 방지)
-// - 스와이프 방향 판정: |dx| vs |dy| 비교 → 큰 쪽이 의도된 방향
-//
-// [Scene 키]
-// - 각 Scene의 고유 키를 문자열 상수로 관리
-// - 'Boot', 'Preloader', 'MainMenu', 'Game', 'GameOver'
-// ============================================================
+// 게임 화면
+export const GAME_WIDTH = 720;
+export const GAME_HEIGHT = 1280;
+
+// 레인 시스템
+export const LANE_COUNT = 3;
+export const LANE_POSITIONS = [180, 360, 540]; // 좌, 중, 우 (720을 4등분)
+
+// 플레이어
+export const PLAYER_Y = 1000;
+export const JUMP_VELOCITY = -500;
+export const SLIDE_DURATION = 500; // ms
+
+// 물리
+export const GRAVITY = 800;
+
+// 속도 / 난이도
+export const BASE_SPEED = 300; // px/s
+export const MAX_SPEED = 800;
+export const SPEED_INCREMENT = 0.05; // 거리 1당 속도 증가량
+
+// 입력
+export const SWIPE_THRESHOLD = 50; // px
+
+// Scene 키
+export const SCENE_BOOT = 'Boot';
+export const SCENE_PRELOADER = 'Preloader';
+export const SCENE_MAIN_MENU = 'MainMenu';
+export const SCENE_GAME = 'Game';
+export const SCENE_GAME_OVER = 'GameOver';
+
+// 릴렉스 모드 배율
+export const RELAX_SPEED_MULTIPLIER = 0.5;
+
+// 레인 이동 Tween
+export const LANE_MOVE_DURATION = 150; // ms

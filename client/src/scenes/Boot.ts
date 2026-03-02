@@ -1,23 +1,17 @@
-// ============================================================
-// Boot.ts — 부팅 Scene
-// ============================================================
-// 게임 시작 시 가장 먼저 실행되는 Scene.
-// 최소한의 에셋만 로드하고 즉시 Preloader로 전환한다.
-//
-// [역할]
-// - Preloader Scene에서 사용할 로딩 바 이미지만 미리 로드
-// - 게임 전역 설정 초기화 (필요 시)
-//
-// [preload]
-// 1. 로딩 바 배경 이미지 로드 (progress-bar-bg.png)
-// 2. 로딩 바 채움 이미지 로드 (progress-bar-fill.png)
-//    → 없으면 기본 도형으로 대체 가능 (프로토타입 단계)
-//
-// [create]
-// 1. 즉시 Preloader Scene으로 전환
-//    → this.scene.start('Preloader')
-//
-// [주의사항]
-// - 이 Scene은 매우 빠르게 통과해야 함 (사용자에게 거의 보이지 않음)
-// - 무거운 에셋은 절대 여기서 로드하지 않음
-// ============================================================
+import Phaser from 'phaser';
+import { SCENE_BOOT, SCENE_PRELOADER } from '../utils/Constants';
+
+export class Boot extends Phaser.Scene {
+    constructor() {
+        super(SCENE_BOOT);
+    }
+
+    preload(): void {
+        // 프로토타입: 에셋 없이 바로 통과
+        // 실제 에셋 적용 시 로딩 바 이미지를 여기서 로드
+    }
+
+    create(): void {
+        this.scene.start(SCENE_PRELOADER);
+    }
+}

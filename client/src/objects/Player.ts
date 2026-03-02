@@ -1,121 +1,147 @@
-// ============================================================
-// Player.ts — 카피바라 플레이어 클래스
-// ============================================================
-// Phaser.Physics.Arcade.Sprite를 상속하는 카피바라 캐릭터.
-// 3레인 이동, 점프, 슬라이드를 담당한다.
-//
-// ============================================================
-// [멤버 변수]
-// ============================================================
-// - currentLane: number (0=좌, 1=중, 2=우) — 현재 레인
-// - isJumping: boolean — 점프 중 여부
-// - isSliding: boolean — 슬라이드 중 여부
-// - isInvincible: boolean — 무적 상태 (부활 후)
-// - slideTimer: TimerEvent | null — 슬라이드 종료 타이머
-// - originalHeight: number — 원래 히트박스 높이 (슬라이드 복귀용)
-//
-// ============================================================
-// [constructor(scene, x, y)]
-// ============================================================
-// 1. super(scene, x, y, 'capybara-idle') 호출
-// 2. scene.add.existing(this) — Scene에 추가
-// 3. scene.physics.add.existing(this) — 물리 바디 추가
-// 4. 물리 바디 설정:
-//    - setGravityY(0) → Scene 전역 gravity 사용
-//    - setCollideWorldBounds(false) → 수동 관리
-//    - 바디 크기 조정: setSize(너비, 높이) — 실제 히트박스
-//    - setOffset() — 히트박스 위치 보정
-// 5. currentLane = 1 (중앙 시작)
-// 6. originalHeight 저장
-//
-// ============================================================
-// [moveLeft()]
-// ============================================================
-// - 조건: currentLane > 0 이고, 이동 Tween 진행 중이 아닐 때
-// - currentLane-- (레인 감소)
-// - 목표 X = LANE_POSITIONS[currentLane]
-// - Tween 생성:
-//   - target: this
-//   - x: 목표 X
-//   - duration: 150ms (빠르고 반응적)
-//   - ease: 'Power2' (부드러운 감속)
-// - 이동 중 추가 입력 차단 (Tween 완료 콜백에서 해제)
-//
-// ============================================================
-// [moveRight()]
-// ============================================================
-// - moveLeft()와 동일한 로직, currentLane++ 방향만 다름
-// - 조건: currentLane < LANE_COUNT - 1
-//
-// ============================================================
-// [jump()]
-// ============================================================
-// - 조건: isJumping === false (이중 점프 방지)
-//   - 바닥 판정: this.y >= PLAYER_Y (또는 body.touching.down)
-// - isJumping = true
-// - setVelocityY(JUMP_VELOCITY) → 위로 이동 (음수값)
-// - 점프 애니메이션 재생 (스프라이트시트 있을 때)
-// - 착지 감지: update()에서 y >= PLAYER_Y 일 때
-//   - setVelocityY(0)
-//   - y = PLAYER_Y (정확한 위치 고정)
-//   - isJumping = false
-//   - idle 애니메이션으로 복귀
-//
-// ============================================================
-// [slide()]
-// ============================================================
-// - 조건: isSliding === false, isJumping === false (공중 슬라이드 불가)
-// - isSliding = true
-// - 히트박스 높이를 절반으로 축소:
-//   - setSize(원래너비, originalHeight / 2)
-//   - setOffset(0, originalHeight / 2) → 아래쪽에 붙이기
-// - 슬라이드 애니메이션 재생
-// - slideTimer = scene.time.delayedCall(SLIDE_DURATION, () => {
-//       this.endSlide();
-//   })
-//
-// [endSlide()]
-// - isSliding = false
-// - 히트박스 복원: setSize(원래너비, originalHeight)
-// - setOffset(0, 0)
-// - idle 애니메이션으로 복귀
-//
-// ============================================================
-// [update(delta)]
-// ============================================================
-// 매 프레임 Game.ts에서 호출된다.
-//
-// 1. 착지 체크 (점프 중일 때만)
-//    - if (isJumping && this.y >= PLAYER_Y)
-//      → y = PLAYER_Y, velocityY = 0, isJumping = false
-//
-// 2. 바닥 고정 (점프 아닐 때)
-//    - if (!isJumping) this.y = PLAYER_Y
-//    → 중력에 의해 바닥 아래로 가는 것 방지
-//
-// 3. 달리기 애니메이션 (점프/슬라이드 아닐 때)
-//    - 적절한 애니메이션 프레임 재생
-//    → 프로토타입: 생략 (정적 이미지)
-//
-// ============================================================
-// [setInvincible(duration)]
-// ============================================================
-// - 부활 후 무적 상태 (M2에서 사용)
-// - isInvincible = true
-// - 깜빡임 Tween: alpha 0.3 ↔ 1.0 반복
-// - delayedCall(duration) 후:
-//   - isInvincible = false
-//   - alpha = 1.0 (깜빡임 중지)
-//
-// ============================================================
-// [주의사항]
-// ============================================================
-// - 레인 이동은 Tween 기반 (물리 이동이 아님)
-// - 점프는 물리 엔진 (velocityY + gravity) 사용
-// - 슬라이드는 히트박스 변형 + 타이머 기반
-// - 세 동작(이동/점프/슬라이드)은 조합 가능해야 함:
-//   → 점프 중 좌우 이동 O
-//   → 슬라이드 중 좌우 이동 O
-//   → 점프 중 슬라이드 X (공중에서 불가)
-//   → 슬라이드 중 점프 X (슬라이드 끝나야 점프)
-// ============================================================
+import Phaser from 'phaser';
+import {
+    LANE_COUNT,
+    LANE_POSITIONS,
+    PLAYER_Y,
+    JUMP_VELOCITY,
+    SLIDE_DURATION,
+    LANE_MOVE_DURATION,
+} from '../utils/Constants';
+
+export class Player extends Phaser.Physics.Arcade.Sprite {
+    private currentLane = 1; // 0=좌, 1=중, 2=우
+    private isJumping = false;
+    private isSliding = false;
+    private isMoving = false; // Tween 진행 중 여부
+    private isInvincible = false;
+    private slideTimer: Phaser.Time.TimerEvent | null = null;
+    private originalBodyHeight = 0;
+    private originalBodyOffsetY = 0;
+
+    constructor(scene: Phaser.Scene, x: number, y: number) {
+        super(scene, x, y, 'capybara');
+
+        scene.add.existing(this);
+        scene.physics.add.existing(this);
+
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        body.setGravityY(0); // Scene 전역 gravity 사용
+        body.setCollideWorldBounds(false);
+
+        this.originalBodyHeight = body.height;
+        this.originalBodyOffsetY = body.offset.y;
+    }
+
+    moveLeft(): void {
+        if (this.currentLane <= 0 || this.isMoving) return;
+        this.currentLane--;
+        this.tweenToLane();
+    }
+
+    moveRight(): void {
+        if (this.currentLane >= LANE_COUNT - 1 || this.isMoving) return;
+        this.currentLane++;
+        this.tweenToLane();
+    }
+
+    jump(): void {
+        if (this.isJumping || this.isSliding) return;
+        this.isJumping = true;
+        this.setVelocityY(JUMP_VELOCITY);
+    }
+
+    slide(): void {
+        if (this.isSliding || this.isJumping) return;
+        this.isSliding = true;
+
+        // 히트박스 높이 절반으로 축소
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        body.setSize(body.width, this.originalBodyHeight / 2);
+        body.setOffset(body.offset.x, this.originalBodyOffsetY + this.originalBodyHeight / 2);
+
+        // 시각적 피드백: Y 스케일 축소
+        this.setScale(this.scaleX, 0.5);
+        this.setOrigin(0.5, 1);
+
+        this.slideTimer = this.scene.time.delayedCall(SLIDE_DURATION, () => {
+            this.endSlide();
+        });
+    }
+
+    private endSlide(): void {
+        this.isSliding = false;
+
+        // 히트박스 복원
+        const body = this.body as Phaser.Physics.Arcade.Body;
+        body.setSize(body.width, this.originalBodyHeight);
+        body.setOffset(body.offset.x, this.originalBodyOffsetY);
+
+        // 시각적 복원
+        this.setScale(this.scaleX, 1);
+        this.setOrigin(0.5, 0.5);
+
+        this.slideTimer = null;
+    }
+
+    private tweenToLane(): void {
+        this.isMoving = true;
+        this.scene.tweens.add({
+            targets: this,
+            x: LANE_POSITIONS[this.currentLane],
+            duration: LANE_MOVE_DURATION,
+            ease: 'Power2',
+            onComplete: () => {
+                this.isMoving = false;
+            },
+        });
+    }
+
+    update(): void {
+        // 착지 체크
+        if (this.isJumping && this.y >= PLAYER_Y) {
+            this.y = PLAYER_Y;
+            this.setVelocityY(0);
+            this.isJumping = false;
+        }
+
+        // 바닥 고정 (점프 아닐 때 중력에 의해 떨어지는 것 방지)
+        if (!this.isJumping && this.y > PLAYER_Y) {
+            this.y = PLAYER_Y;
+            this.setVelocityY(0);
+        }
+    }
+
+    setInvincible(duration: number): void {
+        this.isInvincible = true;
+
+        // 깜빡임
+        this.scene.tweens.add({
+            targets: this,
+            alpha: 0.3,
+            duration: 100,
+            yoyo: true,
+            repeat: Math.floor(duration / 200),
+        });
+
+        this.scene.time.delayedCall(duration, () => {
+            this.isInvincible = false;
+            this.setAlpha(1);
+        });
+    }
+
+    getIsInvincible(): boolean {
+        return this.isInvincible;
+    }
+
+    getCurrentLane(): number {
+        return this.currentLane;
+    }
+
+    destroy(fromScene?: boolean): void {
+        if (this.slideTimer) {
+            this.slideTimer.destroy();
+            this.slideTimer = null;
+        }
+        super.destroy(fromScene);
+    }
+}
