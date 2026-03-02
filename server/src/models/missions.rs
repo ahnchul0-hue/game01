@@ -20,13 +20,44 @@ pub struct Mission {
     pub reward_amount: i64,
 }
 
-#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
+/// Internal DB row for streaks — includes `last_reward_date` column.
+#[derive(Debug, Deserialize, FromRow, Clone)]
 pub struct Streak {
     pub user_id: String,
     pub current_streak: i64,
     pub longest_streak: i64,
     pub last_play_date: Option<String>,
+    pub last_reward_date: Option<String>,
     pub total_rewards_claimed: i64,
+}
+
+/// Public response type that includes `today_reward_claimed` derived field.
+#[derive(Debug, Serialize, Clone)]
+pub struct StreakResponse {
+    pub user_id: String,
+    pub current_streak: i64,
+    pub longest_streak: i64,
+    pub last_play_date: Option<String>,
+    pub total_rewards_claimed: i64,
+    pub today_reward_claimed: bool,
+}
+
+impl StreakResponse {
+    pub fn from_streak(streak: Streak, today: &str) -> Self {
+        let today_reward_claimed = streak
+            .last_reward_date
+            .as_deref()
+            .map(|d| d == today)
+            .unwrap_or(false);
+        StreakResponse {
+            user_id: streak.user_id,
+            current_streak: streak.current_streak,
+            longest_streak: streak.longest_streak,
+            last_play_date: streak.last_play_date,
+            total_rewards_claimed: streak.total_rewards_claimed,
+            today_reward_claimed,
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -79,29 +110,14 @@ fn generate_mission_specs() -> [MissionSpec; 3] {
 // ---------------------------------------------------------------------------
 
 /// Returns today's missions for a user. If none exist yet, generates 3 new ones.
+/// S3: Always INSERT OR IGNORE first, then SELECT — avoids race condition.
 pub async fn get_or_create_daily_missions(
     pool: &SqlitePool,
     user_id: &str,
     date: &str,
 ) -> Result<Vec<Mission>, sqlx::Error> {
-    // Check if missions already exist for today
-    let existing: Vec<Mission> = sqlx::query_as::<_, Mission>(
-        "SELECT id, user_id, mission_date, mission_type, target_value, current_value,
-                completed, reward_claimed, reward_type, reward_amount
-         FROM daily_missions
-         WHERE user_id = ? AND mission_date = ?
-         ORDER BY id ASC",
-    )
-    .bind(user_id)
-    .bind(date)
-    .fetch_all(pool)
-    .await?;
-
-    if !existing.is_empty() {
-        return Ok(existing);
-    }
-
-    // Generate 3 missions and insert them
+    // S3: Always attempt inserts first (INSERT OR IGNORE handles duplicates).
+    // Do NOT check existing first; insert then select to avoid TOCTOU race.
     let specs = generate_mission_specs();
     for spec in &specs {
         sqlx::query(
@@ -119,7 +135,7 @@ pub async fn get_or_create_daily_missions(
         .await?;
     }
 
-    // Fetch and return the newly created missions
+    // Fetch and return (newly created or pre-existing) missions
     let missions: Vec<Mission> = sqlx::query_as::<_, Mission>(
         "SELECT id, user_id, mission_date, mission_type, target_value, current_value,
                 completed, reward_claimed, reward_type, reward_amount
@@ -136,6 +152,7 @@ pub async fn get_or_create_daily_missions(
 }
 
 /// Adds progress_delta to the given mission_type for the user on the given date.
+/// S1: Rejects updates if mission is already completed (reward_claimed guards further abuse).
 /// Marks completed=1 if current_value reaches target_value.
 /// Returns the updated Mission row.
 pub async fn update_mission_progress(
@@ -145,6 +162,26 @@ pub async fn update_mission_progress(
     mission_type: &str,
     progress_delta: i64,
 ) -> Result<Mission, sqlx::Error> {
+    // S1: Check if the mission is already completed — reject further updates.
+    let mission: Option<Mission> = sqlx::query_as::<_, Mission>(
+        "SELECT id, user_id, mission_date, mission_type, target_value, current_value,
+                completed, reward_claimed, reward_type, reward_amount
+         FROM daily_missions
+         WHERE user_id = ? AND mission_date = ? AND mission_type = ?",
+    )
+    .bind(user_id)
+    .bind(date)
+    .bind(mission_type)
+    .fetch_optional(pool)
+    .await?;
+
+    if let Some(ref m) = mission {
+        if m.completed != 0 {
+            // Already completed — return current state without update (idempotent)
+            return Ok(m.clone());
+        }
+    }
+
     sqlx::query(
         "UPDATE daily_missions
          SET current_value = MIN(current_value + ?, target_value),
@@ -191,8 +228,8 @@ pub async fn get_mission_by_id(
 }
 
 /// Claims the reward for a completed, unclaimed mission.
-/// Adds items to inventory and marks reward_claimed=1.
-/// Returns an error string (mapped to AppError by the caller) on logical failures.
+/// S2: Wraps UPDATE daily_missions + INSERT/UPDATE inventories in a transaction.
+/// Returns an error (mapped to AppError by the caller) on logical failures.
 pub async fn claim_mission_reward(
     pool: &SqlitePool,
     user_id: &str,
@@ -209,17 +246,6 @@ pub async fn claim_mission_reward(
         return Err(ClaimError::AlreadyClaimed);
     }
 
-    // Mark as claimed
-    sqlx::query(
-        "UPDATE daily_missions SET reward_claimed = 1 WHERE id = ? AND user_id = ?",
-    )
-    .bind(mission_id)
-    .bind(user_id)
-    .execute(pool)
-    .await
-    .map_err(ClaimError::Db)?;
-
-    // Add to inventory using the same upsert pattern as inventory.rs
     let (add_mandarin, add_watermelon, add_hotspring_material) = match mission.reward_type.as_str()
     {
         "mandarin" => (mission.reward_amount, 0i64, 0i64),
@@ -227,6 +253,18 @@ pub async fn claim_mission_reward(
         "hotspring_material" => (0i64, 0i64, mission.reward_amount),
         _ => (0i64, 0i64, 0i64),
     };
+
+    // S2: Wrap mark-claimed + inventory update in a transaction.
+    let mut tx = pool.begin().await.map_err(ClaimError::Db)?;
+
+    sqlx::query(
+        "UPDATE daily_missions SET reward_claimed = 1 WHERE id = ? AND user_id = ?",
+    )
+    .bind(mission_id)
+    .bind(user_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(ClaimError::Db)?;
 
     let inv_id = uuid::Uuid::new_v4().to_string();
     sqlx::query(
@@ -243,11 +281,13 @@ pub async fn claim_mission_reward(
     .bind(add_mandarin)
     .bind(add_watermelon)
     .bind(add_hotspring_material)
-    .execute(pool)
+    .execute(&mut *tx)
     .await
     .map_err(ClaimError::Db)?;
 
-    // Return updated mission
+    tx.commit().await.map_err(ClaimError::Db)?;
+
+    // Return updated mission (outside transaction)
     get_mission_by_id(pool, mission_id, user_id)
         .await
         .map_err(ClaimError::Db)
@@ -270,7 +310,8 @@ pub async fn get_or_create_streak(
     .await?;
 
     sqlx::query_as::<_, Streak>(
-        "SELECT user_id, current_streak, longest_streak, last_play_date, total_rewards_claimed
+        "SELECT user_id, current_streak, longest_streak, last_play_date,
+                last_reward_date, total_rewards_claimed
          FROM streaks WHERE user_id = ?",
     )
     .bind(user_id)
@@ -324,16 +365,32 @@ pub async fn update_streak(
 /// - Day 4-6: watermelon x 3
 /// - Day 7+: hotspring_material x 2 (reward cycle repeats every 7)
 ///
-/// This also calls `update_streak` to ensure last_play_date is set.
+/// S5: Guards against zero-streak or pre-play claims.
+/// S2: Wraps inventory update + total_rewards_claimed bump in a transaction.
+/// C2: Sets last_reward_date = today so callers can derive today_reward_claimed.
 pub async fn claim_streak_reward(
     pool: &SqlitePool,
     user_id: &str,
     today: &str,
 ) -> Result<Streak, ClaimError> {
-    // Ensure streak is up-to-date
+    // Ensure streak is up-to-date (sets last_play_date = today if needed)
     let streak = update_streak(pool, user_id, today)
         .await
         .map_err(ClaimError::Db)?;
+
+    // S5: Reject if the streak was never established from a real play session.
+    if streak.current_streak == 0 {
+        return Err(ClaimError::NotCompleted);
+    }
+    // S5: last_play_date must be today (update_streak sets it, but guard explicitly).
+    if streak.last_play_date.as_deref() != Some(today) {
+        return Err(ClaimError::NotCompleted);
+    }
+
+    // C2: Check if reward was already claimed today.
+    if streak.last_reward_date.as_deref() == Some(today) {
+        return Err(ClaimError::AlreadyClaimed);
+    }
 
     // Determine reward by current streak (cycle every 7)
     let cycle_day = ((streak.current_streak - 1) % 7) + 1; // 1..=7
@@ -346,7 +403,9 @@ pub async fn claim_streak_reward(
             (0, 0, 2)
         };
 
-    // Add to inventory
+    // S2: Wrap inventory upsert + streak update in a transaction.
+    let mut tx = pool.begin().await.map_err(ClaimError::Db)?;
+
     let inv_id = uuid::Uuid::new_v4().to_string();
     sqlx::query(
         "INSERT INTO inventories (id, user_id, mandarin, watermelon, hotspring_material, updated_at)
@@ -362,18 +421,24 @@ pub async fn claim_streak_reward(
     .bind(add_mandarin)
     .bind(add_watermelon)
     .bind(add_hotspring_material)
-    .execute(pool)
+    .execute(&mut *tx)
     .await
     .map_err(ClaimError::Db)?;
 
-    // Increment total_rewards_claimed
+    // C2: Record last_reward_date and increment total_rewards_claimed atomically.
     sqlx::query(
-        "UPDATE streaks SET total_rewards_claimed = total_rewards_claimed + 1 WHERE user_id = ?",
+        "UPDATE streaks
+         SET total_rewards_claimed = total_rewards_claimed + 1,
+             last_reward_date = ?
+         WHERE user_id = ?",
     )
+    .bind(today)
     .bind(user_id)
-    .execute(pool)
+    .execute(&mut *tx)
     .await
     .map_err(ClaimError::Db)?;
+
+    tx.commit().await.map_err(ClaimError::Db)?;
 
     get_or_create_streak(pool, user_id)
         .await

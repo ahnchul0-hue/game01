@@ -120,13 +120,20 @@ export class SpawnManager {
                 }
                 break;
 
-            case 'arc':
-                // 포물선 (같은 레인, Y 오프셋은 z로 시뮬레이션)
+            case 'arc': {
+                // 포물선 곡선: 시작 레인에서 sin 함수로 인접 레인으로 커브
+                // LANE_OFFSETS = [-1, 0, 1] → index 0,1,2
+                const startLaneIdx = LANE_OFFSETS.indexOf(lane);
+                const safeLaneIdx = startLaneIdx < 0 ? 1 : startLaneIdx;
                 for (let c = 0; c < COIN_LINE_LENGTH; c++) {
                     const coinZ = baseZ - c * COIN_LINE_Z_GAP;
-                    this.itemPool.spawn(lane, coinZ, itemType, zSpeed);
+                    const progress = c / (COIN_LINE_LENGTH - 1);
+                    const laneOffset = Math.round(Math.sin(progress * Math.PI));
+                    const coinLaneIdx = Math.max(0, Math.min(2, safeLaneIdx + laneOffset));
+                    this.itemPool.spawn(LANE_OFFSETS[coinLaneIdx], coinZ, itemType, zSpeed);
                 }
                 break;
+            }
 
             case 'zigzag': {
                 // 레인을 번갈아 배치

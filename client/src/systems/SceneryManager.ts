@@ -69,6 +69,10 @@ export class SceneryManager {
         const colors = STAGE_COLORS[stage];
         this.treeColor = colors.trees;
         this.buildingColor = colors.ground;
+        // Redraw all existing items with the new colors
+        for (const item of this.items) {
+            this.drawItem(item);
+        }
     }
 
     destroy(): void {

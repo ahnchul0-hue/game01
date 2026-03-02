@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS streaks (
     user_id TEXT PRIMARY KEY REFERENCES users(id),
     current_streak INTEGER NOT NULL DEFAULT 0,
     longest_streak INTEGER NOT NULL DEFAULT 0,
-    last_play_date TEXT,  -- YYYY-MM-DD format (UTC)
+    last_play_date TEXT,       -- YYYY-MM-DD format (UTC)
+    last_reward_date TEXT,     -- YYYY-MM-DD: date of last streak reward claim
     total_rewards_claimed INTEGER NOT NULL DEFAULT 0
 );

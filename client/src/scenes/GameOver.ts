@@ -108,12 +108,12 @@ export class GameOver extends Phaser.Scene {
         capybara.setAlpha(0.7);
 
         // 점수 카운트업 애니메이션
-        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.42, 'Score', {
+        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.38, 'Score', {
             fontFamily: 'Arial', fontSize: '24px', color: '#AAAAAA',
         }).setOrigin(0.5);
 
         const scoreDisplay = { value: 0 };
-        const scoreText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.47, '0', {
+        const scoreText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.43, '0', {
             fontFamily: 'Arial', fontSize: '48px', color: '#FFD700', fontStyle: 'bold',
         }).setOrigin(0.5);
 
@@ -123,12 +123,12 @@ export class GameOver extends Phaser.Scene {
         });
 
         // 거리 표시
-        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.54, `${this.finalDistance}m`, {
+        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.50, `${this.finalDistance}m`, {
             fontFamily: 'Arial', fontSize: '28px', color: '#FFFFFF',
         }).setOrigin(0.5);
 
         // M2: 수집 아이템 표시
-        const itemY = GAME_HEIGHT * 0.52;
+        const itemY = GAME_HEIGHT * 0.56;
         const itemSpacing = 140;
         const startX = GAME_WIDTH / 2 - itemSpacing;
 
@@ -136,21 +136,21 @@ export class GameOver extends Phaser.Scene {
         this.createItemDisplay(startX + itemSpacing, itemY, 'item-watermelon', this.collectedItems.watermelon);
         this.createItemDisplay(startX + itemSpacing * 2, itemY, 'item-hotspring_material', this.collectedItems.hotspring_material);
 
-        // 최고 거리 (거리 옆에 인라인)
+        // 최고 거리
         const bestDistance = inventoryMgr.getMaxDistance();
-        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.57, `BEST: ${bestDistance}m`, {
+        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.62, `BEST: ${bestDistance}m`, {
             fontFamily: 'Arial', fontSize: '18px', color: '#AAAAAA',
         }).setOrigin(0.5);
 
         // 다음 스킨 잠금해제 힌트
         const hint = this.getNextUnlockHint(inventoryMgr);
         if (hint) {
-            this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.60, hint, {
+            this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.66, hint, {
                 fontFamily: 'Arial', fontSize: '14px', color: '#81C784',
             }).setOrigin(0.5);
         }
 
-        // 리더보드 영역 (비동기 로드 — 0.65~0.75 사이 표시됨)
+        // 리더보드 영역 (비동기 로드 — 0.70 이하 표시됨)
 
         // 재시작 버튼
         createButton(this, {
@@ -214,7 +214,7 @@ export class GameOver extends Phaser.Scene {
     private showLeaderboard(scores: ScoreEntry[]): void {
         if (scores.length === 0) return;
 
-        const startY = GAME_HEIGHT * 0.65;
+        const startY = GAME_HEIGHT * 0.70;
         const userId = localStorage.getItem(LS_KEY_USER_ID);
 
         this.add.text(GAME_WIDTH / 2, startY, 'TOP SCORES', {

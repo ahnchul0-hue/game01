@@ -2,129 +2,153 @@ import { describe, it, expect } from 'vitest';
 import { PerspectiveCamera } from '../systems/PerspectiveCamera';
 import {
     VANISH_Y,
-    CAMERA_Y,
+    ROAD_HEIGHT,
     CENTER_X,
+    LANE_SPREAD,
     ROAD_WIDTH_NEAR,
     ROAD_WIDTH_FAR,
-    LANE_SPREAD,
 } from '../utils/Constants';
 
 describe('PerspectiveCamera', () => {
-    // ====== projectZ ======
+    // ── projectZ ──────────────────────────────────
+
     describe('projectZ', () => {
-        it('z=1 → 소실점 (화면 상단)', () => {
-            const { screenY, scale, t } = PerspectiveCamera.projectZ(1);
-            expect(screenY).toBe(VANISH_Y);
-            expect(t).toBe(0);
-            expect(scale).toBe(0.05); // min clamp
+        it('z=1.0 (소실점) → screenY=VANISH_Y, scale=0.05(최솟값)', () => {
+            const result = PerspectiveCamera.projectZ(1.0);
+            expect(result.screenY).toBe(VANISH_Y);
+            expect(result.scale).toBe(0.05);
+            expect(result.t).toBe(0);
         });
 
-        it('z=0 → 카메라 (화면 하단)', () => {
-            const { screenY, scale, t } = PerspectiveCamera.projectZ(0);
-            expect(screenY).toBe(CAMERA_Y);
-            expect(t).toBe(1);
-            expect(scale).toBe(1);
+        it('z=0.0 (카메라) → screenY=CAMERA_Y, scale=1.0', () => {
+            const result = PerspectiveCamera.projectZ(0.0);
+            expect(result.screenY).toBe(VANISH_Y + ROAD_HEIGHT);
+            expect(result.scale).toBe(1.0);
+            expect(result.t).toBe(1);
         });
 
-        it('z=0.5 → 중간 지점', () => {
-            const { screenY, scale, t } = PerspectiveCamera.projectZ(0.5);
-            expect(screenY).toBe(VANISH_Y + 750 * 0.5);
-            expect(t).toBe(0.5);
-            expect(scale).toBe(0.5);
+        it('z=0.5 (중간) → 선형 보간', () => {
+            const result = PerspectiveCamera.projectZ(0.5);
+            expect(result.screenY).toBe(VANISH_Y + ROAD_HEIGHT * 0.5);
+            expect(result.scale).toBe(0.5);
+            expect(result.t).toBe(0.5);
         });
 
-        it('z가 감소하면 screenY 증가 (카메라 방향)', () => {
-            const far = PerspectiveCamera.projectZ(0.8);
-            const near = PerspectiveCamera.projectZ(0.2);
+        it('z > 1.0 → scale은 0.05 최솟값 보장', () => {
+            const result = PerspectiveCamera.projectZ(1.5);
+            expect(result.scale).toBe(0.05);
+            expect(result.t).toBe(-0.5);
+        });
+
+        it('z < 0.0 → scale은 t(>1)로 증가', () => {
+            const result = PerspectiveCamera.projectZ(-0.1);
+            expect(result.t).toBeCloseTo(1.1);
+            expect(result.scale).toBeCloseTo(1.1);
+        });
+
+        it('screenY는 z가 감소할수록 증가 (멀리→가까이)', () => {
+            const far = PerspectiveCamera.projectZ(0.9);
+            const near = PerspectiveCamera.projectZ(0.1);
             expect(near.screenY).toBeGreaterThan(far.screenY);
-            expect(near.scale).toBeGreaterThan(far.scale);
-        });
-
-        it('scale은 최소 0.05로 클램프', () => {
-            const { scale } = PerspectiveCamera.projectZ(1.1); // z > 1
-            expect(scale).toBe(0.05);
-        });
-
-        it('z < 0에서도 정상 동작 (디스폰 영역)', () => {
-            const { screenY, t } = PerspectiveCamera.projectZ(-0.05);
-            expect(t).toBe(1.05);
-            expect(screenY).toBeGreaterThan(CAMERA_Y);
         });
     });
 
-    // ====== getLaneScreenX ======
+    // ── getLaneScreenX ────────────────────────────
+
     describe('getLaneScreenX', () => {
-        it('중앙 레인(offset=0)은 항상 CENTER_X', () => {
+        it('중앙 레인(offset=0) → CENTER_X (모든 z)', () => {
+            expect(PerspectiveCamera.getLaneScreenX(0.0, 0)).toBe(CENTER_X);
             expect(PerspectiveCamera.getLaneScreenX(0.5, 0)).toBe(CENTER_X);
-            expect(PerspectiveCamera.getLaneScreenX(0.9, 0)).toBe(CENTER_X);
-            expect(PerspectiveCamera.getLaneScreenX(0.1, 0)).toBe(CENTER_X);
+            expect(PerspectiveCamera.getLaneScreenX(1.0, 0)).toBe(CENTER_X);
         });
 
-        it('z=1에서 모든 레인이 CENTER_X로 수렴', () => {
-            expect(PerspectiveCamera.getLaneScreenX(1, -1)).toBe(CENTER_X);
-            expect(PerspectiveCamera.getLaneScreenX(1, 0)).toBe(CENTER_X);
-            expect(PerspectiveCamera.getLaneScreenX(1, 1)).toBe(CENTER_X);
-        });
-
-        it('z=0에서 레인이 최대로 벌어짐', () => {
-            const left = PerspectiveCamera.getLaneScreenX(0, -1);
-            const right = PerspectiveCamera.getLaneScreenX(0, 1);
-            expect(left).toBe(CENTER_X - LANE_SPREAD);
-            expect(right).toBe(CENTER_X + LANE_SPREAD);
-        });
-
-        it('좌/우 레인이 중앙 대칭', () => {
+        it('좌우 레인은 CENTER_X 기준 대칭', () => {
             const z = 0.3;
             const left = PerspectiveCamera.getLaneScreenX(z, -1);
             const right = PerspectiveCamera.getLaneScreenX(z, 1);
-            expect(CENTER_X - left).toBeCloseTo(right - CENTER_X, 5);
+            expect(left + right).toBeCloseTo(CENTER_X * 2);
         });
 
-        it('가까울수록(z 작을수록) 레인 간격 넓어짐', () => {
-            const nearSpread = PerspectiveCamera.getLaneScreenX(0.2, 1) - CENTER_X;
-            const farSpread = PerspectiveCamera.getLaneScreenX(0.8, 1) - CENTER_X;
-            expect(nearSpread).toBeGreaterThan(farSpread);
+        it('z=0 (카메라)에서 레인 간격 = LANE_SPREAD', () => {
+            const center = PerspectiveCamera.getLaneScreenX(0, 0);
+            const right = PerspectiveCamera.getLaneScreenX(0, 1);
+            expect(right - center).toBe(LANE_SPREAD);
+        });
+
+        it('z=1 (소실점)에서 레인이 수렴 (간격=0)', () => {
+            const center = PerspectiveCamera.getLaneScreenX(1.0, 0);
+            const right = PerspectiveCamera.getLaneScreenX(1.0, 1);
+            expect(right - center).toBe(0);
+        });
+
+        it('레인 간격은 z가 감소할수록 넓어짐', () => {
+            const spreadFar = Math.abs(
+                PerspectiveCamera.getLaneScreenX(0.8, 1) - PerspectiveCamera.getLaneScreenX(0.8, 0),
+            );
+            const spreadNear = Math.abs(
+                PerspectiveCamera.getLaneScreenX(0.2, 1) - PerspectiveCamera.getLaneScreenX(0.2, 0),
+            );
+            expect(spreadNear).toBeGreaterThan(spreadFar);
         });
     });
 
-    // ====== getRoadEdgeX ======
+    // ── getRoadEdgeX ──────────────────────────────
+
     describe('getRoadEdgeX', () => {
-        it('z=0에서 도로 폭 = ROAD_WIDTH_NEAR', () => {
+        it('도로 가장자리는 항상 CENTER_X 기준 대칭', () => {
+            for (const z of [0, 0.25, 0.5, 0.75, 1.0]) {
+                const { left, right } = PerspectiveCamera.getRoadEdgeX(z);
+                expect((left + right) / 2).toBeCloseTo(CENTER_X);
+            }
+        });
+
+        it('z=0 (카메라)에서 도로 폭 = ROAD_WIDTH_NEAR', () => {
             const { left, right } = PerspectiveCamera.getRoadEdgeX(0);
-            expect(right - left).toBeCloseTo(ROAD_WIDTH_NEAR, 1);
+            expect(right - left).toBeCloseTo(ROAD_WIDTH_NEAR);
         });
 
-        it('z=1에서 도로 폭 = ROAD_WIDTH_FAR', () => {
-            const { left, right } = PerspectiveCamera.getRoadEdgeX(1);
-            expect(right - left).toBeCloseTo(ROAD_WIDTH_FAR, 1);
+        it('z=1 (소실점)에서 도로 폭 = ROAD_WIDTH_FAR', () => {
+            const { left, right } = PerspectiveCamera.getRoadEdgeX(1.0);
+            expect(right - left).toBeCloseTo(ROAD_WIDTH_FAR);
         });
 
-        it('좌우 대칭 (center가 CENTER_X)', () => {
-            const z = 0.4;
-            const { left, right } = PerspectiveCamera.getRoadEdgeX(z);
-            expect((left + right) / 2).toBeCloseTo(CENTER_X, 5);
+        it('left < CENTER_X < right 항상 성립', () => {
+            for (const z of [0, 0.1, 0.5, 0.9, 1.0]) {
+                const { left, right } = PerspectiveCamera.getRoadEdgeX(z);
+                expect(left).toBeLessThan(CENTER_X);
+                expect(right).toBeGreaterThan(CENTER_X);
+            }
+        });
+
+        it('도로 폭은 z가 감소할수록 넓어짐', () => {
+            const farWidth = PerspectiveCamera.getRoadWidth(0.9);
+            const nearWidth = PerspectiveCamera.getRoadWidth(0.1);
+            expect(nearWidth).toBeGreaterThan(farWidth);
         });
     });
 
-    // ====== getRoadWidth ======
+    // ── getRoadWidth ──────────────────────────────
+
     describe('getRoadWidth', () => {
         it('z=0 → ROAD_WIDTH_NEAR', () => {
-            expect(PerspectiveCamera.getRoadWidth(0)).toBeCloseTo(ROAD_WIDTH_NEAR, 1);
+            expect(PerspectiveCamera.getRoadWidth(0)).toBeCloseTo(ROAD_WIDTH_NEAR);
         });
 
         it('z=1 → ROAD_WIDTH_FAR', () => {
-            expect(PerspectiveCamera.getRoadWidth(1)).toBeCloseTo(ROAD_WIDTH_FAR, 1);
+            expect(PerspectiveCamera.getRoadWidth(1.0)).toBeCloseTo(ROAD_WIDTH_FAR);
         });
 
         it('z=0.5 → 중간값', () => {
-            const expected = (ROAD_WIDTH_FAR + ROAD_WIDTH_NEAR) / 2;
-            expect(PerspectiveCamera.getRoadWidth(0.5)).toBeCloseTo(expected, 1);
+            const expected = (ROAD_WIDTH_NEAR + ROAD_WIDTH_FAR) / 2;
+            expect(PerspectiveCamera.getRoadWidth(0.5)).toBeCloseTo(expected);
         });
 
-        it('가까울수록 도로 폭 넓음', () => {
-            expect(PerspectiveCamera.getRoadWidth(0.2)).toBeGreaterThan(
-                PerspectiveCamera.getRoadWidth(0.8)
-            );
+        it('getRoadWidth와 getRoadEdgeX는 일관성 유지', () => {
+            for (const z of [0, 0.3, 0.7, 1.0]) {
+                const width = PerspectiveCamera.getRoadWidth(z);
+                const { left, right } = PerspectiveCamera.getRoadEdgeX(z);
+                expect(right - left).toBeCloseTo(width);
+            }
         });
     });
 });

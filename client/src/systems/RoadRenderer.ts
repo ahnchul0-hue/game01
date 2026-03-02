@@ -37,6 +37,9 @@ export class RoadRenderer {
     private targetSkyColor: number;
     private targetGroundColor: number;
     private targetRoadColor: number;
+    private startSkyColor: number;
+    private startGroundColor: number;
+    private startRoadColor: number;
     private transitionProgress = 1; // 1 = 전환 완료
     private transitionDuration = 0;
     private transitionElapsed = 0;
@@ -51,6 +54,9 @@ export class RoadRenderer {
         this.targetSkyColor = this.skyColor;
         this.targetGroundColor = this.groundColor;
         this.targetRoadColor = this.roadColor;
+        this.startSkyColor = this.skyColor;
+        this.startGroundColor = this.groundColor;
+        this.startRoadColor = this.roadColor;
 
         // 하늘 배경 (뒤) + 도로 (위)
         this.skyGraphics = scene.add.graphics().setDepth(0);
@@ -72,9 +78,9 @@ export class RoadRenderer {
             this.transitionElapsed += dt;
             this.transitionProgress = Math.min(this.transitionElapsed / this.transitionDuration, 1);
 
-            this.skyColor = this.lerpColor(this.skyColor, this.targetSkyColor, this.transitionProgress);
-            this.groundColor = this.lerpColor(this.groundColor, this.targetGroundColor, this.transitionProgress);
-            this.roadColor = this.lerpColor(this.roadColor, this.targetRoadColor, this.transitionProgress);
+            this.skyColor = this.lerpColor(this.startSkyColor, this.targetSkyColor, this.transitionProgress);
+            this.groundColor = this.lerpColor(this.startGroundColor, this.targetGroundColor, this.transitionProgress);
+            this.roadColor = this.lerpColor(this.startRoadColor, this.targetRoadColor, this.transitionProgress);
 
             if (this.transitionProgress >= 1) {
                 this.skyColor = this.targetSkyColor;
@@ -92,6 +98,10 @@ export class RoadRenderer {
      */
     transitionToStage(stage: StageType, duration: number): void {
         const colors = STAGE_COLORS[stage];
+        // Save current colors as lerp start point
+        this.startSkyColor = this.skyColor;
+        this.startGroundColor = this.groundColor;
+        this.startRoadColor = this.roadColor;
         this.targetSkyColor = colors.sky;
         this.targetGroundColor = colors.ground;
         this.targetRoadColor = this.darken(colors.ground, 20);
@@ -111,6 +121,9 @@ export class RoadRenderer {
         this.targetSkyColor = this.skyColor;
         this.targetGroundColor = this.groundColor;
         this.targetRoadColor = this.roadColor;
+        this.startSkyColor = this.skyColor;
+        this.startGroundColor = this.groundColor;
+        this.startRoadColor = this.roadColor;
         this.transitionProgress = 1;
     }
 

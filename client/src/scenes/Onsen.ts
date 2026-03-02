@@ -56,6 +56,7 @@ export class Onsen extends Phaser.Scene {
         this.input.off('drag');
         this.input.off('dragend');
         this.input.off('pointerdown');
+        this.input.removeAllListeners();
         this.placedSprites = [];
         this.inventoryTexts.clear();
     }

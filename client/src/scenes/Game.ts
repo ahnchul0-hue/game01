@@ -95,6 +95,7 @@ export class Game extends Phaser.Scene {
 
     // 일시정지
     private pauseContainer: Phaser.GameObjects.Container | null = null;
+    private resumeCooldown = false;
 
     // 팝업 텍스트 추적 (메모리 누수 방지)
     private popupTexts: Phaser.GameObjects.Text[] = [];
@@ -104,6 +105,8 @@ export class Game extends Phaser.Scene {
 
     // 미션: 이전 프레임에 활성 상태였던 장애물 집합 (회피 감지용)
     private prevActiveObstacles: Set<Obstacle> = new Set();
+    // 매 프레임 재사용 Set (GC 압력 감소)
+    private currentActiveObstacles: Set<Obstacle> = new Set();
 
     constructor() {
         super(SCENE_GAME);
@@ -120,6 +123,7 @@ export class Game extends Phaser.Scene {
         this.collectedItems = { mandarin: 0, watermelon: 0, hotspring_material: 0 };
         this.dodgedObstacles = 0;
         this.prevActiveObstacles = new Set();
+        this.currentActiveObstacles = new Set();
         this.reviveContainer = null;
         this.reviveHitZones = [];
         this.tutorialContainer = null;
@@ -283,7 +287,7 @@ export class Game extends Phaser.Scene {
             stroke: '#000000', strokeThickness: 3,
         }).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100).setInteractive({ useHandCursor: true });
         pauseBtn.on('pointerdown', () => {
-            if (this.state === 'playing') this.pauseGame();
+            if (this.state === 'playing' && !this.resumeCooldown) this.pauseGame();
         });
 
         // 게임 BGM
@@ -332,6 +336,9 @@ export class Game extends Phaser.Scene {
         this.physics.resume();
         this.state = 'playing';
         SoundManager.getInstance().playBgm(this.mode === 'relax' ? 'bgm-onsen' : 'bgm-game');
+        // Prevent immediate re-pause (100ms cooldown)
+        this.resumeCooldown = true;
+        this.time.delayedCall(100, () => { this.resumeCooldown = false; });
     }
 
     private showTutorial(): void {
@@ -446,11 +453,11 @@ export class Game extends Phaser.Scene {
         }
 
         // 회피 감지: 이전 프레임 활성 장애물 중 현재 비활성으로 전환된 것 = 플레이어가 회피
-        const currentActive = new Set<Obstacle>();
+        this.currentActiveObstacles.clear();
         const obstacleChildren = this.obstaclePool.getGroup().getChildren();
         for (const child of obstacleChildren) {
             const obs = child as Obstacle;
-            if (obs.active) currentActive.add(obs);
+            if (obs.active) this.currentActiveObstacles.add(obs);
         }
         for (const obs of this.prevActiveObstacles) {
             if (!obs.active) {
@@ -460,7 +467,10 @@ export class Game extends Phaser.Scene {
                 this.dodgedObstacles++;
             }
         }
-        this.prevActiveObstacles = currentActive;
+        // Swap refs so prevActiveObstacles points to the new set, reuse old set next frame
+        const tmp = this.prevActiveObstacles;
+        this.prevActiveObstacles = this.currentActiveObstacles;
+        this.currentActiveObstacles = tmp;
 
         // HUD 업데이트 (값 변경 시에만)
         const scoreStr = `${this.score}`;
@@ -678,6 +688,7 @@ export class Game extends Phaser.Scene {
         this.physics.pause();
 
         this.time.delayedCall(300, () => {
+            if (!this.scene || !this.scene.isActive()) return;
             fadeToScene(this, SCENE_GAME_OVER, {
                 score: this.score,
                 distance: Math.floor(this.distance),

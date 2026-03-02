@@ -32,7 +32,7 @@ export class MainMenu extends Phaser.Scene {
         // 오디오 초기화 (브라우저 autoplay 정책: 첫 상호작용 후 init)
         const sound = SoundManager.getInstance();
         this.input.once('pointerdown', () => {
-            sound.init();
+            if (!sound.isReady()) sound.init();
             sound.playBgm('bgm-menu');
         });
         // 이미 init된 경우 바로 BGM 재생

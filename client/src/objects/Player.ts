@@ -313,6 +313,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         if (!this.scene) return;
         if (this.slideTimer) { this.slideTimer.destroy(); this.slideTimer = null; }
         this.clearAllPowerUps();
+        this.scene.tweens.killTweensOf(this);
         if (this.helmetOverlay) { this.helmetOverlay.destroy(); this.helmetOverlay = null; }
         if (this.friendSprite) { this.friendSprite.destroy(); this.friendSprite = null; }
         if (this.shadow) { this.shadow.destroy(); this.shadow = null; }
