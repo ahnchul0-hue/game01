@@ -1,7 +1,24 @@
+# Frontend
 node_modules/
 dist/
+.vite/
+
+# Rust
 target/
+
+# Environment
 .env
+.env.*
+
+# Logs
 *.log
+
+# OS
 .DS_Store
+Thumbs.db
+
+# IDE
 .claude/
+.idea/
+.vscode/
+*.swp
