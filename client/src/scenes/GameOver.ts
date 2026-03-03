@@ -55,17 +55,19 @@ export class GameOver extends Phaser.Scene {
         // BGM 정지 (Game에서 이미 했지만 안전장치)
         SoundManager.getInstance().stopBgm();
 
-        // 점수 API 전송 후 리더보드 로드
+        // 점수 API 전송 후 리더보드 로드 (릴렉스 모드는 리더보드 제외)
         const totalItems = this.collectedItems.mandarin
             + this.collectedItems.watermelon
             + this.collectedItems.hotspring_material;
         const api = ApiClient.getInstance();
-        api.submitScore(this.finalScore, this.finalDistance, totalItems)
-            .then(() => api.getTopScores(5))
-            .then(scores => {
-                if (this.scene && this.scene.isActive()) this.showLeaderboard(scores);
-            })
-            .catch((err) => { console.warn('[GameOver] Score/leaderboard failed:', err); });
+        if (this.lastMode !== 'relax') {
+            api.submitScore(this.finalScore, this.finalDistance, totalItems)
+                .then(() => api.getTopScores(5))
+                .then(scores => {
+                    if (this.scene && this.scene.isActive()) this.showLeaderboard(scores);
+                })
+                .catch((err) => { console.warn('[GameOver] Score/leaderboard failed:', err); });
+        }
 
         // 일일 미션 진행도 업데이트 (fire-and-forget)
         if (this.collectedItems.mandarin > 0) {

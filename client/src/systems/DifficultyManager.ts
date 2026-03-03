@@ -8,6 +8,7 @@ import {
     DIFFICULTY_EASY_MAX,
     DIFFICULTY_MEDIUM_MAX,
     RELAX_SPEED_MULTIPLIER,
+    RELAX_MAX_SPEED,
 } from '../utils/Constants';
 import type { ObstacleType } from '../utils/Constants';
 
@@ -15,9 +16,9 @@ export type DifficultyLevel = 'easy' | 'medium' | 'hard';
 
 export class DifficultyManager {
     getSpeed(distance: number, isRelax: boolean): number {
-        const base = Math.min(BASE_SPEED + distance * SPEED_INCREMENT, MAX_SPEED);
-        const multiplier = isRelax ? RELAX_SPEED_MULTIPLIER : 1;
-        return base * multiplier;
+        const cap = isRelax ? RELAX_MAX_SPEED : MAX_SPEED;
+        const base = Math.min(BASE_SPEED + distance * SPEED_INCREMENT, cap);
+        return isRelax ? base * RELAX_SPEED_MULTIPLIER : base;
     }
 
     getSpawnInterval(distance: number, isRelax: boolean): number {
@@ -34,13 +35,15 @@ export class DifficultyManager {
         return 'hard';
     }
 
-    getAvailableObstacleTypes(level: DifficultyLevel): ObstacleType[] {
+    getAvailableObstacleTypes(level: DifficultyLevel, isRelax = false): ObstacleType[] {
+        if (isRelax) return ['rock', 'puddle'];
         if (level === 'easy') return ['rock'];
         if (level === 'medium') return ['rock', 'branch_high', 'puddle'];
         return ['rock', 'branch_high', 'puddle', 'barrier', 'car'];
     }
 
-    getMaxObstaclesPerSpawn(level: DifficultyLevel): number {
+    getMaxObstaclesPerSpawn(level: DifficultyLevel, isRelax = false): number {
+        if (isRelax) return 1;
         return level === 'hard' ? 2 : 1;
     }
 }

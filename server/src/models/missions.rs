@@ -121,7 +121,10 @@ pub async fn get_or_create_daily_missions(
 ) -> Result<Vec<Mission>, sqlx::Error> {
     // Always attempt inserts first (INSERT OR IGNORE handles duplicates).
     // Do NOT check existing first; insert then select to avoid TOCTOU race.
+    // A7: Wrap all three INSERTs in a transaction for atomicity — either all
+    // three mission rows are inserted or none are (on error).
     let specs = generate_mission_specs();
+    let mut tx = pool.begin().await?;
     for spec in &specs {
         sqlx::query(
             "INSERT OR IGNORE INTO daily_missions
@@ -134,9 +137,10 @@ pub async fn get_or_create_daily_missions(
         .bind(spec.target_value)
         .bind(spec.reward_type)
         .bind(spec.reward_amount)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
     }
+    tx.commit().await?;
 
     // Fetch and return (newly created or pre-existing) missions
     let missions: Vec<Mission> = sqlx::query_as::<_, Mission>(

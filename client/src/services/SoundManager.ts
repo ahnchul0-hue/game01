@@ -4,6 +4,8 @@ export type SfxName = 'jump' | 'slide' | 'collect' | 'hit' | 'powerup' | 'button
 export type BgmName = 'bgm-menu' | 'bgm-game' | 'bgm-onsen';
 
 const LS_KEY_MUTED = 'capybara_muted';
+const LS_KEY_BGM_VOL = 'capybara_bgm_vol';
+const LS_KEY_SFX_VOL = 'capybara_sfx_vol';
 let _instance: SoundManager | null = null;
 
 export class SoundManager {
@@ -12,9 +14,13 @@ export class SoundManager {
     private bgmGain: GainNode | null = null;
     private bgmNodes: AudioNode[] = [];
     private _muted: boolean;
+    private _bgmVol: number;
+    private _sfxVol: number;
 
     private constructor() {
         this._muted = localStorage.getItem(LS_KEY_MUTED) === 'true';
+        this._bgmVol = parseFloat(localStorage.getItem(LS_KEY_BGM_VOL) ?? '0.18');
+        this._sfxVol = parseFloat(localStorage.getItem(LS_KEY_SFX_VOL) ?? '0.6');
     }
 
     static getInstance(): SoundManager {
@@ -27,10 +33,10 @@ export class SoundManager {
         if (this.ctx) return;
         this.ctx = new AudioContext();
         this.sfxGain = this.ctx.createGain();
-        this.sfxGain.gain.value = this._muted ? 0 : 0.6;
+        this.sfxGain.gain.value = this._muted ? 0 : this._sfxVol;
         this.sfxGain.connect(this.ctx.destination);
         this.bgmGain = this.ctx.createGain();
-        this.bgmGain.gain.value = this._muted ? 0 : 0.18;
+        this.bgmGain.gain.value = this._muted ? 0 : this._bgmVol;
         this.bgmGain.connect(this.ctx.destination);
     }
 
@@ -190,8 +196,27 @@ export class SoundManager {
     setMuted(muted: boolean): void {
         this._muted = muted;
         localStorage.setItem(LS_KEY_MUTED, String(muted));
-        if (this.sfxGain) this.sfxGain.gain.value = muted ? 0 : 0.6;
-        if (this.bgmGain) this.bgmGain.gain.value = muted ? 0 : 0.18;
+        if (this.sfxGain) this.sfxGain.gain.value = muted ? 0 : this._sfxVol;
+        if (this.bgmGain) this.bgmGain.gain.value = muted ? 0 : this._bgmVol;
+    }
+
+    getBgmVolume(): number { return this._bgmVol; }
+    getSfxVolume(): number { return this._sfxVol; }
+
+    setBgmVolume(vol: number): void {
+        this._bgmVol = Math.max(0, Math.min(1, vol));
+        localStorage.setItem(LS_KEY_BGM_VOL, this._bgmVol.toString());
+        if (this.bgmGain && !this._muted) {
+            this.bgmGain.gain.value = this._bgmVol;
+        }
+    }
+
+    setSfxVolume(vol: number): void {
+        this._sfxVol = Math.max(0, Math.min(1, vol));
+        localStorage.setItem(LS_KEY_SFX_VOL, this._sfxVol.toString());
+        if (this.sfxGain && !this._muted) {
+            this.sfxGain.gain.value = this._sfxVol;
+        }
     }
 
     isMuted(): boolean { return this._muted; }

@@ -9,6 +9,7 @@ import {
     ITEM_SPAWN_CHANCE,
     SPAWN_INTERVAL_START,
     LANE_OFFSETS,
+    RELAX_OBSTACLE_SKIP,
 } from '../utils/Constants';
 import type { CoinPattern } from '../utils/Constants';
 import { shouldSpawnPowerUp, weightedRandomItem, randomPowerUpType, randomCoinPattern } from '../utils/GameLogic';
@@ -25,6 +26,7 @@ export class SpawnManager {
     private difficulty: DifficultyManager;
     private spawnTimer = 0;
     private currentInterval = SPAWN_INTERVAL_START;
+    private isRelax = false;
 
     constructor(
         obstaclePool: ObstaclePool,
@@ -45,6 +47,7 @@ export class SpawnManager {
      * @param isRelax 릴렉스 모드 여부
      */
     update(delta: number, distance: number, gameSpeed: number, isRelax: boolean): void {
+        this.isRelax = isRelax;
         this.spawnTimer += delta;
         this.currentInterval = this.difficulty.getSpawnInterval(distance, isRelax);
 
@@ -59,8 +62,17 @@ export class SpawnManager {
 
     private spawnWave(distance: number, zSpeed: number): void {
         const level = this.difficulty.getLevel(distance);
-        const types = this.difficulty.getAvailableObstacleTypes(level);
-        const maxObstacles = this.difficulty.getMaxObstaclesPerSpawn(level);
+        const types = this.difficulty.getAvailableObstacleTypes(level, this.isRelax);
+        const maxObstacles = this.difficulty.getMaxObstaclesPerSpawn(level, this.isRelax);
+
+        // 릴렉스 모드: 장애물 스킵 확률
+        if (this.isRelax && Math.random() < RELAX_OBSTACLE_SKIP) {
+            // 장애물 없이 아이템만 스폰
+            for (const lane of LANE_OFFSETS) {
+                this.spawnItemsInLane(lane, SPAWN_Z, zSpeed, distance);
+            }
+            return;
+        }
 
         // 레인 셔플 (Fisher-Yates)
         const lanes = [...LANE_OFFSETS]; // [-1, 0, 1]
@@ -150,6 +162,7 @@ export class SpawnManager {
 
     reset(): void {
         this.spawnTimer = 0;
+        this.isRelax = false;
         this.obstaclePool.deactivateAll();
         this.itemPool.deactivateAll();
         this.powerUpPool.deactivateAll();

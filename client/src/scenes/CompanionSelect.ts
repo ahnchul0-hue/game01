@@ -158,18 +158,8 @@ export class CompanionSelect extends Phaser.Scene {
     }
 
     private selectCompanion(id: CompanionId, name: string, abilityDesc: string): void {
-        // 이전 테두리 제거
-        const prevBorder = this.cardBorders.get(this.selectedCompanion);
-        if (prevBorder) prevBorder.clear();
-
         this.selectedCompanion = id;
-
-        // 새 테두리
-        const border = this.cardBorders.get(id);
-        if (border) {
-            // Border size depends on card — just redraw uniformly
-            // The border was initially drawn with proper dimensions
-        }
+        this.redrawAllBorders();
 
         // 프리뷰 업데이트
         this.drawCompanionPreview(id);
@@ -210,8 +200,6 @@ export class CompanionSelect extends Phaser.Scene {
         const hitZone = this.add.zone(x, y, w, h).setInteractive({ useHandCursor: true });
         hitZone.on('pointerdown', () => {
             this.selectCompanion('none', '없음', '동물 친구를 선택하세요');
-            // 테두리 갱신
-            this.redrawAllBorders();
         });
     }
 
@@ -292,7 +280,6 @@ export class CompanionSelect extends Phaser.Scene {
             const hitZone = this.add.zone(x, y, w, h).setInteractive({ useHandCursor: true });
             hitZone.on('pointerdown', () => {
                 this.selectCompanion(config.id, config.name, config.abilityDescription);
-                this.redrawAllBorders();
             });
         }
     }

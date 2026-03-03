@@ -4,6 +4,7 @@ import {
     BASE_SPEED,
     MAX_SPEED,
     RELAX_SPEED_MULTIPLIER,
+    RELAX_MAX_SPEED,
     SPAWN_INTERVAL_START,
     SPAWN_INTERVAL_MIN,
     DIFFICULTY_EASY_MAX,
@@ -99,5 +100,45 @@ describe('DifficultyManager.getMaxObstaclesPerSpawn', () => {
 
     it('returns 2 for hard', () => {
         expect(dm.getMaxObstaclesPerSpawn('hard')).toBe(2);
+    });
+});
+
+describe('DifficultyManager.getSpeed — relax cap', () => {
+    it('relax mode caps at RELAX_MAX_SPEED before multiplier', () => {
+        const dm = new DifficultyManager();
+        const relax = dm.getSpeed(10000, true);
+        // RELAX_MAX_SPEED=350 * RELAX_SPEED_MULTIPLIER=0.5 = 175
+        expect(relax).toBeLessThanOrEqual(RELAX_MAX_SPEED * RELAX_SPEED_MULTIPLIER);
+    });
+});
+
+describe('DifficultyManager — relax obstacle types', () => {
+    const dm = new DifficultyManager();
+
+    it('relax mode returns only rock and puddle', () => {
+        expect(dm.getAvailableObstacleTypes('easy', true)).toEqual(['rock', 'puddle']);
+        expect(dm.getAvailableObstacleTypes('medium', true)).toEqual(['rock', 'puddle']);
+        expect(dm.getAvailableObstacleTypes('hard', true)).toEqual(['rock', 'puddle']);
+    });
+
+    it('normal mode returns full types for each level', () => {
+        expect(dm.getAvailableObstacleTypes('easy')).toEqual(['rock']);
+        expect(dm.getAvailableObstacleTypes('medium')).toEqual(['rock', 'branch_high', 'puddle']);
+        expect(dm.getAvailableObstacleTypes('hard')).toHaveLength(5);
+    });
+
+    it('relax mode always spawns max 1 obstacle', () => {
+        expect(dm.getMaxObstaclesPerSpawn('easy', true)).toBe(1);
+        expect(dm.getMaxObstaclesPerSpawn('medium', true)).toBe(1);
+        expect(dm.getMaxObstaclesPerSpawn('hard', true)).toBe(1);
+    });
+
+    it('normal hard mode spawns max 2', () => {
+        expect(dm.getMaxObstaclesPerSpawn('hard')).toBe(2);
+    });
+
+    it('normal easy/medium mode spawns max 1', () => {
+        expect(dm.getMaxObstaclesPerSpawn('easy')).toBe(1);
+        expect(dm.getMaxObstaclesPerSpawn('medium')).toBe(1);
     });
 });

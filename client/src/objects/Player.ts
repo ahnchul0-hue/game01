@@ -348,6 +348,21 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     getHasHelmet(): boolean { return this.hasHelmet; }
     getHasMagnet(): boolean { return this.hasMagnet; }
 
+    /** Returns remaining time in ms for active timed powerups */
+    getActivePowerUpTimers(): { type: PowerUpType; remaining: number }[] {
+        const timers: { type: PowerUpType; remaining: number }[] = [];
+        if (this.hasTube && this.tubeTimerEvent) {
+            timers.push({ type: 'tube', remaining: this.tubeTimerEvent.getRemaining() });
+        }
+        if (this.hasFriend && this.friendTimerEvent) {
+            timers.push({ type: 'friend', remaining: this.friendTimerEvent.getRemaining() });
+        }
+        if (this.hasMagnet && this.magnetTimerEvent) {
+            timers.push({ type: 'magnet', remaining: this.magnetTimerEvent.getRemaining() });
+        }
+        return timers;
+    }
+
     destroy(fromScene?: boolean): void {
         if (!this.scene) return;
         if (this.slideTimer) { this.slideTimer.destroy(); this.slideTimer = null; }

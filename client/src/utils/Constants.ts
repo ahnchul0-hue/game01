@@ -31,6 +31,9 @@ export const SCENE_GAME_OVER = 'GameOver';
 
 // 릴렉스 모드 배율
 export const RELAX_SPEED_MULTIPLIER = 0.5;
+export const RELAX_MAX_SPEED = 350;       // 릴렉스 모드 최대 속도 캡
+export const RELAX_FREE_REVIVES = 99;     // 릴렉스 모드 사실상 무제한 부활
+export const RELAX_OBSTACLE_SKIP = 0.4;   // 릴렉스 모드 장애물 스킵 확률 (40%)
 
 // 레인 이동 Tween
 export const LANE_MOVE_DURATION = 150; // ms

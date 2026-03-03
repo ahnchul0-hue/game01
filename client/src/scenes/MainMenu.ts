@@ -116,9 +116,10 @@ export class MainMenu extends Phaser.Scene {
             callback: () => fadeToScene(this, SCENE_MISSIONS),
         });
 
-        // 음소거 토글 버튼
+        // 사운드 컨트롤 (우측 하단)
+        const controlY = GAME_HEIGHT - 30;
         const muteLabel = sound.isMuted() ? 'UNMUTE' : 'MUTE';
-        const muteText = this.add.text(GAME_WIDTH - 20, GAME_HEIGHT - 30, muteLabel, {
+        const muteText = this.add.text(GAME_WIDTH - 20, controlY, muteLabel, {
             fontFamily: 'Arial', fontSize: '18px', color: '#999999',
         }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true });
         muteText.on('pointerdown', () => {
@@ -126,6 +127,35 @@ export class MainMenu extends Phaser.Scene {
             sound.setMuted(nowMuted);
             muteText.setText(nowMuted ? 'UNMUTE' : 'MUTE');
             if (!nowMuted) sound.playBgm('bgm-menu');
+        });
+
+        // BGM 볼륨 (3단계 토글)
+        const bgmLevels = [0, 0.09, 0.18];
+        const bgmLabels = ['BGM:OFF', 'BGM:LOW', 'BGM:HI'];
+        let bgmIdx = bgmLevels.indexOf(sound.getBgmVolume());
+        if (bgmIdx < 0) bgmIdx = 2;
+        const bgmText = this.add.text(20, controlY, bgmLabels[bgmIdx], {
+            fontFamily: 'Arial', fontSize: '16px', color: '#999999',
+        }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
+        bgmText.on('pointerdown', () => {
+            bgmIdx = (bgmIdx + 1) % bgmLevels.length;
+            sound.setBgmVolume(bgmLevels[bgmIdx]);
+            bgmText.setText(bgmLabels[bgmIdx]);
+        });
+
+        // SFX 볼륨 (3단계 토글)
+        const sfxLevels = [0, 0.3, 0.6];
+        const sfxLabels = ['SFX:OFF', 'SFX:LOW', 'SFX:HI'];
+        let sfxIdx = sfxLevels.indexOf(sound.getSfxVolume());
+        if (sfxIdx < 0) sfxIdx = 2;
+        const sfxText = this.add.text(110, controlY, sfxLabels[sfxIdx], {
+            fontFamily: 'Arial', fontSize: '16px', color: '#999999',
+        }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
+        sfxText.on('pointerdown', () => {
+            sfxIdx = (sfxIdx + 1) % sfxLevels.length;
+            sound.setSfxVolume(sfxLevels[sfxIdx]);
+            sfxText.setText(sfxLabels[sfxIdx]);
+            sound.playSfx('button');
         });
     }
 }

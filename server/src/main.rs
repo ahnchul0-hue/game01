@@ -8,6 +8,7 @@ use axum::http::{header, HeaderValue, Method};
 use std::net::SocketAddr;
 use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor};
 use tower_http::cors::{AllowOrigin, CorsLayer};
+use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
 
 use crate::config::Config;
@@ -55,6 +56,7 @@ async fn main() {
 
     let app = routes::create_router(pool)
         .layer(GovernorLayer::new(governor_conf))
+        .layer(RequestBodyLimitLayer::new(256 * 1024))
         .layer(TraceLayer::new_for_http())
         .layer(cors);
 

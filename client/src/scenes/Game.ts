@@ -22,9 +22,11 @@ import {
     PLAYER_Z,
     BASE_SPEED,
     MAX_FREE_REVIVES,
+    RELAX_FREE_REVIVES,
     INVINCIBLE_DURATION,
     SCENE_GAME,
     SCENE_GAME_OVER,
+    SCENE_MAIN_MENU,
     EFFECT_SLOWMO_SCALE,
     LS_KEY_TUTORIAL_DONE,
     ROAD_HEIGHT,
@@ -105,6 +107,9 @@ export class Game extends Phaser.Scene {
     // 팝업 텍스트 추적 (메모리 누수 방지)
     private popupTexts: Phaser.GameObjects.Text[] = [];
 
+    // 파워업 HUD 타이머 텍스트
+    private powerUpHudTexts: Phaser.GameObjects.Text[] = [];
+
     // 착지 감지 (먼지 파티클용)
     private wasJumping = false;
 
@@ -132,6 +137,7 @@ export class Game extends Phaser.Scene {
         this.pauseContainer = null;
         this.wasJumping = false;
         this.popupTexts = [];
+        this.powerUpHudTexts = [];
         this.resumeCooldown = false;
     }
 
@@ -153,6 +159,8 @@ export class Game extends Phaser.Scene {
             if (t.scene) t.destroy();
         }
         this.popupTexts = [];
+        for (const t of this.powerUpHudTexts) { if (t.scene) t.destroy(); }
+        this.powerUpHudTexts = [];
         if (this.effectManager) this.effectManager.destroy();
         if (this.roadRenderer) this.roadRenderer.destroy();
         if (this.sceneryManager) this.sceneryManager.destroy();
@@ -160,6 +168,11 @@ export class Game extends Phaser.Scene {
     }
 
     create(): void {
+        // 릴렉스 모드: 따뜻한 배경색
+        if (this.mode === 'relax') {
+            this.cameras.main.setBackgroundColor('#FFF3E0');
+        }
+
         // 의사-3D 렌더링
         this.roadRenderer = new RoadRenderer(this, 'forest');
         this.sceneryManager = new SceneryManager(this, 'forest');
@@ -239,6 +252,9 @@ export class Game extends Phaser.Scene {
             fontFamily: 'Arial', fontSize: '32px', color: '#FFFFFF',
             stroke: '#000000', strokeThickness: 3,
         }).setScrollFactor(0).setDepth(100);
+        if (this.mode === 'relax') {
+            this.scoreText.setVisible(false);
+        }
 
         this.distanceText = this.add.text(GAME_WIDTH - 20, 20, '0m', {
             fontFamily: 'Arial', fontSize: '28px', color: '#FFFFFF',
@@ -253,10 +269,14 @@ export class Game extends Phaser.Scene {
 
         // 모드 표시
         if (this.mode === 'relax') {
-            this.add.text(GAME_WIDTH / 2, 20, 'RELAX', {
-                fontFamily: 'Arial', fontSize: '20px', color: '#81C784',
-                stroke: '#000000', strokeThickness: 2,
-            }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(100);
+            const badge = this.add.graphics();
+            badge.fillStyle(0x81C784, 0.8);
+            badge.fillRoundedRect(GAME_WIDTH / 2 - 60, 8, 120, 32, 10);
+            badge.setScrollFactor(0).setDepth(99);
+            this.add.text(GAME_WIDTH / 2, 24, 'RELAX', {
+                fontFamily: 'Arial', fontSize: '20px', color: '#FFFFFF',
+                fontStyle: 'bold',
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(100);
         }
 
         // 온천 버프 표시
@@ -298,21 +318,47 @@ export class Game extends Phaser.Scene {
         overlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
         this.pauseContainer.add(overlay);
 
-        const pauseText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40, '일시정지', {
+        const pauseText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 80, '일시정지', {
             fontFamily: 'Arial', fontSize: '48px', color: '#FFFFFF', fontStyle: 'bold',
         }).setOrigin(0.5);
         this.pauseContainer.add(pauseText);
 
-        const resumeText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 30, '탭하여 재개', {
-            fontFamily: 'Arial', fontSize: '24px', color: '#AAAAAA',
-        }).setOrigin(0.5);
-        this.pauseContainer.add(resumeText);
-        this.tweens.add({ targets: resumeText, alpha: 0.3, duration: 600, yoyo: true, repeat: -1 });
+        // RESUME 버튼
+        const resumeBg = this.add.graphics();
+        resumeBg.fillStyle(0x4CAF50, 1);
+        resumeBg.fillRoundedRect(GAME_WIDTH / 2 - 120, GAME_HEIGHT / 2 - 10, 240, 60, 12);
+        this.pauseContainer.add(resumeBg);
 
-        const dismissZone = this.add.zone(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT)
-            .setInteractive();
-        this.pauseContainer.add(dismissZone);
-        dismissZone.once('pointerdown', () => this.resumeGame());
+        const resumeLabel = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20, '계속하기', {
+            fontFamily: 'Arial', fontSize: '28px', color: '#FFFFFF', fontStyle: 'bold',
+        }).setOrigin(0.5);
+        this.pauseContainer.add(resumeLabel);
+
+        const resumeZone = this.add.zone(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20, 240, 60)
+            .setInteractive({ useHandCursor: true });
+        this.pauseContainer.add(resumeZone);
+        resumeZone.once('pointerdown', () => this.resumeGame());
+
+        // MENU 버튼
+        const menuBg = this.add.graphics();
+        menuBg.fillStyle(0x757575, 1);
+        menuBg.fillRoundedRect(GAME_WIDTH / 2 - 120, GAME_HEIGHT / 2 + 70, 240, 60, 12);
+        this.pauseContainer.add(menuBg);
+
+        const menuLabel = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100, '메인 메뉴', {
+            fontFamily: 'Arial', fontSize: '28px', color: '#FFFFFF', fontStyle: 'bold',
+        }).setOrigin(0.5);
+        this.pauseContainer.add(menuLabel);
+
+        const menuZone = this.add.zone(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100, 240, 60)
+            .setInteractive({ useHandCursor: true });
+        this.pauseContainer.add(menuZone);
+        menuZone.once('pointerdown', () => {
+            this.pauseContainer?.destroy();
+            this.pauseContainer = null;
+            this.physics.resume();
+            fadeToScene(this, SCENE_MAIN_MENU);
+        });
     }
 
     private resumeGame(): void {
@@ -464,6 +510,22 @@ export class Game extends Phaser.Scene {
         const totalItems = this.collectedItems.mandarin + this.collectedItems.watermelon + this.collectedItems.hotspring_material;
         const itemStr = totalItems > 0 ? `x${totalItems}` : '';
         if (this.itemCounterText.text !== itemStr) this.itemCounterText.setText(itemStr);
+
+        // 파워업 HUD 업데이트
+        for (const t of this.powerUpHudTexts) { if (t.scene) t.destroy(); }
+        this.powerUpHudTexts = [];
+        const activeTimers = this.player.getActivePowerUpTimers();
+        const hudColors: Record<string, string> = { tube: '#64B5F6', friend: '#FF6F00', magnet: '#CC0000' };
+        const hudNames: Record<string, string> = { tube: '튜브', friend: '친구', magnet: '자석' };
+        for (let i = 0; i < activeTimers.length; i++) {
+            const timer = activeTimers[i];
+            const secs = Math.ceil(timer.remaining / 1000);
+            const hudText = this.add.text(GAME_WIDTH - 20, 160 + i * 40, `${hudNames[timer.type]} ${secs}s`, {
+                fontFamily: 'Arial', fontSize: '22px', color: hudColors[timer.type],
+                stroke: '#000000', strokeThickness: 3,
+            }).setOrigin(1, 0).setScrollFactor(0).setDepth(100);
+            this.powerUpHudTexts.push(hudText);
+        }
     }
 
     // 장애물 충돌 판정
@@ -507,7 +569,8 @@ export class Game extends Phaser.Scene {
         SoundManager.getInstance().playSfx('hit');
         this.effectManager.onObstacleHit();
 
-        if (this.revivesUsed < MAX_FREE_REVIVES) {
+        const maxRevives = this.mode === 'relax' ? RELAX_FREE_REVIVES : MAX_FREE_REVIVES;
+        if (this.revivesUsed < maxRevives) {
             this.showRevivePrompt();
         } else {
             this.triggerGameOver();
