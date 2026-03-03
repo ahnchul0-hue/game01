@@ -20,6 +20,10 @@ export class InputController {
     private swipeStart: { x: number; y: number } | null = null;
     private callbacks: InputCallbacks;
 
+    // Named references for clean removal
+    private readonly onPointerDown: (p: Phaser.Input.Pointer) => void;
+    private readonly onPointerUp: (p: Phaser.Input.Pointer) => void;
+
     constructor(scene: Phaser.Scene, callbacks: InputCallbacks) {
         this.scene = scene;
         this.callbacks = callbacks;
@@ -29,13 +33,13 @@ export class InputController {
             this.cursors = scene.input.keyboard.createCursorKeys();
         }
 
-        // Touch swipe
-        scene.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+        // Named handler references (arrow functions bound to this)
+        this.onPointerDown = (p: Phaser.Input.Pointer) => {
             if (!this.callbacks.isInputActive()) return;
             this.swipeStart = { x: p.x, y: p.y };
-        });
+        };
 
-        scene.input.on('pointerup', (p: Phaser.Input.Pointer) => {
+        this.onPointerUp = (p: Phaser.Input.Pointer) => {
             if (!this.swipeStart || !this.callbacks.isInputActive()) return;
             const dx = p.x - this.swipeStart.x;
             const dy = p.y - this.swipeStart.y;
@@ -49,7 +53,10 @@ export class InputController {
             }
 
             this.swipeStart = null;
-        });
+        };
+
+        scene.input.on('pointerdown', this.onPointerDown);
+        scene.input.on('pointerup', this.onPointerUp);
     }
 
     /** Call once per frame from update() to check keyboard state. */
@@ -63,8 +70,8 @@ export class InputController {
     }
 
     destroy(): void {
-        this.scene.input.off('pointerdown');
-        this.scene.input.off('pointerup');
+        this.scene.input.off('pointerdown', this.onPointerDown);
+        this.scene.input.off('pointerup', this.onPointerUp);
         this.swipeStart = null;
     }
 }

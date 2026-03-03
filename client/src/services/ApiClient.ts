@@ -63,6 +63,7 @@ let _instance: ApiClient | null = null;
 
 export class ApiClient {
     private baseUrl = API_BASE_URL;
+    private isReAuthenticating = false;
 
     /** 싱글턴 인스턴스 반환 */
     static getInstance(): ApiClient {
@@ -91,11 +92,17 @@ export class ApiClient {
         }
     }
 
-    /** 401 응답 시 토큰 초기화 후 재등록 시도 */
+    /** 401 응답 시 토큰 초기화 후 재등록 시도 (재진입 방지) */
     private async handleAuthError(): Promise<void> {
-        localStorage.removeItem(LS_KEY_TOKEN);
-        localStorage.removeItem(LS_KEY_USER_ID);
-        await this.ensureUser();
+        if (this.isReAuthenticating) return;
+        this.isReAuthenticating = true;
+        try {
+            localStorage.removeItem(LS_KEY_TOKEN);
+            localStorage.removeItem(LS_KEY_USER_ID);
+            await this.ensureUser();
+        } finally {
+            this.isReAuthenticating = false;
+        }
     }
 
     async ensureUser(): Promise<void> {

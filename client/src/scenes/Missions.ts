@@ -73,9 +73,9 @@ function loadLocalCache(): LocalMissionCache | null {
     try {
         const raw = localStorage.getItem(LS_KEY_DAILY_MISSIONS);
         if (!raw) return null;
-        const parsed = JSON.parse(raw) as LocalMissionCache;
-        if (parsed.date !== todayDateString()) return null; // 날짜 바뀌면 무효
-        return parsed;
+        const parsed = JSON.parse(raw);
+        if (!parsed || parsed.date !== todayDateString() || !Array.isArray(parsed.missions)) return null;
+        return parsed as LocalMissionCache;
     } catch {
         return null;
     }

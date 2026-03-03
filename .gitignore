@@ -13,6 +13,7 @@ target/
 # Environment
 .env
 .env.*
+!.env.example
 
 # Logs
 *.log
@@ -33,3 +34,10 @@ Thumbs.db
 
 # Screenshots (root only)
 /*.png
+
+# Test coverage
+coverage/
+
+# SQLite WAL/SHM sidecar files
+*.db-shm
+*.db-wal

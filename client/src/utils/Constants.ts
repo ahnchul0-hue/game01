@@ -15,9 +15,9 @@ export const SLIDE_DURATION = 500; // ms
 export const GRAVITY = 800;
 
 // 속도 / 난이도
-export const BASE_SPEED = 300; // px/s
-export const MAX_SPEED = 800;
-export const SPEED_INCREMENT = 0.01; // 거리 1당 속도 증가량
+export const BASE_SPEED = 250; // px/s
+export const MAX_SPEED = 700;
+export const SPEED_INCREMENT = 0.08; // 거리 1당 속도 증가량
 
 // 입력
 export const SWIPE_THRESHOLD = 50; // px
@@ -61,21 +61,21 @@ export const ITEM_POINTS: Record<ItemType, number> = {
 };
 
 export const ITEM_WEIGHTS: Record<ItemType, number> = {
-    mandarin: 0.7,
-    watermelon: 0.2,
-    hotspring_material: 0.1,
+    mandarin: 0.6,
+    watermelon: 0.25,
+    hotspring_material: 0.15,
 };
 
 export const ITEM_SIZE = 50;
 export const ITEM_POOL_SIZE = 8;
 
 // ========== M2: 난이도 곡선 ==========
-export const SPAWN_INTERVAL_START = 2000; // ms
-export const SPAWN_INTERVAL_MIN = 600;    // ms
-export const SPAWN_INTERVAL_DECAY = 0.5;  // 거리당 감소량
+export const SPAWN_INTERVAL_START = 1200; // ms
+export const SPAWN_INTERVAL_MIN = 500;    // ms
+export const SPAWN_INTERVAL_DECAY = 0.3;  // 거리당 감소량
 
-export const DIFFICULTY_EASY_MAX = 500;   // 거리 (m)
-export const DIFFICULTY_MEDIUM_MAX = 2000;
+export const DIFFICULTY_EASY_MAX = 300;   // 거리 (m)
+export const DIFFICULTY_MEDIUM_MAX = 1200;
 
 export const ITEM_SPAWN_CHANCE = 0.6;
 
@@ -100,13 +100,14 @@ export type PowerUpType = 'helmet' | 'tube' | 'friend' | 'magnet';
 
 export const POWERUP_CONFIGS: Record<PowerUpType, { width: number; height: number; color: number; duration: number }> = {
     helmet: { width: 50, height: 50, color: 0x2E7D32, duration: 0 },      // 1회용
-    tube:   { width: 50, height: 50, color: 0x1565C0, duration: 5000 },    // 5초
-    friend: { width: 50, height: 50, color: 0xFF6F00, duration: 8000 },    // 8초
+    tube:   { width: 50, height: 50, color: 0x1565C0, duration: 7000 },    // 7초
+    friend: { width: 50, height: 50, color: 0xFF6F00, duration: 6000 },    // 6초
     magnet: { width: 50, height: 50, color: 0xCC0000, duration: 6000 },    // 6초
 };
 
 export const POWERUP_POOL_SIZE = 3;
-export const POWERUP_SPAWN_CHANCE = 0.12;
+export const POWERUP_SPAWN_CHANCE = 0.07;
+export const MAGNET_Z_RANGE = 0.4;
 export const POWERUP_MIN_DISTANCE = 300;
 export const POWERUP_SCORE_MULTIPLIER_TUBE = 2;
 
@@ -115,12 +116,12 @@ export type StageType = 'forest' | 'river' | 'village' | 'onsen';
 
 export const STAGE_THRESHOLDS: { stage: StageType; minDistance: number }[] = [
     { stage: 'forest',  minDistance: 0 },
-    { stage: 'river',   minDistance: 500 },
-    { stage: 'village', minDistance: 1500 },
-    { stage: 'onsen',   minDistance: 3000 },
+    { stage: 'river',   minDistance: 1000 },
+    { stage: 'village', minDistance: 3000 },
+    { stage: 'onsen',   minDistance: 6000 },
 ];
 
-export const STAGE_LOOP_DISTANCE = 4000;
+export const STAGE_LOOP_DISTANCE = 8000;
 
 export const STAGE_COLORS: Record<StageType, { sky: number; trees: number; ground: number }> = {
     forest:  { sky: 0x87CEEB, trees: 0x228B22, ground: 0x8B4513 },
@@ -179,9 +180,9 @@ export interface OnsenLayout {
 
 export const ONSEN_LEVEL_THRESHOLDS: { level: OnsenLevel; minItems: number }[] = [
     { level: 'basic', minItems: 0 },
-    { level: 'forest', minItems: 3 },
-    { level: 'snow', minItems: 6 },
-    { level: 'luxury', minItems: 10 },
+    { level: 'forest', minItems: 15 },
+    { level: 'snow', minItems: 35 },
+    { level: 'luxury', minItems: 60 },
 ];
 
 export const ONSEN_LEVEL_COLORS: Record<OnsenLevel, { bg: number; water: number; rim: number }> = {
@@ -298,7 +299,7 @@ export const LS_KEY_SELECTED_COMPANION = 'capybara_selected_companion';
 export const LS_KEY_UNLOCKED_COMPANIONS = 'capybara_unlocked_companions';
 
 export type CompanionId = 'none' | 'otter' | 'duck' | 'turtle';
-export type CompanionUnlockCondition = 'always' | 'distance_2000' | 'items_500' | 'onsen_level_2';
+export type CompanionUnlockCondition = 'always' | 'distance_2000' | 'distance_3000' | 'items_500' | 'onsen_level_2';
 
 export interface CompanionAbility {
     scoreMultiplier: number;
@@ -320,7 +321,7 @@ export interface CompanionConfig {
 export const COMPANION_CONFIGS: CompanionConfig[] = [
     {
         id: 'otter', name: '수달', color: 0x6B4226, emoji: '🦦',
-        unlockCondition: 'distance_2000', unlockDescription: '2,000m 달리기',
+        unlockCondition: 'distance_3000', unlockDescription: '3,000m 달리기',
         abilityDescription: '아이템 자석 (100px)',
         ability: { scoreMultiplier: 1.0, shieldChance: 0, itemMagnetRange: 100 },
     },

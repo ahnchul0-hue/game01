@@ -44,6 +44,7 @@ export class Onsen extends Phaser.Scene {
     private poolGraphics!: Phaser.GameObjects.Graphics;
     private placedSprites: Phaser.GameObjects.Image[] = [];
     private inventoryTexts: Map<ItemType, Phaser.GameObjects.Text> = new Map();
+    private steamEmitter: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
 
     constructor() {
         super(SCENE_ONSEN);
@@ -51,12 +52,15 @@ export class Onsen extends Phaser.Scene {
 
     shutdown(): void {
         this.cleanupPlacingMode();
+        if (this.steamEmitter) {
+            this.steamEmitter.stop();
+            this.steamEmitter.destroy();
+            this.steamEmitter = null;
+        }
         this.tweens.killAll();
         this.time.removeAllEvents();
         this.input.off('drag');
         this.input.off('dragend');
-        this.input.off('pointerdown');
-        this.input.removeAllListeners();
         this.placedSprites = [];
         this.inventoryTexts.clear();
     }
@@ -113,7 +117,7 @@ export class Onsen extends Phaser.Scene {
         this.poolGraphics.fillCircle(ONSEN_POOL_X + 420, ONSEN_POOL_Y + 20, 35);
 
         // 온천 김(steam) 파티클
-        this.add.particles(ONSEN_POOL_X + ONSEN_POOL_W / 2, ONSEN_POOL_Y + 20, 'particle', {
+        this.steamEmitter = this.add.particles(ONSEN_POOL_X + ONSEN_POOL_W / 2, ONSEN_POOL_Y + 20, 'particle', {
             x: { min: -ONSEN_POOL_W / 3, max: ONSEN_POOL_W / 3 },
             speedY: { min: -30, max: -15 },
             speedX: { min: -5, max: 5 },

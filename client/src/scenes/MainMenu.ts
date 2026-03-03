@@ -15,12 +15,15 @@ import { SoundManager } from '../services/SoundManager';
 import { createButton, fadeToScene, fadeIn } from '../ui/UIFactory';
 
 export class MainMenu extends Phaser.Scene {
+    private onFirstPointer: (() => void) | null = null;
+
     constructor() {
         super(SCENE_MAIN_MENU);
     }
 
     shutdown(): void {
-        this.input.off('pointerdown');
+        if (this.onFirstPointer) this.input.off('pointerdown', this.onFirstPointer);
+        this.onFirstPointer = null;
         this.tweens.killAll();
     }
 
@@ -32,10 +35,11 @@ export class MainMenu extends Phaser.Scene {
 
         // 오디오 초기화 (브라우저 autoplay 정책: 첫 상호작용 후 init)
         const sound = SoundManager.getInstance();
-        this.input.once('pointerdown', () => {
+        this.onFirstPointer = () => {
             if (!sound.isReady()) sound.init();
             sound.playBgm('bgm-menu');
-        });
+        };
+        this.input.once('pointerdown', this.onFirstPointer);
         // 이미 init된 경우 바로 BGM 재생
         if (sound.isReady()) sound.playBgm('bgm-menu');
 

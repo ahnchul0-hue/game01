@@ -17,28 +17,28 @@ describe('getOnsenLevel', () => {
         expect(getOnsenLevel(0)).toBe('basic');
     });
 
-    it('returns basic for 2 items', () => {
-        expect(getOnsenLevel(2)).toBe('basic');
+    it('returns basic for 14 items', () => {
+        expect(getOnsenLevel(14)).toBe('basic');
     });
 
-    it('returns forest for 3 items', () => {
-        expect(getOnsenLevel(3)).toBe('forest');
+    it('returns forest for 15 items', () => {
+        expect(getOnsenLevel(15)).toBe('forest');
     });
 
-    it('returns forest for 5 items', () => {
-        expect(getOnsenLevel(5)).toBe('forest');
+    it('returns forest for 20 items', () => {
+        expect(getOnsenLevel(20)).toBe('forest');
     });
 
-    it('returns snow for 6 items', () => {
-        expect(getOnsenLevel(6)).toBe('snow');
+    it('returns snow for 35 items', () => {
+        expect(getOnsenLevel(35)).toBe('snow');
     });
 
-    it('returns snow for 9 items', () => {
-        expect(getOnsenLevel(9)).toBe('snow');
+    it('returns snow for 50 items', () => {
+        expect(getOnsenLevel(50)).toBe('snow');
     });
 
-    it('returns luxury for 10 items', () => {
-        expect(getOnsenLevel(10)).toBe('luxury');
+    it('returns luxury for 60 items', () => {
+        expect(getOnsenLevel(60)).toBe('luxury');
     });
 
     it('returns luxury for 100 items', () => {
@@ -181,8 +181,8 @@ describe('getOnsenBuff', () => {
         expect(buff.scoreMultiplier).toBe(1.0);
     });
 
-    it('integrates with getOnsenLevel — 10 placed items gives luxury buff', () => {
-        const level = getOnsenLevel(10);
+    it('integrates with getOnsenLevel — 60 placed items gives luxury buff', () => {
+        const level = getOnsenLevel(60);
         const buff = getOnsenBuff(level);
         expect(buff.scoreMultiplier).toBe(1.3);
         expect(buff.startingShield).toBe(true);

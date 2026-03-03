@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::AppError;
 use crate::models::missions::{self, ClaimError, Mission, StreakResponse};
 use crate::models::user;
-use crate::routes::AppState;
+use crate::routes::{extract_token, AppState};
 
 // ---------------------------------------------------------------------------
 // Response types
@@ -54,22 +54,6 @@ pub fn router() -> Router<AppState> {
         .route("/api/missions/streak/claim", post(claim_streak))
 }
 
-// ---------------------------------------------------------------------------
-// Auth helper (same pattern as inventory.rs)
-// ---------------------------------------------------------------------------
-
-fn extract_token(headers: &HeaderMap) -> Result<&str, AppError> {
-    let token = headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.strip_prefix("Bearer "))
-        .ok_or(AppError::Unauthorized)?;
-    if token.len() > 64 {
-        return Err(AppError::Unauthorized);
-    }
-    Ok(token)
-}
-
 fn today_utc() -> String {
     Utc::now().format("%Y-%m-%d").to_string()
 }
@@ -87,7 +71,10 @@ async fn get_daily_missions(
     let token = extract_token(&headers)?;
     let u = user::find_by_token(&state.pool, token)
         .await
-        .map_err(|_| AppError::Unauthorized)?;
+        .map_err(|e| {
+            tracing::warn!("Unauthorized missions/daily access: {:?}", e);
+            AppError::Unauthorized
+        })?;
 
     let today = today_utc();
 
@@ -130,7 +117,10 @@ async fn update_progress(
     let token = extract_token(&headers)?;
     let u = user::find_by_token(&state.pool, token)
         .await
-        .map_err(|_| AppError::Unauthorized)?;
+        .map_err(|e| {
+            tracing::warn!("Unauthorized missions/progress attempt: {:?}", e);
+            AppError::Unauthorized
+        })?;
 
     let today = today_utc();
 
@@ -143,6 +133,7 @@ async fn update_progress(
     .await?;
 
     if recent_update_count >= 10 {
+        tracing::warn!(user_id = %u.id, "Rate limit exceeded for missions");
         return Err(AppError::TooManyRequests);
     }
 
@@ -173,7 +164,10 @@ async fn claim_mission(
     let token = extract_token(&headers)?;
     let u = user::find_by_token(&state.pool, token)
         .await
-        .map_err(|_| AppError::Unauthorized)?;
+        .map_err(|e| {
+            tracing::warn!("Unauthorized mission claim attempt: {:?}", e);
+            AppError::Unauthorized
+        })?;
 
     let mission = missions::claim_mission_reward(&state.pool, &u.id, mission_id)
         .await
@@ -200,7 +194,10 @@ async fn claim_streak(
     let token = extract_token(&headers)?;
     let u = user::find_by_token(&state.pool, token)
         .await
-        .map_err(|_| AppError::Unauthorized)?;
+        .map_err(|e| {
+            tracing::warn!("Unauthorized streak claim attempt: {:?}", e);
+            AppError::Unauthorized
+        })?;
 
     let today = today_utc();
 

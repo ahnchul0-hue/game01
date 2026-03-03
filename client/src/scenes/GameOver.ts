@@ -37,6 +37,7 @@ export class GameOver extends Phaser.Scene {
 
     shutdown(): void {
         this.tweens.killAll();
+        this.time.removeAllEvents();
     }
 
     init(data: GameOverData): void {
@@ -64,7 +65,7 @@ export class GameOver extends Phaser.Scene {
             .then(scores => {
                 if (this.scene && this.scene.isActive()) this.showLeaderboard(scores);
             })
-            .catch(() => {});
+            .catch((err) => { console.warn('[GameOver] Score/leaderboard failed:', err); });
 
         // 일일 미션 진행도 업데이트 (fire-and-forget)
         if (this.collectedItems.mandarin > 0) {

@@ -13,36 +13,36 @@ describe('getStageForDistance', () => {
         expect(getStageForDistance(0)).toBe('forest');
     });
 
-    it('returns forest below 500m', () => {
-        expect(getStageForDistance(499)).toBe('forest');
+    it('returns forest below 1000m', () => {
+        expect(getStageForDistance(999)).toBe('forest');
     });
 
-    it('returns river at 500m', () => {
-        expect(getStageForDistance(500)).toBe('river');
+    it('returns river at 1000m', () => {
+        expect(getStageForDistance(1000)).toBe('river');
     });
 
-    it('returns village at 1500m', () => {
-        expect(getStageForDistance(1500)).toBe('village');
+    it('returns village at 3000m', () => {
+        expect(getStageForDistance(3000)).toBe('village');
     });
 
-    it('returns onsen at 3000m', () => {
-        expect(getStageForDistance(3000)).toBe('onsen');
+    it('returns onsen at 6000m', () => {
+        expect(getStageForDistance(6000)).toBe('onsen');
     });
 
     it('returns onsen just before loop', () => {
-        expect(getStageForDistance(3999)).toBe('onsen');
+        expect(getStageForDistance(7999)).toBe('onsen');
     });
 
     it('loops back to forest at STAGE_LOOP_DISTANCE', () => {
-        expect(getStageForDistance(4000)).toBe('forest');
-    });
-
-    it('loops correctly at 4500m (river)', () => {
-        expect(getStageForDistance(4500)).toBe('river');
-    });
-
-    it('loops correctly at 8000m (forest again)', () => {
         expect(getStageForDistance(8000)).toBe('forest');
+    });
+
+    it('loops correctly at 9000m (river)', () => {
+        expect(getStageForDistance(9000)).toBe('river');
+    });
+
+    it('loops correctly at 16000m (forest again)', () => {
+        expect(getStageForDistance(16000)).toBe('forest');
     });
 
     it('returns forest for negative distance', () => {
@@ -74,13 +74,13 @@ describe('shouldSpawnPowerUp', () => {
 });
 
 describe('weightedRandomItem', () => {
-    // ITEM_WEIGHTS: mandarin=0.7, watermelon=0.2, hotspring_material=0.1
+    // ITEM_WEIGHTS: mandarin=0.6, watermelon=0.25, hotspring_material=0.15
     it('returns mandarin for random=0', () => {
         expect(weightedRandomItem(0)).toBe('mandarin');
     });
 
-    it('returns mandarin for random near 0.69', () => {
-        expect(weightedRandomItem(0.69)).toBe('mandarin');
+    it('returns mandarin for random near 0.59', () => {
+        expect(weightedRandomItem(0.59)).toBe('mandarin');
     });
 
     it('returns watermelon for random near 0.75', () => {

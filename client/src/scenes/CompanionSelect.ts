@@ -34,7 +34,6 @@ export class CompanionSelect extends Phaser.Scene {
     }
 
     shutdown(): void {
-        this.input.off('pointerdown');
         this.cardBorders.clear();
     }
 

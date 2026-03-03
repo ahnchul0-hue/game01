@@ -28,6 +28,7 @@ import {
     EFFECT_SLOWMO_SCALE,
     LS_KEY_TUTORIAL_DONE,
     ROAD_HEIGHT,
+    MAGNET_Z_RANGE,
 } from '../utils/Constants';
 import type { GameMode, CollectedItems, OnsenBuff, CompanionAbility } from '../utils/Constants';
 import { NO_COMPANION_ABILITY } from '../utils/Constants';
@@ -426,7 +427,7 @@ export class Game extends Phaser.Scene {
 
         // 자동 수집: magnet(전레인) > friend(같은 레인 200) > 온천 버프 > 동물 친구
         if (this.player.getHasMagnet()) {
-            this.autoCollectAllLanes(0.3);
+            this.autoCollectAllLanes(MAGNET_Z_RANGE);
         } else if (this.player.getHasFriend()) {
             this.autoCollectItems(200);
         } else if (this.onsenBuff.itemMagnetRange > 0) {
@@ -516,7 +517,8 @@ export class Game extends Phaser.Scene {
     // M2: 아이템 수집
     private onCollectItem(item: Item): void {
         SoundManager.getInstance().playSfx('collect');
-        const points = Math.floor(item.points * this.player.getScoreMultiplier() * this.onsenBuff.scoreMultiplier * this.companionBuff.scoreMultiplier);
+        const rawMultiplier = this.player.getScoreMultiplier() * this.onsenBuff.scoreMultiplier * this.companionBuff.scoreMultiplier;
+        const points = Math.floor(item.points * Math.min(2.5, rawMultiplier));
         this.score += points;
         this.collectedItems[item.itemType]++;
 
@@ -609,7 +611,11 @@ export class Game extends Phaser.Scene {
     }
 
     triggerGameOver(): void {
-        if (this.state === 'gameOver' || this.state === 'paused') return;
+        if (this.state === 'gameOver') return;
+        if (this.state === 'paused') {
+            this.physics.resume();
+            if (this.pauseContainer) { this.pauseContainer.destroy(); this.pauseContainer = null; }
+        }
         this.state = 'gameOver';
 
         const snd = SoundManager.getInstance();

@@ -63,6 +63,7 @@ export function createButton(scene: Phaser.Scene, config: ButtonConfig): void {
         bg.setAlpha(0.7);
         text.setAlpha(0.7);
         scene.time.delayedCall(120, () => {
+            if (!scene.scene.isActive()) return;
             bg.setAlpha(1);
             text.setAlpha(1);
             callback();

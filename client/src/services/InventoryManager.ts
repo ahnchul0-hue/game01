@@ -123,7 +123,9 @@ export class InventoryManager {
         try {
             const raw = localStorage.getItem(LS_KEY_UNLOCKED_SKINS);
             if (!raw) return ['default'];
-            return JSON.parse(raw) as SkinId[];
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) return ['default'];
+            return parsed.filter((s: unknown): s is SkinId => typeof s === 'string' && VALID_SKIN_IDS.has(s as string));
         } catch {
             return ['default'];
         }
@@ -150,7 +152,9 @@ export class InventoryManager {
         try {
             const raw = localStorage.getItem(LS_KEY_UNLOCKED_COMPANIONS);
             if (!raw) return [];
-            return JSON.parse(raw) as CompanionId[];
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) return [];
+            return parsed.filter((c: unknown): c is CompanionId => typeof c === 'string' && VALID_COMPANION_IDS.has(c as string));
         } catch {
             return [];
         }

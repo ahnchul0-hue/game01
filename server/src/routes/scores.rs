@@ -1,12 +1,13 @@
 use axum::extract::{Query, State};
-use axum::http::HeaderMap;
+use axum::http::{HeaderMap, StatusCode};
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use chrono;
 use serde::Deserialize;
 
 use crate::error::AppError;
-use crate::models::{score, user};
-use crate::routes::AppState;
+use crate::models::{missions, score, user};
+use crate::routes::{extract_token, AppState};
 
 #[derive(Deserialize)]
 struct TopScoresQuery {
@@ -19,23 +20,11 @@ pub fn router() -> Router<AppState> {
         .route("/api/scores/top", get(get_top_scores))
 }
 
-fn extract_token(headers: &HeaderMap) -> Result<&str, AppError> {
-    let token = headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.strip_prefix("Bearer "))
-        .ok_or(AppError::Unauthorized)?;
-    if token.len() > 64 {
-        return Err(AppError::Unauthorized);
-    }
-    Ok(token)
-}
-
 async fn create_score(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(req): Json<score::CreateScoreRequest>,
-) -> Result<Json<score::Score>, AppError> {
+) -> Result<(StatusCode, Json<score::Score>), AppError> {
     // Bearer token 추출
     let token = extract_token(&headers)?;
 
@@ -54,7 +43,10 @@ async fn create_score(
     // 토큰으로 유저 조회
     let u = user::find_by_token(&state.pool, token)
         .await
-        .map_err(|_| AppError::Unauthorized)?;
+        .map_err(|e| {
+            tracing::warn!("Unauthorized score attempt: {:?}", e);
+            AppError::Unauthorized
+        })?;
 
     // 점수 제출 빈도 제한: 60초 내 5회 초과 시 429
     let recent_count: i64 = sqlx::query_scalar(
@@ -65,12 +57,22 @@ async fn create_score(
     .await?;
 
     if recent_count >= 5 {
+        tracing::warn!(user_id = %u.id, "Rate limit exceeded for scores");
         return Err(AppError::TooManyRequests);
     }
 
     // 점수 저장
     let s = score::create_score(&state.pool, &u.id, &req).await?;
-    Ok(Json(s))
+
+    // S-1: Update streak on every score submission so that streak_claim_reward
+    // can verify the user has genuinely played today (last_play_date == today).
+    let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+    if let Err(e) = missions::update_streak(&state.pool, &u.id, &today).await {
+        // Non-fatal: log but don't fail the score submission
+        tracing::warn!(user_id = %u.id, "Failed to update streak after score: {:?}", e);
+    }
+
+    Ok((StatusCode::CREATED, Json(s)))
 }
 
 async fn get_top_scores(

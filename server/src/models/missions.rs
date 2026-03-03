@@ -113,13 +113,13 @@ fn generate_mission_specs() -> [MissionSpec; 3] {
 // ---------------------------------------------------------------------------
 
 /// Returns today's missions for a user. If none exist yet, generates 3 new ones.
-/// S3: Always INSERT OR IGNORE first, then SELECT — avoids race condition.
+/// Always INSERT OR IGNORE first, then SELECT — avoids race condition.
 pub async fn get_or_create_daily_missions(
     pool: &SqlitePool,
     user_id: &str,
     date: &str,
 ) -> Result<Vec<Mission>, sqlx::Error> {
-    // S3: Always attempt inserts first (INSERT OR IGNORE handles duplicates).
+    // Always attempt inserts first (INSERT OR IGNORE handles duplicates).
     // Do NOT check existing first; insert then select to avoid TOCTOU race.
     let specs = generate_mission_specs();
     for spec in &specs {
@@ -154,10 +154,10 @@ pub async fn get_or_create_daily_missions(
     Ok(missions)
 }
 
-/// Adds progress_delta to the given mission_type for the user on the given date.
-/// S1: Rejects updates if mission is already completed (reward_claimed guards further abuse).
-/// Marks completed=1 if current_value reaches target_value.
-/// Returns the updated Mission row.
+/// S-3: Atomic UPDATE replaces the SELECT-then-UPDATE pattern to avoid TOCTOU.
+/// Updates progress for the given mission_type, capped at target_value.
+/// If rows_affected == 0 the mission was already completed or doesn't exist;
+/// in that case we just fetch and return the current row.
 pub async fn update_mission_progress(
     pool: &SqlitePool,
     user_id: &str,
@@ -165,32 +165,14 @@ pub async fn update_mission_progress(
     mission_type: &str,
     progress_delta: i64,
 ) -> Result<Mission, sqlx::Error> {
-    // S1: Check if the mission is already completed — reject further updates.
-    let mission: Option<Mission> = sqlx::query_as::<_, Mission>(
-        "SELECT id, user_id, mission_date, mission_type, target_value, current_value,
-                completed, reward_claimed, reward_type, reward_amount
-         FROM daily_missions
-         WHERE user_id = ? AND mission_date = ? AND mission_type = ?",
-    )
-    .bind(user_id)
-    .bind(date)
-    .bind(mission_type)
-    .fetch_optional(pool)
-    .await?;
-
-    if let Some(ref m) = mission {
-        if m.completed != 0 {
-            // Already completed — return current state without update (idempotent)
-            return Ok(m.clone());
-        }
-    }
-
-    sqlx::query(
+    // S-3: Single atomic UPDATE — avoids TOCTOU race between SELECT and UPDATE.
+    // The WHERE clause includes `completed = 0` so completed missions are ignored.
+    let result = sqlx::query(
         "UPDATE daily_missions
          SET current_value = MIN(current_value + ?, target_value),
              completed = CASE WHEN (current_value + ?) >= target_value THEN 1 ELSE completed END,
              updated_at = datetime('now')
-         WHERE user_id = ? AND mission_date = ? AND mission_type = ? AND reward_claimed = 0",
+         WHERE user_id = ? AND mission_date = ? AND mission_type = ? AND completed = 0",
     )
     .bind(progress_delta)
     .bind(progress_delta)
@@ -199,6 +181,10 @@ pub async fn update_mission_progress(
     .bind(mission_type)
     .execute(pool)
     .await?;
+
+    // Whether rows_affected is 0 (already completed/not found) or 1, fetch current state.
+    // This is idempotent — the SELECT always returns the authoritative DB row.
+    let _ = result.rows_affected(); // acknowledged; we always fetch below
 
     sqlx::query_as::<_, Mission>(
         "SELECT id, user_id, mission_date, mission_type, target_value, current_value,
@@ -349,15 +335,50 @@ pub async fn get_or_create_streak(
 /// - If last_play_date == yesterday: increment streak
 /// - Otherwise: reset streak to 1
 /// Also updates longest_streak.
+///
+/// S-4: Wraps read + UPDATE in a BEGIN IMMEDIATE transaction to prevent
+/// concurrent updates racing between the read and write.
 pub async fn update_streak(
     pool: &SqlitePool,
     user_id: &str,
     today: &str,
 ) -> Result<Streak, sqlx::Error> {
-    let streak = get_or_create_streak(pool, user_id).await?;
+    // S-4: Use a transaction to make the read+update atomic.
+    let mut tx = pool.begin().await?;
 
-    // If already updated today, return as-is
+    let streak = sqlx::query_as::<_, Streak>(
+        "SELECT user_id, current_streak, longest_streak, last_play_date,
+                last_reward_date, total_rewards_claimed
+         FROM streaks WHERE user_id = ?",
+    )
+    .bind(user_id)
+    .fetch_optional(&mut *tx)
+    .await?;
+
+    // Ensure row exists
+    if streak.is_none() {
+        sqlx::query("INSERT OR IGNORE INTO streaks (user_id) VALUES (?)")
+            .bind(user_id)
+            .execute(&mut *tx)
+            .await?;
+    }
+
+    // Re-fetch if we just inserted
+    let streak = match streak {
+        Some(s) => s,
+        None => sqlx::query_as::<_, Streak>(
+            "SELECT user_id, current_streak, longest_streak, last_play_date,
+                    last_reward_date, total_rewards_claimed
+             FROM streaks WHERE user_id = ?",
+        )
+        .bind(user_id)
+        .fetch_one(&mut *tx)
+        .await?,
+    };
+
+    // If already updated today, commit and return as-is
     if streak.last_play_date.as_deref() == Some(today) {
+        tx.commit().await?;
         return Ok(streak);
     }
 
@@ -379,10 +400,21 @@ pub async fn update_streak(
     .bind(new_longest)
     .bind(today)
     .bind(user_id)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
 
-    get_or_create_streak(pool, user_id).await
+    // Fetch final state within the same transaction
+    let updated = sqlx::query_as::<_, Streak>(
+        "SELECT user_id, current_streak, longest_streak, last_play_date,
+                last_reward_date, total_rewards_claimed
+         FROM streaks WHERE user_id = ?",
+    )
+    .bind(user_id)
+    .fetch_one(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+    Ok(updated)
 }
 
 /// Claims the streak reward for today. The reward depends on the streak day:
@@ -390,29 +422,34 @@ pub async fn update_streak(
 /// - Day 4-6: watermelon x 3
 /// - Day 7+: hotspring_material x 2 (reward cycle repeats every 7)
 ///
-/// S5: Guards against zero-streak or pre-play claims.
-/// S2: Wraps inventory update + total_rewards_claimed bump in a transaction.
-/// C2: Sets last_reward_date = today so callers can derive today_reward_claimed.
+/// S-1: Only reads streak via get_or_create_streak (read-only). Does NOT call
+///      update_streak — the streak must have been set by a real score submission.
+/// S-2: Adds `AND (last_reward_date IS NULL OR last_reward_date != ?)` to the
+///      streak UPDATE so concurrent claims are detected via rows_affected() == 0.
 pub async fn claim_streak_reward(
     pool: &SqlitePool,
     user_id: &str,
     today: &str,
 ) -> Result<Streak, ClaimError> {
-    // Ensure streak is up-to-date (sets last_play_date = today if needed)
-    let streak = update_streak(pool, user_id, today)
+    // S-1: Read-only — do NOT call update_streak here.
+    // The streak must be established by a real score submission (update_streak
+    // is called from the scores route). Calling update_streak here would let
+    // users claim a reward without ever playing.
+    let streak = get_or_create_streak(pool, user_id)
         .await
         .map_err(ClaimError::Db)?;
 
-    // S5: Reject if the streak was never established from a real play session.
-    if streak.current_streak == 0 {
-        return Err(ClaimError::NotCompleted);
-    }
-    // S5: last_play_date must be today (update_streak sets it, but guard explicitly).
+    // S-1: last_play_date must be today (set by update_streak on score submit).
     if streak.last_play_date.as_deref() != Some(today) {
         return Err(ClaimError::NotCompleted);
     }
 
-    // C2: Check if reward was already claimed today.
+    // S-1: Reject if the streak was never established from a real play session.
+    if streak.current_streak == 0 {
+        return Err(ClaimError::NotCompleted);
+    }
+
+    // Check if reward was already claimed today (fast path before transaction).
     if streak.last_reward_date.as_deref() == Some(today) {
         return Err(ClaimError::AlreadyClaimed);
     }
@@ -428,7 +465,7 @@ pub async fn claim_streak_reward(
             (0, 0, 2)
         };
 
-    // S2: Wrap inventory upsert + streak update in a transaction.
+    // Wrap inventory upsert + streak update in a transaction.
     let mut tx = pool.begin().await.map_err(ClaimError::Db)?;
 
     let inv_id = uuid::Uuid::new_v4().to_string();
@@ -450,18 +487,26 @@ pub async fn claim_streak_reward(
     .await
     .map_err(ClaimError::Db)?;
 
-    // C2: Record last_reward_date and increment total_rewards_claimed atomically.
-    sqlx::query(
+    // S-2: The WHERE clause guards against double-claim races.
+    // If another request already set last_reward_date = today between our read
+    // and this UPDATE, rows_affected() will be 0 and we return AlreadyClaimed.
+    let update_result = sqlx::query(
         "UPDATE streaks
          SET total_rewards_claimed = total_rewards_claimed + 1,
              last_reward_date = ?
-         WHERE user_id = ?",
+         WHERE user_id = ? AND (last_reward_date IS NULL OR last_reward_date != ?)",
     )
     .bind(today)
     .bind(user_id)
+    .bind(today)
     .execute(&mut *tx)
     .await
     .map_err(ClaimError::Db)?;
+
+    if update_result.rows_affected() == 0 {
+        // Another concurrent request already claimed for today
+        return Err(ClaimError::AlreadyClaimed);
+    }
 
     tx.commit().await.map_err(ClaimError::Db)?;
 

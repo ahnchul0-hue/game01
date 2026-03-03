@@ -109,7 +109,7 @@ async fn get_json(
 async fn create_user(pool: &sqlx::SqlitePool) -> String {
     let a = app(pool.clone());
     let (status, body) = post_json(a, "/api/users", json!({}), None).await;
-    assert_eq!(status, StatusCode::OK, "create_user failed: {body}");
+    assert_eq!(status, StatusCode::CREATED, "create_user failed: {body}");
     body["token"].as_str().unwrap().to_string()
 }
 
@@ -134,7 +134,7 @@ async fn health_check_returns_ok() {
 async fn create_user_returns_id_and_token() {
     let pool = test_pool().await;
     let (status, body) = post_json(app(pool), "/api/users", json!({}), None).await;
-    assert_eq!(status, StatusCode::OK);
+    assert_eq!(status, StatusCode::CREATED);
     assert!(body["id"].is_string());
     assert!(body["token"].is_string());
     // UUID v4 format: 36 chars
@@ -158,7 +158,7 @@ async fn submit_and_retrieve_scores() {
         Some(&token),
     )
     .await;
-    assert_eq!(status, StatusCode::OK);
+    assert_eq!(status, StatusCode::CREATED);
     assert_eq!(body["score"], 1500);
     assert_eq!(body["distance"], 3000);
     assert_eq!(body["items_collected"], 42);
@@ -399,10 +399,17 @@ async fn streak_claim_works_once_per_day() {
     let pool = test_pool().await;
     let token = create_user(&pool).await;
 
-    // Ensure streak record exists
-    get_json(app(pool.clone()), "/api/missions/daily", Some(&token)).await;
+    // S-1: Must submit a score first — that sets last_play_date = today via update_streak.
+    let (score_status, _) = post_json(
+        app(pool.clone()),
+        "/api/scores",
+        json!({ "score": 100, "distance": 100, "items_collected": 1 }),
+        Some(&token),
+    )
+    .await;
+    assert_eq!(score_status, StatusCode::CREATED, "score submission must succeed");
 
-    // First claim should succeed
+    // First streak claim should succeed (last_play_date == today now)
     let (status, body) = post_json(
         app(pool.clone()),
         "/api/missions/streak/claim",

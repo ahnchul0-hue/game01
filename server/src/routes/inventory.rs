@@ -5,25 +5,13 @@ use axum::{Json, Router};
 
 use crate::error::AppError;
 use crate::models::{inventory, user};
-use crate::routes::AppState;
+use crate::routes::{extract_token, AppState};
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/inventory", get(get_inventory).put(add_inventory))
         .route("/api/onsen/layout", get(get_layout).put(save_layout))
         .route("/api/skins", get(get_skins).put(save_skins))
-}
-
-fn extract_token(headers: &HeaderMap) -> Result<&str, AppError> {
-    let token = headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.strip_prefix("Bearer "))
-        .ok_or(AppError::Unauthorized)?;
-    if token.len() > 64 {
-        return Err(AppError::Unauthorized);
-    }
-    Ok(token)
 }
 
 async fn get_inventory(
@@ -33,7 +21,10 @@ async fn get_inventory(
     let token = extract_token(&headers)?;
     let u = user::find_by_token(&state.pool, token)
         .await
-        .map_err(|_| AppError::Unauthorized)?;
+        .map_err(|e| {
+            tracing::warn!("Unauthorized inventory access: {:?}", e);
+            AppError::Unauthorized
+        })?;
     let inv = inventory::get_inventory(&state.pool, &u.id).await?;
     Ok(Json(inv))
 }
@@ -63,7 +54,10 @@ async fn add_inventory(
     let token = extract_token(&headers)?;
     let u = user::find_by_token(&state.pool, token)
         .await
-        .map_err(|_| AppError::Unauthorized)?;
+        .map_err(|e| {
+            tracing::warn!("Unauthorized inventory add attempt: {:?}", e);
+            AppError::Unauthorized
+        })?;
     let inv = inventory::add_inventory(&state.pool, &u.id, &req).await?;
     Ok(Json(inv))
 }
@@ -75,7 +69,10 @@ async fn get_layout(
     let token = extract_token(&headers)?;
     let u = user::find_by_token(&state.pool, token)
         .await
-        .map_err(|_| AppError::Unauthorized)?;
+        .map_err(|e| {
+            tracing::warn!("Unauthorized layout access: {:?}", e);
+            AppError::Unauthorized
+        })?;
     let layout = inventory::get_layout(&state.pool, &u.id).await?;
     Ok(Json(layout))
 }
@@ -95,7 +92,10 @@ async fn save_layout(
     let token = extract_token(&headers)?;
     let u = user::find_by_token(&state.pool, token)
         .await
-        .map_err(|_| AppError::Unauthorized)?;
+        .map_err(|e| {
+            tracing::warn!("Unauthorized layout save attempt: {:?}", e);
+            AppError::Unauthorized
+        })?;
     let layout = inventory::upsert_layout(&state.pool, &u.id, &req).await?;
     Ok(Json(layout))
 }
@@ -107,7 +107,10 @@ async fn get_skins(
     let token = extract_token(&headers)?;
     let u = user::find_by_token(&state.pool, token)
         .await
-        .map_err(|_| AppError::Unauthorized)?;
+        .map_err(|e| {
+            tracing::warn!("Unauthorized skins access: {:?}", e);
+            AppError::Unauthorized
+        })?;
     let skins = inventory::get_skins(&state.pool, &u.id).await?;
     Ok(Json(skins))
 }
@@ -134,7 +137,10 @@ async fn save_skins(
     let token = extract_token(&headers)?;
     let u = user::find_by_token(&state.pool, token)
         .await
-        .map_err(|_| AppError::Unauthorized)?;
+        .map_err(|e| {
+            tracing::warn!("Unauthorized skins save attempt: {:?}", e);
+            AppError::Unauthorized
+        })?;
     let skins = inventory::upsert_skins(&state.pool, &u.id, &req).await?;
     Ok(Json(skins))
 }

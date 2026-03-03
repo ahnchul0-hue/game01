@@ -5,6 +5,12 @@ PROJECT_DIR="/home/cc2/game01"
 
 echo "=== Capybara Runner Deploy ==="
 
+echo "=== Running client tests ==="
+cd "$PROJECT_DIR/client" && npm test && cd "$PROJECT_DIR"
+
+echo "=== Running server tests ==="
+cd "$PROJECT_DIR/server" && cargo test && cd "$PROJECT_DIR"
+
 # 1. Client build
 echo "[1/3] Building client..."
 cd "$PROJECT_DIR/client"

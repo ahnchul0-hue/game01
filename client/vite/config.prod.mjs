@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
 
 const phasermsg = () => {
     return {
@@ -10,11 +11,11 @@ const phasermsg = () => {
             const line = "---------------------------------------------------------";
             const msg = `❤️❤️❤️ Tell us about your game! - games@phaser.io ❤️❤️❤️`;
             process.stdout.write(`${line}\n${msg}\n${line}\n`);
-            
+
             process.stdout.write(`✨ Done ✨\n`);
         }
     }
-}   
+}
 
 export default defineConfig({
     base: './',
@@ -42,6 +43,20 @@ export default defineConfig({
         port: 8080
     },
     plugins: [
-        phasermsg()
+        phasermsg(),
+        VitePWA({
+            registerType: 'autoUpdate',
+            workbox: {
+                globPatterns: ['**/*.{js,css,html,png,jpg,svg,woff2}'],
+                navigateFallback: 'index.html',
+                runtimeCaching: [
+                    {
+                        urlPattern: /\/api\//,
+                        handler: 'NetworkOnly',
+                    },
+                ],
+            },
+            manifest: false, // use existing public/manifest.json
+        }),
     ]
 });
