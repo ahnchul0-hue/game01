@@ -26,7 +26,7 @@ export interface CompanionsResponse {
 }
 
 export interface ScoreEntry {
-    id: string;
+    id?: string;
     user_id: string;
     score: number;
     distance: number;

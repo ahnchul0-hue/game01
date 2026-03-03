@@ -10,6 +10,7 @@ import {
 } from '../utils/Constants';
 import type { MissionType } from '../utils/Constants';
 import { ApiClient, type Mission, type StreakInfo, type DailyMissionsResponse } from '../services/ApiClient';
+import { InventoryManager } from '../services/InventoryManager';
 import { createButton, fadeToScene, fadeIn } from '../ui/UIFactory';
 import { SoundManager } from '../services/SoundManager';
 
@@ -357,7 +358,10 @@ export class Missions extends Phaser.Scene {
         container.add(labelText);
 
         // 보상 텍스트
-        const rewardStr = `보상: 귤 x${mission.reward_amount}`;
+        const cardRewardLabel = mission.reward_type === 'mandarin' ? '귤'
+            : mission.reward_type === 'watermelon' ? '수박'
+            : '온천 재료';
+        const rewardStr = `보상: ${cardRewardLabel} x${mission.reward_amount}`;
         const rewardColor = isClaimed ? '#555555' : '#FFD700';
         const rewardText = this.add.text(cardX + 20, cardY + 48, rewardStr, {
             fontFamily: 'Arial',
@@ -503,8 +507,19 @@ export class Missions extends Phaser.Scene {
         // 서버 업데이트 (fire-and-forget)
         ApiClient.getInstance().claimMissionReward(mission.id);
 
+        // 로컬 인벤토리에 보상 반영
+        const rewardItems = { mandarin: 0, watermelon: 0, hotspring_material: 0 };
+        const rewardType = mission.reward_type as keyof typeof rewardItems;
+        if (rewardType in rewardItems) {
+            rewardItems[rewardType] = mission.reward_amount;
+        }
+        InventoryManager.getInstance().addItems(rewardItems);
+
         // 보상 팝업 텍스트
-        this.showRewardPopup(container, `+귤 x${mission.reward_amount}`);
+        const rewardLabel = mission.reward_type === 'mandarin' ? '귤'
+            : mission.reward_type === 'watermelon' ? '수박'
+            : '온천 재료';
+        this.showRewardPopup(container, `+${rewardLabel} x${mission.reward_amount}`);
     }
 
     // ─── 스트릭 보상 수령 처리 ────────────────────────────────────────
@@ -532,9 +547,29 @@ export class Missions extends Phaser.Scene {
         // 서버 업데이트 (fire-and-forget)
         ApiClient.getInstance().claimStreakReward();
 
+        // 로컬 인벤토리에 연속 보상 반영
+        const cycleDay = ((this.streak.current_streak - 1) % 7) + 1;
+        const streakReward = { mandarin: 0, watermelon: 0, hotspring_material: 0 };
+        if (cycleDay <= 3) {
+            streakReward.mandarin = 5;
+        } else if (cycleDay <= 6) {
+            streakReward.watermelon = 3;
+        } else {
+            streakReward.hotspring_material = 2;
+        }
+        InventoryManager.getInstance().addItems(streakReward);
+
         // 보상 팝업
         if (this.streakContainer) {
-            this.showRewardPopupAt(GAME_WIDTH / 2, 210, '+귤 x5 (연속 보너스)');
+            let streakRewardText: string;
+            if (cycleDay <= 3) {
+                streakRewardText = '+귤 x5 (연속 보너스)';
+            } else if (cycleDay <= 6) {
+                streakRewardText = '+수박 x3 (연속 보너스)';
+            } else {
+                streakRewardText = '+온천 재료 x2 (연속 보너스)';
+            }
+            this.showRewardPopupAt(GAME_WIDTH / 2, 210, streakRewardText);
         }
     }
 

@@ -67,6 +67,10 @@ async fn main() {
 
     tracing::info!("Server running on {}", addr);
     axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
+        .with_graceful_shutdown(async {
+            tokio::signal::ctrl_c().await.ok();
+            tracing::info!("Shutdown signal received, finishing in-flight requests...");
+        })
         .await
-        .unwrap();
+        .expect("Server error");
 }

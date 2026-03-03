@@ -1,3 +1,4 @@
+use chrono;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 use uuid::Uuid;
@@ -14,6 +15,7 @@ pub struct Score {
 
 #[derive(Debug, Serialize)]
 pub struct PublicScore {
+    pub user_id: String,
     pub score: i64,
     pub distance: i64,
     pub items_collected: i64,
@@ -33,6 +35,7 @@ pub async fn create_score(
     req: &CreateScoreRequest,
 ) -> Result<Score, sqlx::Error> {
     let id = Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
     sqlx::query(
         "INSERT INTO scores (id, user_id, score, distance, items_collected) VALUES (?, ?, ?, ?, ?)",
@@ -45,7 +48,14 @@ pub async fn create_score(
     .execute(pool)
     .await?;
 
-    find_by_id(pool, &id).await
+    Ok(Score {
+        id,
+        user_id: user_id.to_string(),
+        score: req.score,
+        distance: req.distance,
+        items_collected: req.items_collected,
+        created_at: now,
+    })
 }
 
 pub async fn find_by_id(pool: &SqlitePool, id: &str) -> Result<Score, sqlx::Error> {

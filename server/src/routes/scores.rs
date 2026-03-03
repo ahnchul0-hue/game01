@@ -84,6 +84,7 @@ async fn get_top_scores(
     let public_scores = scores
         .into_iter()
         .map(|s| score::PublicScore {
+            user_id: s.user_id,
             score: s.score,
             distance: s.distance,
             items_collected: s.items_collected,
