@@ -80,8 +80,8 @@ describe('DifficultyManager.getAvailableObstacleTypes', () => {
         expect(dm.getAvailableObstacleTypes('easy')).toEqual(['rock']);
     });
 
-    it('returns all 3 types for medium', () => {
-        expect(dm.getAvailableObstacleTypes('medium')).toEqual(['rock', 'branch_high', 'puddle']);
+    it('returns all 4 types for medium', () => {
+        expect(dm.getAvailableObstacleTypes('medium')).toEqual(['rock', 'branch_high', 'puddle', 'barrier']);
     });
 
     it('returns all 5 types for hard', () => {
@@ -123,7 +123,7 @@ describe('DifficultyManager — relax obstacle types', () => {
 
     it('normal mode returns full types for each level', () => {
         expect(dm.getAvailableObstacleTypes('easy')).toEqual(['rock']);
-        expect(dm.getAvailableObstacleTypes('medium')).toEqual(['rock', 'branch_high', 'puddle']);
+        expect(dm.getAvailableObstacleTypes('medium')).toEqual(['rock', 'branch_high', 'puddle', 'barrier']);
         expect(dm.getAvailableObstacleTypes('hard')).toHaveLength(5);
     });
 

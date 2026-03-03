@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 /**
  * SoundManager 볼륨/뮤트 로직 테스트.
@@ -130,7 +130,6 @@ describe('SoundManager volume logic', () => {
         const sfxSteps = [0, 0.3, 0.6];
 
         it('BGM 3-step cycle works correctly', () => {
-            let current = 0.18; // default
             // step to next: find current in steps, go to next
             const nextStep = (val: number, steps: number[]) => {
                 const idx = steps.indexOf(val);

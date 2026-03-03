@@ -1,6 +1,6 @@
 // Procedural Web Audio API sound engine for Capybara Runner (no audio files).
 
-export type SfxName = 'jump' | 'slide' | 'collect' | 'hit' | 'powerup' | 'button' | 'gameover' | 'levelup';
+export type SfxName = 'jump' | 'slide' | 'collect' | 'collect_rare' | 'hit' | 'powerup' | 'button' | 'gameover' | 'levelup' | 'move' | 'revive';
 export type BgmName = 'bgm-menu' | 'bgm-game' | 'bgm-onsen';
 
 const LS_KEY_MUTED = 'capybara_muted';
@@ -53,6 +53,9 @@ export class SoundManager {
             case 'button':   this._tone('sine',     600,  0.04);       break;
             case 'gameover': this._tone('sine',     440,  0.4,  220);  break;
             case 'levelup':  this._levelup();                          break;
+            case 'move':        this._tone('sine', 800, 0.03);          break;
+            case 'revive':      this._revive();                          break;
+            case 'collect_rare': this._collectRare();                    break;
         }
     }
 
@@ -108,6 +111,18 @@ export class SoundManager {
     private _levelup(): void {
         const t = this._t();
         [523, 659, 784].forEach((f, i) => this._tone('sine', f, 0.08, undefined, t + i * 0.08));
+    }
+
+    private _revive(): void {
+        const t = this._t();
+        [392, 523, 659].forEach((f, i) => this._tone('sine', f, 0.1, undefined, t + i * 0.1));
+    }
+
+    private _collectRare(): void {
+        const t = this._t();
+        this._tone('sine', 523, 0.08, undefined, t);
+        this._tone('sine', 659, 0.08, undefined, t + 0.08);
+        this._tone('sine', 784, 0.12, undefined, t + 0.16);
     }
 
     // ---- BGM ----------------------------------------------------------------

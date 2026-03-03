@@ -8,16 +8,16 @@ export const LANE_POSITIONS = [180, 360, 540]; // 좌, 중, 우 (720을 4등분)
 
 // 플레이어
 export const PLAYER_Y = 1000;
-export const JUMP_VELOCITY = -500;
-export const SLIDE_DURATION = 500; // ms
+export const JUMP_VELOCITY = -650;
+export const SLIDE_DURATION = 400; // ms
 
 // 물리
-export const GRAVITY = 800;
+export const GRAVITY = 1400;
 
 // 속도 / 난이도
-export const BASE_SPEED = 250; // px/s
-export const MAX_SPEED = 700;
-export const SPEED_INCREMENT = 0.08; // 거리 1당 속도 증가량
+export const BASE_SPEED = 280; // px/s
+export const MAX_SPEED = 650;
+export const SPEED_INCREMENT = 0.12; // 거리 1당 속도 증가량
 
 // 입력
 export const SWIPE_THRESHOLD = 50; // px
@@ -31,7 +31,7 @@ export const SCENE_GAME_OVER = 'GameOver';
 
 // 릴렉스 모드 배율
 export const RELAX_SPEED_MULTIPLIER = 0.5;
-export const RELAX_MAX_SPEED = 350;       // 릴렉스 모드 최대 속도 캡
+export const RELAX_MAX_SPEED = 520;       // 릴렉스 모드 최대 속도 캡
 export const RELAX_FREE_REVIVES = 99;     // 릴렉스 모드 사실상 무제한 부활
 export const RELAX_OBSTACLE_SKIP = 0.4;   // 릴렉스 모드 장애물 스킵 확률 (40%)
 
@@ -74,13 +74,13 @@ export const ITEM_POOL_SIZE = 8;
 
 // ========== M2: 난이도 곡선 ==========
 export const SPAWN_INTERVAL_START = 1200; // ms
-export const SPAWN_INTERVAL_MIN = 500;    // ms
-export const SPAWN_INTERVAL_DECAY = 0.3;  // 거리당 감소량
+export const SPAWN_INTERVAL_MIN = 600;    // ms
+export const SPAWN_INTERVAL_DECAY = 0.2;  // 거리당 감소량
 
-export const DIFFICULTY_EASY_MAX = 300;   // 거리 (m)
-export const DIFFICULTY_MEDIUM_MAX = 1200;
+export const DIFFICULTY_EASY_MAX = 500;   // 거리 (m)
+export const DIFFICULTY_MEDIUM_MAX = 1800;
 
-export const ITEM_SPAWN_CHANCE = 0.6;
+export const ITEM_SPAWN_CHANCE = 0.65;
 
 // ========== M2: 수집 아이템 ==========
 export interface CollectedItems {
@@ -91,7 +91,7 @@ export interface CollectedItems {
 
 // ========== M2: 부활 시스템 ==========
 export const MAX_FREE_REVIVES = 1;
-export const INVINCIBLE_DURATION = 2000; // ms
+export const INVINCIBLE_DURATION = 3000; // ms
 
 // ========== M2: API ==========
 export const API_BASE_URL = '';  // 프록시 사용 시 빈 문자열
@@ -103,13 +103,13 @@ export type PowerUpType = 'helmet' | 'tube' | 'friend' | 'magnet';
 
 export const POWERUP_CONFIGS: Record<PowerUpType, { width: number; height: number; color: number; duration: number }> = {
     helmet: { width: 50, height: 50, color: 0x2E7D32, duration: 0 },      // 1회용
-    tube:   { width: 50, height: 50, color: 0x1565C0, duration: 7000 },    // 7초
-    friend: { width: 50, height: 50, color: 0xFF6F00, duration: 6000 },    // 6초
-    magnet: { width: 50, height: 50, color: 0xCC0000, duration: 6000 },    // 6초
+    tube:   { width: 50, height: 50, color: 0x1565C0, duration: 8000 },    // 8초
+    friend: { width: 50, height: 50, color: 0xFF6F00, duration: 8000 },    // 8초
+    magnet: { width: 50, height: 50, color: 0xCC0000, duration: 7000 },    // 7초
 };
 
 export const POWERUP_POOL_SIZE = 3;
-export const POWERUP_SPAWN_CHANCE = 0.07;
+export const POWERUP_SPAWN_CHANCE = 0.09;
 export const MAGNET_Z_RANGE = 0.4;
 export const POWERUP_MIN_DISTANCE = 300;
 export const POWERUP_SCORE_MULTIPLIER_TUBE = 2;
@@ -143,9 +143,9 @@ export const STAGE_NAMES: Record<StageType, string> = {
 export const STAGE_TRANSITION_DURATION = 800;
 
 // ========== M3: 이펙트 상수 ==========
-export const EFFECT_RED_FLASH_DURATION = 200;
-export const EFFECT_SLOWMO_DURATION = 500;
-export const EFFECT_SLOWMO_SCALE = 0.3;
+export const EFFECT_RED_FLASH_DURATION = 300;
+export const EFFECT_SLOWMO_DURATION = 700;
+export const EFFECT_SLOWMO_SCALE = 0.25;
 export const EFFECT_PARTICLE_LIFESPAN = 400;
 export const EFFECT_STAGE_TEXT_DURATION = 2000;
 export const DEPTH_EFFECT_OVERLAY = 50;

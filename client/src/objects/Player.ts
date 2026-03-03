@@ -218,6 +218,33 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         });
     }
 
+    /** 충돌 시 시각적 피드백 — 회전 + 축소 트윈 */
+    playHitAnimation(): void {
+        if (!this.scene) return;
+        this.scene.tweens.add({
+            targets: this,
+            angle: 15,
+            scaleX: this.baseScale * 0.8,
+            scaleY: this.baseScale * 0.8,
+            duration: 200,
+            ease: 'Power2',
+            yoyo: true,
+        });
+    }
+
+    /** 부활 시 시각적 피드백 — 펄스 확대 */
+    playReviveAnimation(): void {
+        if (!this.scene) return;
+        this.scene.tweens.add({
+            targets: this,
+            scaleX: this.baseScale * 1.3,
+            scaleY: this.baseScale * 1.3,
+            duration: 200,
+            ease: 'Bounce.easeOut',
+            yoyo: true,
+        });
+    }
+
     private createCompanionSprite(id: CompanionId): void {
         const config = COMPANION_CONFIGS.find(c => c.id === id);
         if (!config) return;

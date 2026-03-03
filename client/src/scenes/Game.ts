@@ -107,8 +107,10 @@ export class Game extends Phaser.Scene {
     // 팝업 텍스트 추적 (메모리 누수 방지)
     private popupTexts: Phaser.GameObjects.Text[] = [];
 
-    // 파워업 HUD 타이머 텍스트
+    // 파워업 HUD 타이머 텍스트 (풀링 — 매 프레임 생성/파괴 방지)
     private powerUpHudTexts: Phaser.GameObjects.Text[] = [];
+    private static readonly HUD_COLORS: Record<string, string> = { tube: '#64B5F6', friend: '#FF6F00', magnet: '#CC0000' };
+    private static readonly HUD_NAMES: Record<string, string> = { tube: '튜브', friend: '친구', magnet: '자석' };
 
     // 착지 감지 (먼지 파티클용)
     private wasJumping = false;
@@ -238,8 +240,8 @@ export class Game extends Phaser.Scene {
         const snd = SoundManager.getInstance();
         this.inputController = new InputController(this, {
             isInputActive: () => this.state === 'playing',
-            onMoveLeft: () => this.player.moveLeft(),
-            onMoveRight: () => this.player.moveRight(),
+            onMoveLeft: () => { this.player.moveLeft(); snd.playSfx('move'); },
+            onMoveRight: () => { this.player.moveRight(); snd.playSfx('move'); },
             onJump: () => { this.player.jump(); snd.playSfx('jump'); this.effectManager.onJump(this.player.x, this.player.y); },
             onSlide: () => { this.player.slide(); snd.playSfx('slide'); },
         });
@@ -296,6 +298,16 @@ export class Game extends Phaser.Scene {
         pauseBtn.on('pointerdown', () => {
             if (this.state === 'playing' && !this.resumeCooldown) this.pauseGame();
         });
+
+        // 파워업 HUD 텍스트 풀 (최대 3개 — 매 프레임 생성/파괴 방지)
+        this.powerUpHudTexts = [];
+        for (let i = 0; i < 3; i++) {
+            const t = this.add.text(GAME_WIDTH - 20, 160 + i * 40, '', {
+                fontFamily: 'Arial', fontSize: '22px', color: '#FFFFFF',
+                stroke: '#000000', strokeThickness: 3,
+            }).setOrigin(1, 0).setScrollFactor(0).setDepth(100).setVisible(false);
+            this.powerUpHudTexts.push(t);
+        }
 
         // 게임 BGM
         SoundManager.getInstance().playBgm(this.mode === 'relax' ? 'bgm-onsen' : 'bgm-game');
@@ -423,6 +435,7 @@ export class Game extends Phaser.Scene {
         if (this.state !== 'playing') return;
         if (!this.player || !this.player.active) return;
 
+        try {
         // M3: 슬로우모션 적용
         this.effectManager.update(time);
         const effectiveDelta = this.effectManager.isSlowmo ? delta * EFFECT_SLOWMO_SCALE : delta;
@@ -511,20 +524,23 @@ export class Game extends Phaser.Scene {
         const itemStr = totalItems > 0 ? `x${totalItems}` : '';
         if (this.itemCounterText.text !== itemStr) this.itemCounterText.setText(itemStr);
 
-        // 파워업 HUD 업데이트
-        for (const t of this.powerUpHudTexts) { if (t.scene) t.destroy(); }
-        this.powerUpHudTexts = [];
+        // 파워업 HUD 업데이트 (풀링 — 매 프레임 생성/파괴 방지)
         const activeTimers = this.player.getActivePowerUpTimers();
-        const hudColors: Record<string, string> = { tube: '#64B5F6', friend: '#FF6F00', magnet: '#CC0000' };
-        const hudNames: Record<string, string> = { tube: '튜브', friend: '친구', magnet: '자석' };
-        for (let i = 0; i < activeTimers.length; i++) {
-            const timer = activeTimers[i];
-            const secs = Math.ceil(timer.remaining / 1000);
-            const hudText = this.add.text(GAME_WIDTH - 20, 160 + i * 40, `${hudNames[timer.type]} ${secs}s`, {
-                fontFamily: 'Arial', fontSize: '22px', color: hudColors[timer.type],
-                stroke: '#000000', strokeThickness: 3,
-            }).setOrigin(1, 0).setScrollFactor(0).setDepth(100);
-            this.powerUpHudTexts.push(hudText);
+        for (let i = 0; i < this.powerUpHudTexts.length; i++) {
+            const hudText = this.powerUpHudTexts[i];
+            if (i < activeTimers.length) {
+                const timer = activeTimers[i];
+                const secs = Math.ceil(timer.remaining / 1000);
+                hudText.setText(`${Game.HUD_NAMES[timer.type]} ${secs}s`);
+                hudText.setColor(Game.HUD_COLORS[timer.type] ?? '#FFFFFF');
+                hudText.setVisible(true);
+            } else {
+                hudText.setVisible(false);
+            }
+        }
+        } catch (err) {
+            console.error('[Game.update] error:', err);
+            this.triggerGameOver();
         }
     }
 
@@ -567,6 +583,7 @@ export class Game extends Phaser.Scene {
         if (this.state !== 'playing') return;
 
         SoundManager.getInstance().playSfx('hit');
+        this.player.playHitAnimation();
         this.effectManager.onObstacleHit();
 
         const maxRevives = this.mode === 'relax' ? RELAX_FREE_REVIVES : MAX_FREE_REVIVES;
@@ -669,6 +686,8 @@ export class Game extends Phaser.Scene {
 
         this.spawnManager.reset();
         this.player.setInvincible(INVINCIBLE_DURATION);
+        this.player.playReviveAnimation();
+        SoundManager.getInstance().playSfx('revive');
         this.physics.resume();
         this.state = 'playing';
     }
@@ -684,6 +703,9 @@ export class Game extends Phaser.Scene {
         const snd = SoundManager.getInstance();
         snd.stopBgm();
         snd.playSfx('gameover');
+
+        // 거리 보너스 (1m = 0.5점)
+        this.score += Math.floor(this.distance * 0.5);
 
         this.player.clearAllPowerUps();
         this.reviveUI.hide();
