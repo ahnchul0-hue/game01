@@ -68,7 +68,18 @@ async fn main() {
     tracing::info!("Server running on {}", addr);
     axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(async {
-            tokio::signal::ctrl_c().await.ok();
+            let ctrl_c = tokio::signal::ctrl_c();
+            #[cfg(unix)]
+            let mut sigterm =
+                tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+                    .expect("Failed to install SIGTERM handler");
+            #[cfg(unix)]
+            tokio::select! {
+                _ = ctrl_c => {},
+                _ = sigterm.recv() => {},
+            }
+            #[cfg(not(unix))]
+            ctrl_c.await.ok();
             tracing::info!("Shutdown signal received, finishing in-flight requests...");
         })
         .await

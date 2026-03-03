@@ -8,19 +8,19 @@ export const LANE_POSITIONS = [180, 360, 540]; // 좌, 중, 우 (720을 4등분)
 
 // 플레이어
 export const PLAYER_Y = 1000;
-export const JUMP_VELOCITY = -650;
+export const JUMP_VELOCITY = -700;
 export const SLIDE_DURATION = 400; // ms
 
 // 물리
-export const GRAVITY = 1400;
+export const GRAVITY = 1800;
 
 // 속도 / 난이도
-export const BASE_SPEED = 280; // px/s
+export const BASE_SPEED = 320; // px/s
 export const MAX_SPEED = 650;
-export const SPEED_INCREMENT = 0.12; // 거리 1당 속도 증가량
+export const SPEED_INCREMENT = 0.15; // 거리 1당 속도 증가량
 
 // 입력
-export const SWIPE_THRESHOLD = 50; // px
+export const SWIPE_THRESHOLD = 30; // px (모바일 반응성 개선)
 
 // Scene 키
 export const SCENE_BOOT = 'Boot';
@@ -31,7 +31,7 @@ export const SCENE_GAME_OVER = 'GameOver';
 
 // 릴렉스 모드 배율
 export const RELAX_SPEED_MULTIPLIER = 0.5;
-export const RELAX_MAX_SPEED = 520;       // 릴렉스 모드 최대 속도 캡
+export const RELAX_MAX_SPEED = 455;       // 릴렉스 모드 최대 속도 캡 (일반 MAX_SPEED의 ~70%)
 export const RELAX_FREE_REVIVES = 99;     // 릴렉스 모드 사실상 무제한 부활
 export const RELAX_OBSTACLE_SKIP = 0.4;   // 릴렉스 모드 장애물 스킵 확률 (40%)
 
@@ -73,9 +73,9 @@ export const ITEM_SIZE = 50;
 export const ITEM_POOL_SIZE = 8;
 
 // ========== M2: 난이도 곡선 ==========
-export const SPAWN_INTERVAL_START = 1200; // ms
-export const SPAWN_INTERVAL_MIN = 600;    // ms
-export const SPAWN_INTERVAL_DECAY = 0.2;  // 거리당 감소량
+export const SPAWN_INTERVAL_START = 900;  // ms (초반 밀도 개선)
+export const SPAWN_INTERVAL_MIN = 500;    // ms
+export const SPAWN_INTERVAL_DECAY = 0.15; // 거리당 감소량
 
 export const DIFFICULTY_EASY_MAX = 500;   // 거리 (m)
 export const DIFFICULTY_MEDIUM_MAX = 1800;

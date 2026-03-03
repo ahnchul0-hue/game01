@@ -67,6 +67,44 @@ pub async fn add_inventory(
     get_inventory(pool, user_id).await
 }
 
+#[derive(Deserialize)]
+pub struct SpendInventoryRequest {
+    pub item_type: String,
+    pub amount: i64,
+}
+
+pub async fn spend_inventory(
+    pool: &SqlitePool,
+    user_id: &str,
+    req: &SpendInventoryRequest,
+) -> Result<Option<InventoryRow>, sqlx::Error> {
+    // 원자적 차감: 잔량 >= amount 인 경우에만 UPDATE 실행
+    let column = match req.item_type.as_str() {
+        "mandarin" => "mandarin",
+        "watermelon" => "watermelon",
+        "hotspring_material" => "hotspring_material",
+        _ => return Ok(None), // 유효하지 않은 아이템 타입
+    };
+
+    let query = format!(
+        "UPDATE inventories SET {} = {} - ?, updated_at = datetime('now') WHERE user_id = ? AND {} >= ?",
+        column, column, column
+    );
+
+    let result = sqlx::query(&query)
+        .bind(req.amount)
+        .bind(user_id)
+        .bind(req.amount)
+        .execute(pool)
+        .await?;
+
+    if result.rows_affected() == 0 {
+        return Ok(None); // 잔량 부족
+    }
+
+    get_inventory(pool, user_id).await.map(Some)
+}
+
 // --- Onsen Layout ---
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]

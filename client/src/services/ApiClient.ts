@@ -292,7 +292,7 @@ export class ApiClient {
                 headers: this.authHeaders(),
                 body: JSON.stringify({
                     selected_companion: selectedCompanion,
-                    unlocked_companions: JSON.stringify(unlockedCompanions),
+                    unlocked_companions: unlockedCompanions,
                 }),
             });
             if (res.status === 401) await this.handleAuthError();

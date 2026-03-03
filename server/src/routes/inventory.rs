@@ -1,6 +1,6 @@
 use axum::extract::State;
-use axum::http::HeaderMap;
-use axum::routing::get;
+use axum::http::{HeaderMap, StatusCode};
+use axum::routing::{get, post};
 use axum::{Json, Router};
 
 use crate::error::AppError;
@@ -10,6 +10,7 @@ use crate::routes::{extract_token, AppState};
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/inventory", get(get_inventory).put(add_inventory))
+        .route("/api/inventory/spend", post(spend_inventory))
         .route("/api/onsen/layout", get(get_layout).put(save_layout))
         .route("/api/skins", get(get_skins).put(save_skins))
 }
@@ -60,6 +61,32 @@ async fn add_inventory(
         })?;
     let inv = inventory::add_inventory(&state.pool, &u.id, &req).await?;
     Ok(Json(inv))
+}
+
+async fn spend_inventory(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<inventory::SpendInventoryRequest>,
+) -> Result<Json<inventory::InventoryRow>, AppError> {
+    if req.amount <= 0 || req.amount > 10000 {
+        return Err(AppError::BadRequest("Invalid spend amount".to_string()));
+    }
+    if !["mandarin", "watermelon", "hotspring_material"].contains(&req.item_type.as_str()) {
+        return Err(AppError::BadRequest("Invalid item type".to_string()));
+    }
+
+    let token = extract_token(&headers)?;
+    let u = user::find_by_token(&state.pool, token)
+        .await
+        .map_err(|e| {
+            tracing::warn!("Unauthorized inventory spend attempt: {:?}", e);
+            AppError::Unauthorized
+        })?;
+
+    match inventory::spend_inventory(&state.pool, &u.id, &req).await? {
+        Some(inv) => Ok(Json(inv)),
+        None => Err(AppError::BadRequest("Insufficient inventory".to_string())),
+    }
 }
 
 async fn get_layout(

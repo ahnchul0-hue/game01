@@ -16,9 +16,12 @@ export type DifficultyLevel = 'easy' | 'medium' | 'hard';
 
 export class DifficultyManager {
     getSpeed(distance: number, isRelax: boolean): number {
-        const cap = isRelax ? RELAX_MAX_SPEED : MAX_SPEED;
-        const base = Math.min(BASE_SPEED + distance * SPEED_INCREMENT, cap);
-        return isRelax ? base * RELAX_SPEED_MULTIPLIER : base;
+        if (isRelax) {
+            // 릴렉스: 기본속도에 배율 적용 후 전용 캡으로 제한 (이중 감속 방지)
+            const relaxBase = (BASE_SPEED + distance * SPEED_INCREMENT) * RELAX_SPEED_MULTIPLIER;
+            return Math.min(relaxBase, RELAX_MAX_SPEED);
+        }
+        return Math.min(BASE_SPEED + distance * SPEED_INCREMENT, MAX_SPEED);
     }
 
     getSpawnInterval(distance: number, isRelax: boolean): number {

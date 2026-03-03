@@ -130,82 +130,180 @@ export class Preloader extends Phaser.Scene {
         type: ObstacleType,
         config: { width: number; height: number; color: number },
     ): void {
+        const { width: w, height: h, color } = config;
         const gfx = this.make.graphics({ x: 0, y: 0 }, false);
-        gfx.fillStyle(config.color, 1);
-        gfx.fillRoundedRect(0, 0, config.width, config.height, 8);
+
+        // 그림자 (하단 오프셋)
+        gfx.fillStyle(0x000000, 0.25);
+        gfx.fillRoundedRect(3, 3, w, h, 8);
+
+        // 메인 바디
+        gfx.fillStyle(color, 1);
+        gfx.fillRoundedRect(0, 0, w, h, 8);
+
+        // 상단 하이라이트 (3D 볼록 효과)
+        gfx.fillStyle(0xFFFFFF, 0.2);
+        gfx.fillRoundedRect(3, 2, w - 6, h * 0.35, 6);
+
+        // 하단 어두운 영역
+        gfx.fillStyle(0x000000, 0.15);
+        gfx.fillRoundedRect(3, h * 0.65, w - 6, h * 0.3, 6);
 
         // 타입별 시각 구분
         if (type === 'rock') {
-            // 어두운 테두리
-            gfx.lineStyle(3, 0x505050, 1);
-            gfx.strokeRoundedRect(0, 0, config.width, config.height, 8);
+            gfx.lineStyle(2, 0x505050, 0.8);
+            gfx.strokeRoundedRect(1, 1, w - 2, h - 2, 8);
+            // 바위 균열선
+            gfx.lineStyle(1, 0x000000, 0.2);
+            gfx.lineBetween(w * 0.3, h * 0.2, w * 0.5, h * 0.6);
+            gfx.lineBetween(w * 0.5, h * 0.6, w * 0.7, h * 0.4);
         } else if (type === 'branch_high') {
-            // 나뭇가지 선
-            gfx.lineStyle(2, 0x5C3317, 1);
-            gfx.lineBetween(10, config.height / 2, config.width - 10, config.height / 2);
-        } else {
-            // 물결 (puddle)
-            gfx.lineStyle(2, 0xFFFFFF, 0.5);
-            gfx.lineBetween(20, config.height / 2, 40, config.height / 2 - 5);
-            gfx.lineBetween(40, config.height / 2 - 5, 60, config.height / 2);
+            gfx.lineStyle(3, 0x5C3317, 0.9);
+            gfx.lineBetween(8, h / 2, w - 8, h / 2);
+            // 잔가지
+            gfx.lineStyle(2, 0x5C3317, 0.6);
+            gfx.lineBetween(w * 0.3, h / 2, w * 0.2, h * 0.25);
+            gfx.lineBetween(w * 0.6, h / 2, w * 0.7, h * 0.25);
+        } else if (type === 'puddle') {
+            // 물결 3줄
+            gfx.lineStyle(2, 0xFFFFFF, 0.4);
+            for (let i = 0; i < 3; i++) {
+                const y = h * 0.3 + i * (h * 0.2);
+                gfx.lineBetween(12, y, w * 0.35, y - 4);
+                gfx.lineBetween(w * 0.35, y - 4, w * 0.65, y + 4);
+                gfx.lineBetween(w * 0.65, y + 4, w - 12, y);
+            }
+        } else if (type === 'barrier') {
+            // 경고 줄무늬
+            gfx.lineStyle(3, 0xFFFF00, 0.6);
+            for (let x = 0; x < w; x += 16) {
+                gfx.lineBetween(x, 0, x + 8, h);
+            }
+        } else if (type === 'car') {
+            // 차 창문
+            gfx.fillStyle(0x88CCFF, 0.6);
+            gfx.fillRoundedRect(w * 0.15, h * 0.15, w * 0.7, h * 0.35, 4);
+            // 바퀴
+            gfx.fillStyle(0x333333, 0.8);
+            gfx.fillCircle(w * 0.25, h - 4, 6);
+            gfx.fillCircle(w * 0.75, h - 4, 6);
         }
 
-        gfx.generateTexture(`obstacle-${type}`, config.width, config.height);
+        // 외곽선
+        gfx.lineStyle(2, 0x000000, 0.3);
+        gfx.strokeRoundedRect(0, 0, w, h, 8);
+
+        gfx.generateTexture(`obstacle-${type}`, w + 4, h + 4);
         gfx.destroy();
     }
 
     private createItemTexture(name: string, color: number): void {
+        const s = ITEM_SIZE;
+        const r = s / 2;
         const gfx = this.make.graphics({ x: 0, y: 0 }, false);
+
+        // 글로우 배경
+        gfx.fillStyle(color, 0.2);
+        gfx.fillCircle(r + 2, r + 2, r + 3);
+
+        // 메인 원
         gfx.fillStyle(color, 1);
-        gfx.fillCircle(ITEM_SIZE / 2, ITEM_SIZE / 2, ITEM_SIZE / 2);
-        // 하이라이트
-        gfx.fillStyle(0xFFFFFF, 0.3);
-        gfx.fillCircle(ITEM_SIZE / 2 - 5, ITEM_SIZE / 2 - 5, ITEM_SIZE / 6);
-        gfx.generateTexture(`item-${name}`, ITEM_SIZE, ITEM_SIZE);
+        gfx.fillCircle(r, r, r - 1);
+
+        // 상단 하이라이트 (3D 구 효과)
+        gfx.fillStyle(0xFFFFFF, 0.35);
+        gfx.fillCircle(r - 4, r - 5, r * 0.35);
+
+        // 작은 스파클
+        gfx.fillStyle(0xFFFFFF, 0.5);
+        gfx.fillCircle(r - 7, r - 8, 2);
+
+        // 하단 그림자
+        gfx.fillStyle(0x000000, 0.15);
+        gfx.fillCircle(r + 2, r + 4, r * 0.5);
+
+        // 외곽 링
+        gfx.lineStyle(1.5, 0x000000, 0.2);
+        gfx.strokeCircle(r, r, r - 1);
+
+        gfx.generateTexture(`item-${name}`, s + 4, s + 4);
         gfx.destroy();
     }
 
-    // M3: 파워업 텍스처 (다이아몬드 모양 + 타입별 색상)
+    // M3: 파워업 텍스처 (다이아몬드 + 글로우 + 타입별 색상)
     private createPowerUpTexture(type: PowerUpType): void {
         const config = POWERUP_CONFIGS[type];
         const gfx = this.make.graphics({ x: 0, y: 0 }, false);
         const w = config.width;
         const h = config.height;
+        const pad = 4; // 글로우 패딩
+        const ox = pad; // 오프셋
+        const oy = pad;
+
+        // 글로우 배경
+        gfx.fillStyle(config.color, 0.15);
+        gfx.fillCircle(ox + w / 2, oy + h / 2, Math.max(w, h) * 0.6);
 
         // 외곽 다이아몬드
         gfx.fillStyle(config.color, 1);
         gfx.beginPath();
-        gfx.moveTo(w / 2, 2);
-        gfx.lineTo(w - 2, h / 2);
-        gfx.lineTo(w / 2, h - 2);
-        gfx.lineTo(2, h / 2);
+        gfx.moveTo(ox + w / 2, oy + 2);
+        gfx.lineTo(ox + w - 2, oy + h / 2);
+        gfx.lineTo(ox + w / 2, oy + h - 2);
+        gfx.lineTo(ox + 2, oy + h / 2);
         gfx.closePath();
         gfx.fillPath();
 
-        // 내부 하이라이트
+        // 상단 하이라이트 (3D)
         gfx.fillStyle(0xFFFFFF, 0.3);
         gfx.beginPath();
-        gfx.moveTo(w / 2, 10);
-        gfx.lineTo(w - 14, h / 2);
-        gfx.lineTo(w / 2, h / 2);
-        gfx.lineTo(14, h / 2);
+        gfx.moveTo(ox + w / 2, oy + 8);
+        gfx.lineTo(ox + w - 12, oy + h / 2);
+        gfx.lineTo(ox + w / 2, oy + h / 2);
+        gfx.lineTo(ox + 12, oy + h / 2);
+        gfx.closePath();
+        gfx.fillPath();
+
+        // 하단 어두운 영역
+        gfx.fillStyle(0x000000, 0.15);
+        gfx.beginPath();
+        gfx.moveTo(ox + w / 2, oy + h / 2);
+        gfx.lineTo(ox + w - 12, oy + h / 2);
+        gfx.lineTo(ox + w / 2, oy + h - 8);
+        gfx.lineTo(ox + 12, oy + h / 2);
         gfx.closePath();
         gfx.fillPath();
 
         // 타입별 아이콘 심볼
-        gfx.fillStyle(0xFFFFFF, 0.8);
+        gfx.fillStyle(0xFFFFFF, 0.85);
         if (type === 'helmet') {
-            gfx.fillRoundedRect(w / 2 - 8, h / 2 - 4, 16, 12, 4);
+            gfx.fillRoundedRect(ox + w / 2 - 8, oy + h / 2 - 4, 16, 12, 4);
         } else if (type === 'tube') {
-            gfx.fillCircle(w / 2, h / 2 + 2, 8);
+            gfx.fillCircle(ox + w / 2, oy + h / 2 + 2, 8);
             gfx.fillStyle(config.color, 1);
-            gfx.fillCircle(w / 2, h / 2 + 2, 4);
+            gfx.fillCircle(ox + w / 2, oy + h / 2 + 2, 4);
+        } else if (type === 'magnet') {
+            // U자 자석
+            gfx.fillRoundedRect(ox + w / 2 - 6, oy + h / 2 - 6, 4, 14, 2);
+            gfx.fillRoundedRect(ox + w / 2 + 2, oy + h / 2 - 6, 4, 14, 2);
+            gfx.fillRoundedRect(ox + w / 2 - 6, oy + h / 2 + 4, 12, 4, 2);
         } else {
-            gfx.fillCircle(w / 2, h / 2 + 2, 6);
-            gfx.fillCircle(w / 2 - 6, h / 2 - 2, 4);
+            // friend: 하트
+            gfx.fillCircle(ox + w / 2 - 4, oy + h / 2 - 1, 5);
+            gfx.fillCircle(ox + w / 2 + 4, oy + h / 2 - 1, 5);
         }
 
-        gfx.generateTexture(`powerup-${type}`, w, h);
+        // 외곽선
+        gfx.lineStyle(1.5, 0xFFFFFF, 0.4);
+        gfx.beginPath();
+        gfx.moveTo(ox + w / 2, oy + 2);
+        gfx.lineTo(ox + w - 2, oy + h / 2);
+        gfx.lineTo(ox + w / 2, oy + h - 2);
+        gfx.lineTo(ox + 2, oy + h / 2);
+        gfx.closePath();
+        gfx.strokePath();
+
+        gfx.generateTexture(`powerup-${type}`, w + pad * 2, h + pad * 2);
         gfx.destroy();
     }
 

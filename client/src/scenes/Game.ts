@@ -112,6 +112,13 @@ export class Game extends Phaser.Scene {
     private static readonly HUD_COLORS: Record<string, string> = { tube: '#64B5F6', friend: '#FF6F00', magnet: '#CC0000' };
     private static readonly HUD_NAMES: Record<string, string> = { tube: '튜브', friend: '친구', magnet: '자석' };
 
+    // 콤보 시스템
+    private comboCount = 0;
+    private comboTimer = 0; // ms 남은 시간
+    private static readonly COMBO_TIMEOUT = 2000; // 2초 내 다음 수집
+    private static readonly COMBO_BONUS = [1, 1, 1.2, 1.5, 2.0]; // 콤보 1x,1x,1.2x,1.5x,2x
+    private comboText: Phaser.GameObjects.Text | null = null;
+
     // 착지 감지 (먼지 파티클용)
     private wasJumping = false;
 
@@ -486,6 +493,15 @@ export class Game extends Phaser.Scene {
             }
         }
 
+        // 콤보 타이머 감소
+        if (this.comboTimer > 0) {
+            this.comboTimer -= effectiveDelta;
+            if (this.comboTimer <= 0) {
+                this.comboCount = 0;
+                if (this.comboText) { this.comboText.setVisible(false); }
+            }
+        }
+
         // 자동 수집: magnet(전레인) > friend(같은 레인 200) > 온천 버프 > 동물 친구
         if (this.player.getHasMagnet()) {
             this.autoCollectAllLanes(MAGNET_Z_RANGE);
@@ -506,10 +522,13 @@ export class Game extends Phaser.Scene {
         }
         for (const obs of this.prevActiveObstacles) {
             if (!obs.active) {
-                // 충돌로 비활성화된 것이 아니라 디스폰으로 통과한 경우 카운트
-                // (충돌 시에는 state가 'playing' 에서 'revivePrompt'/'gameOver'로 바뀌어
-                //  이 라인에 도달하지 않으므로 안전하게 카운트 가능)
                 this.dodgedObstacles++;
+                // 니어미스: 인접 레인에서 피한 경우 (|레인차이| == 1)
+                const playerLane = this.player.getCurrentLane();
+                const obsLane = obs.laneOffset + 1; // -1,0,1 → 0,1,2
+                if (Math.abs(playerLane - obsLane) <= 1) {
+                    this.showNearMiss(obs.x, obs.y);
+                }
             }
         }
         // Swap refs so prevActiveObstacles points to the new set, reuse old set next frame
@@ -596,18 +615,28 @@ export class Game extends Phaser.Scene {
         }
     }
 
-    // M2: 아이템 수집
+    // M2: 아이템 수집 + 콤보 시스템
     private onCollectItem(item: Item): void {
         SoundManager.getInstance().playSfx('collect');
-        const rawMultiplier = this.player.getScoreMultiplier() * this.onsenBuff.scoreMultiplier * this.companionBuff.scoreMultiplier;
-        const points = Math.floor(item.points * Math.min(2.5, rawMultiplier));
+
+        // 콤보 업데이트
+        this.comboCount++;
+        this.comboTimer = Game.COMBO_TIMEOUT;
+        const comboIdx = Math.min(this.comboCount, Game.COMBO_BONUS.length - 1);
+        const comboMultiplier = Game.COMBO_BONUS[comboIdx];
+
+        const rawMultiplier = this.player.getScoreMultiplier() * this.onsenBuff.scoreMultiplier * this.companionBuff.scoreMultiplier * comboMultiplier;
+        const points = Math.floor(item.points * Math.min(3.0, rawMultiplier));
         this.score += points;
         this.collectedItems[item.itemType]++;
 
         this.effectManager.onItemCollected(item.x, item.y, this.scoreText);
 
-        const popupText = this.add.text(item.x, item.y, `+${points}`, {
-            fontFamily: 'Arial', fontSize: '24px', color: '#FFD700',
+        // 포인트 팝업
+        const comboLabel = this.comboCount >= 3 ? ` x${this.comboCount}` : '';
+        const popColor = this.comboCount >= 5 ? '#FF4444' : this.comboCount >= 3 ? '#FF8800' : '#FFD700';
+        const popupText = this.add.text(item.x, item.y, `+${points}${comboLabel}`, {
+            fontFamily: 'Arial', fontSize: this.comboCount >= 3 ? '28px' : '24px', color: popColor,
             fontStyle: 'bold', stroke: '#000000', strokeThickness: 2,
         }).setOrigin(0.5).setDepth(200);
         this.popupTexts.push(popupText);
@@ -625,10 +654,46 @@ export class Game extends Phaser.Scene {
             },
         });
 
+        // 콤보 HUD (3콤보 이상)
+        if (this.comboCount >= 3) {
+            if (!this.comboText) {
+                this.comboText = this.add.text(GAME_WIDTH / 2, 110, '', {
+                    fontFamily: 'Arial', fontSize: '22px', color: '#FF8800',
+                    fontStyle: 'bold', stroke: '#000000', strokeThickness: 3,
+                }).setOrigin(0.5).setDepth(100);
+            }
+            this.comboText.setText(`COMBO x${this.comboCount}`).setVisible(true);
+            if (this.comboCount >= 5) this.comboText.setColor('#FF4444');
+            else this.comboText.setColor('#FF8800');
+        }
+
         item.deactivate();
     }
 
     // M3: 파워업 수집
+    // 니어미스 시각 피드백 + 보너스 점수
+    private showNearMiss(x: number, y: number): void {
+        const bonus = 5;
+        this.score += bonus;
+        const popup = this.add.text(x, y - 30, `NEAR MISS! +${bonus}`, {
+            fontFamily: 'Arial', fontSize: '20px', color: '#00FF88',
+            fontStyle: 'bold', stroke: '#000000', strokeThickness: 2,
+        }).setOrigin(0.5).setDepth(200);
+        this.popupTexts.push(popup);
+        this.tweens.add({
+            targets: popup,
+            y: popup.y - 50,
+            alpha: 0,
+            duration: 800,
+            ease: 'Power2',
+            onComplete: () => {
+                const idx = this.popupTexts.indexOf(popup);
+                if (idx !== -1) this.popupTexts.splice(idx, 1);
+                popup.destroy();
+            },
+        });
+    }
+
     private onCollectPowerUp(powerUp: PowerUp): void {
         SoundManager.getInstance().playSfx('powerup');
         this.player.applyPowerUp(powerUp.powerUpType);
@@ -677,7 +742,7 @@ export class Game extends Phaser.Scene {
         );
     }
 
-    // M2: 부활 처리
+    // M2: 부활 처리 (3초 카운트다운 후 재개)
     private revive(): void {
         this.revivesUsed++;
         this.reviveUI.hide();
@@ -685,13 +750,41 @@ export class Game extends Phaser.Scene {
         this.player.clearAllPowerUps();
         this.effectManager.reset();
         this.stageManager.reset();
-
         this.spawnManager.reset();
         this.player.setInvincible(INVINCIBLE_DURATION);
         this.player.playReviveAnimation();
         SoundManager.getInstance().playSfx('revive');
-        this.physics.resume();
-        this.state = 'playing';
+
+        // 카운트다운 표시
+        const countText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60, '3', {
+            fontSize: '80px',
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 6,
+        }).setOrigin(0.5).setDepth(100);
+
+        let count = 3;
+        const countdownTimer = this.time.addEvent({
+            delay: 1000,
+            repeat: 2,
+            callback: () => {
+                count--;
+                if (count > 0) {
+                    countText.setText(String(count));
+                } else {
+                    countText.destroy();
+                    this.physics.resume();
+                    this.state = 'playing';
+                }
+            },
+        });
+
+        // 씬 전환 시 정리
+        this.events.once('shutdown', () => {
+            countdownTimer.destroy();
+            if (countText.scene) countText.destroy();
+        });
     }
 
     triggerGameOver(): void {

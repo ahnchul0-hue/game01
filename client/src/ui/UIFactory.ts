@@ -56,16 +56,28 @@ export function createButton(scene: Phaser.Scene, config: ButtonConfig): void {
         fontFamily: 'Arial', fontSize, color: '#FFFFFF', fontStyle: 'bold',
     }).setOrigin(0.5);
 
+    // 컨테이너로 묶어서 스케일 애니메이션 적용
+    const container = scene.add.container(x, y, [bg, text]);
+    bg.setPosition(-x, -y); // 컨테이너 내 로컬 좌표 보정
+    text.setPosition(0, 0);
+
     const hitArea = scene.add.zone(x, y, btnW, btnH).setInteractive({ useHandCursor: true });
 
+    hitArea.on('pointerover', () => {
+        scene.tweens.add({ targets: container, scaleX: 1.05, scaleY: 1.05, duration: 80 });
+    });
+    hitArea.on('pointerout', () => {
+        scene.tweens.add({ targets: container, scaleX: 1, scaleY: 1, duration: 80 });
+        container.setAlpha(1);
+    });
     hitArea.on('pointerdown', () => {
         SoundManager.getInstance().playSfx('button');
-        bg.setAlpha(0.7);
-        text.setAlpha(0.7);
+        container.setAlpha(0.8);
+        scene.tweens.add({ targets: container, scaleX: 0.95, scaleY: 0.95, duration: 60 });
         scene.time.delayedCall(120, () => {
             if (!scene.scene.isActive()) return;
-            bg.setAlpha(1);
-            text.setAlpha(1);
+            container.setAlpha(1);
+            scene.tweens.add({ targets: container, scaleX: 1, scaleY: 1, duration: 80 });
             callback();
         });
     });

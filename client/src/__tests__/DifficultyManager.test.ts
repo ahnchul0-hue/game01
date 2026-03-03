@@ -104,11 +104,19 @@ describe('DifficultyManager.getMaxObstaclesPerSpawn', () => {
 });
 
 describe('DifficultyManager.getSpeed — relax cap', () => {
-    it('relax mode caps at RELAX_MAX_SPEED before multiplier', () => {
+    it('relax mode caps at RELAX_MAX_SPEED (no double-multiply)', () => {
         const dm = new DifficultyManager();
         const relax = dm.getSpeed(10000, true);
-        // RELAX_MAX_SPEED=350 * RELAX_SPEED_MULTIPLIER=0.5 = 175
-        expect(relax).toBeLessThanOrEqual(RELAX_MAX_SPEED * RELAX_SPEED_MULTIPLIER);
+        // 릴렉스: (BASE + dist*INC) * 0.5, capped at RELAX_MAX_SPEED
+        expect(relax).toBeLessThanOrEqual(RELAX_MAX_SPEED);
+        expect(relax).toBeGreaterThan(RELAX_MAX_SPEED * 0.5);
+    });
+
+    it('relax mode increases speed with distance', () => {
+        const dm = new DifficultyManager();
+        const slow = dm.getSpeed(0, true);
+        const fast = dm.getSpeed(3000, true);
+        expect(fast).toBeGreaterThan(slow);
     });
 });
 
