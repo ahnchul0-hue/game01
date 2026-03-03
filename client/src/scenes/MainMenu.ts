@@ -8,6 +8,7 @@ import {
     SCENE_SKIN_SELECT,
     SCENE_MISSIONS,
     SCENE_COMPANION_SELECT,
+    FONT_FAMILY,
 } from '../utils/Constants';
 import { ApiClient } from '../services/ApiClient';
 import { InventoryManager } from '../services/InventoryManager';
@@ -51,7 +52,7 @@ export class MainMenu extends Phaser.Scene {
 
         // 타이틀
         const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.2, 'Capybara Runner', {
-            fontFamily: 'Arial',
+            fontFamily: FONT_FAMILY,
             fontSize: '48px',
             color: '#5D4037',
             fontStyle: 'bold',
@@ -120,7 +121,7 @@ export class MainMenu extends Phaser.Scene {
         const controlY = GAME_HEIGHT - 30;
         const muteLabel = sound.isMuted() ? 'UNMUTE' : 'MUTE';
         const muteText = this.add.text(GAME_WIDTH - 20, controlY, muteLabel, {
-            fontFamily: 'Arial', fontSize: '18px', color: '#999999',
+            fontFamily: FONT_FAMILY, fontSize: '18px', color: '#999999',
         }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true });
         muteText.on('pointerdown', () => {
             const nowMuted = !sound.isMuted();
@@ -135,7 +136,7 @@ export class MainMenu extends Phaser.Scene {
         let bgmIdx = bgmLevels.indexOf(sound.getBgmVolume());
         if (bgmIdx < 0) bgmIdx = 2;
         const bgmText = this.add.text(20, controlY, bgmLabels[bgmIdx], {
-            fontFamily: 'Arial', fontSize: '16px', color: '#999999',
+            fontFamily: FONT_FAMILY, fontSize: '16px', color: '#999999',
         }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
         bgmText.on('pointerdown', () => {
             bgmIdx = (bgmIdx + 1) % bgmLevels.length;
@@ -149,7 +150,7 @@ export class MainMenu extends Phaser.Scene {
         let sfxIdx = sfxLevels.indexOf(sound.getSfxVolume());
         if (sfxIdx < 0) sfxIdx = 2;
         const sfxText = this.add.text(110, controlY, sfxLabels[sfxIdx], {
-            fontFamily: 'Arial', fontSize: '16px', color: '#999999',
+            fontFamily: FONT_FAMILY, fontSize: '16px', color: '#999999',
         }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
         sfxText.on('pointerdown', () => {
             sfxIdx = (sfxIdx + 1) % sfxLevels.length;

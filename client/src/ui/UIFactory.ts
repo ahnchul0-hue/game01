@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { SoundManager } from '../services/SoundManager';
+import { FONT_FAMILY } from '../utils/Constants';
 
 export interface ButtonConfig {
     x: number;
@@ -53,7 +54,7 @@ export function createButton(scene: Phaser.Scene, config: ButtonConfig): void {
     bg.fillRoundedRect(x - btnW / 2, y - btnH / 2, btnW, btnH, radius);
 
     const text = scene.add.text(x, y, label, {
-        fontFamily: 'Arial', fontSize, color: '#FFFFFF', fontStyle: 'bold',
+        fontFamily: FONT_FAMILY, fontSize, color: '#FFFFFF', fontStyle: 'bold',
     }).setOrigin(0.5);
 
     // 컨테이너로 묶어서 스케일 애니메이션 적용

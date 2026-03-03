@@ -5,6 +5,7 @@ import {
     SCENE_SKIN_SELECT,
     SCENE_MAIN_MENU,
     SKIN_CONFIGS,
+    FONT_FAMILY,
     type SkinId,
     type SkinConfig,
 } from '../utils/Constants';
@@ -59,7 +60,7 @@ export class SkinSelect extends Phaser.Scene {
 
         // 제목
         this.add.text(GAME_WIDTH / 2, 50, '스킨 선택', {
-            fontFamily: 'Arial', fontSize: '40px', color: '#5D4037',
+            fontFamily: FONT_FAMILY, fontSize: '40px', color: '#5D4037',
             fontStyle: 'bold', stroke: '#FFFFFF', strokeThickness: 3,
         }).setOrigin(0.5);
 
@@ -69,7 +70,7 @@ export class SkinSelect extends Phaser.Scene {
 
         const previewName = SKIN_CONFIGS.find(s => s.id === this.selectedSkin)?.name ?? '';
         const previewText = this.add.text(GAME_WIDTH / 2, 360, previewName, {
-            fontFamily: 'Arial', fontSize: '24px', color: '#5D4037', fontStyle: 'bold',
+            fontFamily: FONT_FAMILY, fontSize: '24px', color: '#5D4037', fontStyle: 'bold',
         }).setOrigin(0.5);
 
         // 2×2 그리드
@@ -153,7 +154,7 @@ export class SkinSelect extends Phaser.Scene {
 
         // 이름
         this.add.text(x + 10, y - 25, config.name, {
-            fontFamily: 'Arial', fontSize: '20px',
+            fontFamily: FONT_FAMILY, fontSize: '20px',
             color: isUnlocked ? '#333333' : '#777777',
             fontStyle: 'bold',
         }).setOrigin(0, 0.5);
@@ -165,7 +166,7 @@ export class SkinSelect extends Phaser.Scene {
         const statusColor = isUnlocked ? '#4CAF50' : '#999999';
 
         this.add.text(x + 10, y + 15, statusText, {
-            fontFamily: 'Arial', fontSize: '16px', color: statusColor,
+            fontFamily: FONT_FAMILY, fontSize: '16px', color: statusColor,
         }).setOrigin(0, 0.5);
 
         // 잠금 아이콘 + 진행률 바
@@ -188,7 +189,7 @@ export class SkinSelect extends Phaser.Scene {
             barGfx.fillStyle(0x4CAF50, 1);
             barGfx.fillRoundedRect(barX, barY, barW * progress, barH, 5);
             this.add.text(barX + barW + 8, barY + barH / 2, `${Math.floor(progress * 100)}%`, {
-                fontFamily: 'Arial', fontSize: '12px', color: '#999999',
+                fontFamily: FONT_FAMILY, fontSize: '12px', color: '#999999',
             }).setOrigin(0, 0.5);
         }
 

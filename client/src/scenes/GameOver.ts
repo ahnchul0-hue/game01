@@ -7,6 +7,7 @@ import {
     SCENE_MAIN_MENU,
     SCENE_ONSEN,
     LS_KEY_USER_ID,
+    FONT_FAMILY,
 } from '../utils/Constants';
 import type { GameMode, CollectedItems, SkinConfig } from '../utils/Constants';
 import { SKIN_CONFIGS } from '../utils/Constants';
@@ -92,7 +93,7 @@ export class GameOver extends Phaser.Scene {
 
         // 게임 오버 텍스트
         const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.15, 'GAME OVER', {
-            fontFamily: 'Arial', fontSize: '56px', color: '#FF6B6B',
+            fontFamily: FONT_FAMILY, fontSize: '56px', color: '#FF6B6B',
             fontStyle: 'bold', stroke: '#000000', strokeThickness: 4,
         }).setOrigin(0.5);
 
@@ -112,12 +113,12 @@ export class GameOver extends Phaser.Scene {
 
         // 점수 카운트업 애니메이션
         this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.38, 'Score', {
-            fontFamily: 'Arial', fontSize: '24px', color: '#AAAAAA',
+            fontFamily: FONT_FAMILY, fontSize: '24px', color: '#AAAAAA',
         }).setOrigin(0.5);
 
         const scoreDisplay = { value: 0 };
         const scoreText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.43, '0', {
-            fontFamily: 'Arial', fontSize: '48px', color: '#FFD700', fontStyle: 'bold',
+            fontFamily: FONT_FAMILY, fontSize: '48px', color: '#FFD700', fontStyle: 'bold',
         }).setOrigin(0.5);
 
         this.tweens.add({
@@ -127,7 +128,7 @@ export class GameOver extends Phaser.Scene {
 
         // 거리 표시
         this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.50, `${this.finalDistance}m`, {
-            fontFamily: 'Arial', fontSize: '28px', color: '#FFFFFF',
+            fontFamily: FONT_FAMILY, fontSize: '28px', color: '#FFFFFF',
         }).setOrigin(0.5);
 
         // M2: 수집 아이템 표시
@@ -142,14 +143,14 @@ export class GameOver extends Phaser.Scene {
         // 최고 거리
         const bestDistance = inventoryMgr.getMaxDistance();
         this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.62, `BEST: ${bestDistance}m`, {
-            fontFamily: 'Arial', fontSize: '18px', color: '#AAAAAA',
+            fontFamily: FONT_FAMILY, fontSize: '18px', color: '#AAAAAA',
         }).setOrigin(0.5);
 
         // 다음 스킨 잠금해제 힌트
         const hint = this.getNextUnlockHint(inventoryMgr);
         if (hint) {
             this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.66, hint, {
-                fontFamily: 'Arial', fontSize: '14px', color: '#81C784',
+                fontFamily: FONT_FAMILY, fontSize: '14px', color: '#81C784',
             }).setOrigin(0.5);
         }
 
@@ -212,7 +213,7 @@ export class GameOver extends Phaser.Scene {
             icon.destroy();
         }
         this.add.text(x, y + 30, `x${count}`, {
-            fontFamily: 'Arial', fontSize: '20px', color: '#FFFFFF',
+            fontFamily: FONT_FAMILY, fontSize: '20px', color: '#FFFFFF',
             stroke: '#000000', strokeThickness: 2,
         }).setOrigin(0.5);
     }
@@ -231,7 +232,7 @@ export class GameOver extends Phaser.Scene {
 
     private showShareToast(message: string): void {
         const toast = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.93, message, {
-            fontFamily: 'Arial', fontSize: '16px', color: '#FFFFFF',
+            fontFamily: FONT_FAMILY, fontSize: '16px', color: '#FFFFFF',
             backgroundColor: '#333333', padding: { x: 12, y: 6 },
         }).setOrigin(0.5).setDepth(200);
 
@@ -248,7 +249,7 @@ export class GameOver extends Phaser.Scene {
         const userId = localStorage.getItem(LS_KEY_USER_ID);
 
         this.add.text(GAME_WIDTH / 2, startY, 'TOP SCORES', {
-            fontFamily: 'Arial', fontSize: '18px', color: '#FFD700', fontStyle: 'bold',
+            fontFamily: FONT_FAMILY, fontSize: '18px', color: '#FFD700', fontStyle: 'bold',
         }).setOrigin(0.5);
 
         scores.forEach((entry, i) => {
@@ -257,7 +258,7 @@ export class GameOver extends Phaser.Scene {
             const prefix = isMe ? '▶ ' : '  ';
             const label = `${prefix}#${i + 1}  ${entry.score.toLocaleString()}  ${entry.distance}m`;
             this.add.text(GAME_WIDTH / 2, startY + 22 + i * 20, label, {
-                fontFamily: 'Arial', fontSize: '15px', color,
+                fontFamily: FONT_FAMILY, fontSize: '15px', color,
             }).setOrigin(0.5);
         });
     }

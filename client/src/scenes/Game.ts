@@ -31,6 +31,7 @@ import {
     LS_KEY_TUTORIAL_DONE,
     ROAD_HEIGHT,
     MAGNET_Z_RANGE,
+    FONT_FAMILY,
 } from '../utils/Constants';
 import type { GameMode, CollectedItems, OnsenBuff, CompanionAbility } from '../utils/Constants';
 import { NO_COMPANION_ABILITY } from '../utils/Constants';
@@ -258,7 +259,7 @@ export class Game extends Phaser.Scene {
 
         // HUD
         this.scoreText = this.add.text(20, 20, '0', {
-            fontFamily: 'Arial', fontSize: '32px', color: '#FFFFFF',
+            fontFamily: FONT_FAMILY, fontSize: '32px', color: '#FFFFFF',
             stroke: '#000000', strokeThickness: 3,
         }).setScrollFactor(0).setDepth(100);
         if (this.mode === 'relax') {
@@ -266,13 +267,13 @@ export class Game extends Phaser.Scene {
         }
 
         this.distanceText = this.add.text(GAME_WIDTH - 20, 20, '0m', {
-            fontFamily: 'Arial', fontSize: '28px', color: '#FFFFFF',
+            fontFamily: FONT_FAMILY, fontSize: '28px', color: '#FFFFFF',
             stroke: '#000000', strokeThickness: 3,
         }).setOrigin(1, 0).setScrollFactor(0).setDepth(100);
 
         // HUD 아이템 카운터
         this.itemCounterText = this.add.text(20, 100, '', {
-            fontFamily: 'Arial', fontSize: '18px', color: '#FFD700',
+            fontFamily: FONT_FAMILY, fontSize: '18px', color: '#FFD700',
             stroke: '#000000', strokeThickness: 2,
         }).setScrollFactor(0).setDepth(100);
 
@@ -283,7 +284,7 @@ export class Game extends Phaser.Scene {
             badge.fillRoundedRect(GAME_WIDTH / 2 - 60, 8, 120, 32, 10);
             badge.setScrollFactor(0).setDepth(99);
             this.add.text(GAME_WIDTH / 2, 24, 'RELAX', {
-                fontFamily: 'Arial', fontSize: '20px', color: '#FFFFFF',
+                fontFamily: FONT_FAMILY, fontSize: '20px', color: '#FFFFFF',
                 fontStyle: 'bold',
             }).setOrigin(0.5).setScrollFactor(0).setDepth(100);
         }
@@ -292,14 +293,14 @@ export class Game extends Phaser.Scene {
         if (this.onsenBuff.scoreMultiplier > 1) {
             const buffLabel = `x${this.onsenBuff.scoreMultiplier.toFixed(1)}`;
             this.add.text(20, 60, buffLabel, {
-                fontFamily: 'Arial', fontSize: '18px', color: '#FF8C00',
+                fontFamily: FONT_FAMILY, fontSize: '18px', color: '#FF8C00',
                 stroke: '#000000', strokeThickness: 2,
             }).setScrollFactor(0).setDepth(100);
         }
 
         // 일시정지 버튼
         const pauseBtn = this.add.text(GAME_WIDTH - 20, GAME_HEIGHT - 40, '❚❚', {
-            fontFamily: 'Arial', fontSize: '32px', color: '#FFFFFF',
+            fontFamily: FONT_FAMILY, fontSize: '32px', color: '#FFFFFF',
             stroke: '#000000', strokeThickness: 3,
         }).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100).setInteractive({ useHandCursor: true });
         pauseBtn.on('pointerdown', () => {
@@ -310,7 +311,7 @@ export class Game extends Phaser.Scene {
         this.powerUpHudTexts = [];
         for (let i = 0; i < 3; i++) {
             const t = this.add.text(GAME_WIDTH - 20, 160 + i * 40, '', {
-                fontFamily: 'Arial', fontSize: '22px', color: '#FFFFFF',
+                fontFamily: FONT_FAMILY, fontSize: '22px', color: '#FFFFFF',
                 stroke: '#000000', strokeThickness: 3,
             }).setOrigin(1, 0).setScrollFactor(0).setDepth(100).setVisible(false);
             this.powerUpHudTexts.push(t);
@@ -338,7 +339,7 @@ export class Game extends Phaser.Scene {
         this.pauseContainer.add(overlay);
 
         const pauseText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 80, '일시정지', {
-            fontFamily: 'Arial', fontSize: '48px', color: '#FFFFFF', fontStyle: 'bold',
+            fontFamily: FONT_FAMILY, fontSize: '48px', color: '#FFFFFF', fontStyle: 'bold',
         }).setOrigin(0.5);
         this.pauseContainer.add(pauseText);
 
@@ -349,7 +350,7 @@ export class Game extends Phaser.Scene {
         this.pauseContainer.add(resumeBg);
 
         const resumeLabel = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20, '계속하기', {
-            fontFamily: 'Arial', fontSize: '28px', color: '#FFFFFF', fontStyle: 'bold',
+            fontFamily: FONT_FAMILY, fontSize: '28px', color: '#FFFFFF', fontStyle: 'bold',
         }).setOrigin(0.5);
         this.pauseContainer.add(resumeLabel);
 
@@ -365,7 +366,7 @@ export class Game extends Phaser.Scene {
         this.pauseContainer.add(menuBg);
 
         const menuLabel = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100, '메인 메뉴', {
-            fontFamily: 'Arial', fontSize: '28px', color: '#FFFFFF', fontStyle: 'bold',
+            fontFamily: FONT_FAMILY, fontSize: '28px', color: '#FFFFFF', fontStyle: 'bold',
         }).setOrigin(0.5);
         this.pauseContainer.add(menuLabel);
 
@@ -411,16 +412,16 @@ export class Game extends Phaser.Scene {
 
         for (const h of hints) {
             const iconText = this.add.text(GAME_WIDTH / 2 - 120, h.y, h.icon, {
-                fontFamily: 'Arial', fontSize: '32px', color: '#FFD700', fontStyle: 'bold',
+                fontFamily: FONT_FAMILY, fontSize: '32px', color: '#FFD700', fontStyle: 'bold',
             }).setOrigin(0.5);
             const descText = this.add.text(GAME_WIDTH / 2 + 40, h.y, h.desc, {
-                fontFamily: 'Arial', fontSize: '22px', color: '#FFFFFF',
+                fontFamily: FONT_FAMILY, fontSize: '22px', color: '#FFFFFF',
             }).setOrigin(0, 0.5);
             this.tutorialContainer.add([iconText, descText]);
         }
 
         const tapText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 140, '탭하여 시작', {
-            fontFamily: 'Arial', fontSize: '28px', color: '#FFFFFF', fontStyle: 'bold',
+            fontFamily: FONT_FAMILY, fontSize: '28px', color: '#FFFFFF', fontStyle: 'bold',
         }).setOrigin(0.5);
         this.tutorialContainer.add(tapText);
         this.tweens.add({ targets: tapText, alpha: 0.3, duration: 600, yoyo: true, repeat: -1 });
@@ -636,7 +637,7 @@ export class Game extends Phaser.Scene {
         const comboLabel = this.comboCount >= 3 ? ` x${this.comboCount}` : '';
         const popColor = this.comboCount >= 5 ? '#FF4444' : this.comboCount >= 3 ? '#FF8800' : '#FFD700';
         const popupText = this.add.text(item.x, item.y, `+${points}${comboLabel}`, {
-            fontFamily: 'Arial', fontSize: this.comboCount >= 3 ? '28px' : '24px', color: popColor,
+            fontFamily: FONT_FAMILY, fontSize: this.comboCount >= 3 ? '28px' : '24px', color: popColor,
             fontStyle: 'bold', stroke: '#000000', strokeThickness: 2,
         }).setOrigin(0.5).setDepth(200);
         this.popupTexts.push(popupText);
@@ -658,7 +659,7 @@ export class Game extends Phaser.Scene {
         if (this.comboCount >= 3) {
             if (!this.comboText) {
                 this.comboText = this.add.text(GAME_WIDTH / 2, 110, '', {
-                    fontFamily: 'Arial', fontSize: '22px', color: '#FF8800',
+                    fontFamily: FONT_FAMILY, fontSize: '22px', color: '#FF8800',
                     fontStyle: 'bold', stroke: '#000000', strokeThickness: 3,
                 }).setOrigin(0.5).setDepth(100);
             }
@@ -676,7 +677,7 @@ export class Game extends Phaser.Scene {
         const bonus = 5;
         this.score += bonus;
         const popup = this.add.text(x, y - 30, `NEAR MISS! +${bonus}`, {
-            fontFamily: 'Arial', fontSize: '20px', color: '#00FF88',
+            fontFamily: FONT_FAMILY, fontSize: '20px', color: '#00FF88',
             fontStyle: 'bold', stroke: '#000000', strokeThickness: 2,
         }).setOrigin(0.5).setDepth(200);
         this.popupTexts.push(popup);
@@ -758,7 +759,7 @@ export class Game extends Phaser.Scene {
         // 카운트다운 표시
         const countText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60, '3', {
             fontSize: '80px',
-            fontFamily: 'Arial',
+            fontFamily: FONT_FAMILY,
             color: '#ffffff',
             stroke: '#000000',
             strokeThickness: 6,

@@ -12,6 +12,7 @@ import {
     ONSEN_POOL_W,
     ONSEN_POOL_H,
     ONSEN_INVENTORY_START_Y,
+    FONT_FAMILY,
     type ItemType,
     type Inventory,
     type PlacedItem,
@@ -93,13 +94,13 @@ export class Onsen extends Phaser.Scene {
 
         // 제목
         this.titleText = this.add.text(GAME_WIDTH / 2, 50, '나의 온천', {
-            fontFamily: 'Arial', fontSize: '40px', color: '#5D4037',
+            fontFamily: FONT_FAMILY, fontSize: '40px', color: '#5D4037',
             fontStyle: 'bold', stroke: '#FFFFFF', strokeThickness: 3,
         }).setOrigin(0.5);
 
         // 레벨 표시
         this.levelText = this.add.text(GAME_WIDTH / 2, 100, `${levelName} (${this.layout.placedItems.length}개 배치)`, {
-            fontFamily: 'Arial', fontSize: '22px', color: '#8B6914',
+            fontFamily: FONT_FAMILY, fontSize: '22px', color: '#8B6914',
         }).setOrigin(0.5);
 
         // 온천 풀 영역
@@ -110,11 +111,23 @@ export class Onsen extends Phaser.Scene {
         // 물
         this.poolGraphics.fillStyle(colors.water, 1);
         this.poolGraphics.fillRoundedRect(ONSEN_POOL_X, ONSEN_POOL_Y, ONSEN_POOL_W, ONSEN_POOL_H, 24);
-        // 김(steam) 효과 — 간단한 투명 원
-        this.poolGraphics.fillStyle(0xFFFFFF, 0.15);
-        this.poolGraphics.fillCircle(ONSEN_POOL_X + 100, ONSEN_POOL_Y + 30, 40);
-        this.poolGraphics.fillCircle(ONSEN_POOL_X + 300, ONSEN_POOL_Y + 50, 50);
-        this.poolGraphics.fillCircle(ONSEN_POOL_X + 420, ONSEN_POOL_Y + 20, 35);
+        // 물결 웨이브 애니메이션 (3개 반투명 타원이 좌우 이동)
+        for (let i = 0; i < 3; i++) {
+            const waveGfx = this.add.graphics().setDepth(2);
+            waveGfx.fillStyle(0xFFFFFF, 0.12);
+            const waveW = 80 + i * 30;
+            const waveH = 16 + i * 4;
+            waveGfx.fillEllipse(ONSEN_POOL_X + 80 + i * 160, ONSEN_POOL_Y + 30 + i * 25, waveW, waveH);
+            this.tweens.add({
+                targets: waveGfx,
+                x: { from: -15, to: 15 },
+                alpha: { from: 0.7, to: 1 },
+                duration: 2500 + i * 500,
+                ease: 'Sine.easeInOut',
+                yoyo: true,
+                repeat: -1,
+            });
+        }
 
         // 온천 김(steam) 파티클
         this.steamEmitter = this.add.particles(ONSEN_POOL_X + ONSEN_POOL_W / 2, ONSEN_POOL_Y + 20, 'particle', {
@@ -162,7 +175,7 @@ export class Onsen extends Phaser.Scene {
             .lineBetween(40, 520, GAME_WIDTH - 40, 520);
 
         this.add.text(GAME_WIDTH / 2, 545, '아이템을 탭하여 온천에 배치하세요', {
-            fontFamily: 'Arial', fontSize: '18px', color: '#8B6914',
+            fontFamily: FONT_FAMILY, fontSize: '18px', color: '#8B6914',
         }).setOrigin(0.5);
 
         // 인벤토리 패널
@@ -251,12 +264,12 @@ export class Onsen extends Phaser.Scene {
 
             // 이름
             this.add.text(x, startY + 38, ITEM_NAMES[itemType], {
-                fontFamily: 'Arial', fontSize: '16px', color: '#5D4037',
+                fontFamily: FONT_FAMILY, fontSize: '16px', color: '#5D4037',
             }).setOrigin(0.5);
 
             // 수량
             const countText = this.add.text(x, startY + 58, `x${count}`, {
-                fontFamily: 'Arial', fontSize: '20px', color: '#333333', fontStyle: 'bold',
+                fontFamily: FONT_FAMILY, fontSize: '20px', color: '#333333', fontStyle: 'bold',
             }).setOrigin(0.5);
             this.inventoryTexts.set(itemType, countText);
 
@@ -368,10 +381,7 @@ export class Onsen extends Phaser.Scene {
         this.poolGraphics.fillRoundedRect(ONSEN_POOL_X - 10, ONSEN_POOL_Y - 10, ONSEN_POOL_W + 20, ONSEN_POOL_H + 20, 30);
         this.poolGraphics.fillStyle(colors.water, 1);
         this.poolGraphics.fillRoundedRect(ONSEN_POOL_X, ONSEN_POOL_Y, ONSEN_POOL_W, ONSEN_POOL_H, 24);
-        this.poolGraphics.fillStyle(0xFFFFFF, 0.15);
-        this.poolGraphics.fillCircle(ONSEN_POOL_X + 100, ONSEN_POOL_Y + 30, 40);
-        this.poolGraphics.fillCircle(ONSEN_POOL_X + 300, ONSEN_POOL_Y + 50, 50);
-        this.poolGraphics.fillCircle(ONSEN_POOL_X + 420, ONSEN_POOL_Y + 20, 35);
+        // 물결 웨이브는 create()에서 tween으로 이미 동작 중
     }
 
 }

@@ -9,6 +9,7 @@ import {
     DEPTH_EFFECT_OVERLAY,
     DEPTH_STAGE_TEXT,
     STAGE_NAMES,
+    FONT_FAMILY,
 } from '../utils/Constants';
 import type { StageType } from '../utils/Constants';
 
@@ -120,7 +121,7 @@ export class EffectManager {
     onStageTransition(stage: StageType): void {
         const name = STAGE_NAMES[stage];
         const text = this.scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 80, `${name}에 도착!`, {
-            fontFamily: 'Arial',
+            fontFamily: FONT_FAMILY,
             fontSize: '36px',
             color: '#FFFFFF',
             fontStyle: 'bold',

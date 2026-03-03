@@ -2,6 +2,9 @@
 export const GAME_WIDTH = 720;
 export const GAME_HEIGHT = 1280;
 
+// 폰트
+export const FONT_FAMILY = "'Jua', Arial, sans-serif";
+
 // 레인 시스템
 export const LANE_COUNT = 3;
 export const LANE_POSITIONS = [180, 360, 540]; // 좌, 중, 우 (720을 4등분)

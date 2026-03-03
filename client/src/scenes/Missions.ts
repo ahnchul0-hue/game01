@@ -7,6 +7,7 @@ import {
     MISSION_LABELS,
     LS_KEY_DAILY_MISSIONS,
     LS_KEY_STREAK,
+    FONT_FAMILY,
 } from '../utils/Constants';
 import type { MissionType } from '../utils/Constants';
 import { ApiClient, type Mission, type StreakInfo, type DailyMissionsResponse } from '../services/ApiClient';
@@ -132,7 +133,7 @@ export class Missions extends Phaser.Scene {
 
         // 타이틀
         this.add.text(GAME_WIDTH / 2, 80, '오늘의 미션', {
-            fontFamily: 'Arial',
+            fontFamily: FONT_FAMILY,
             fontSize: '40px',
             color: '#FFD700',
             fontStyle: 'bold',
@@ -142,7 +143,7 @@ export class Missions extends Phaser.Scene {
 
         // 로딩 텍스트 (서버 응답 전 표시)
         this.loadingText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, '불러오는 중...', {
-            fontFamily: 'Arial',
+            fontFamily: FONT_FAMILY,
             fontSize: '24px',
             color: '#AAAAAA',
         }).setOrigin(0.5);
@@ -235,7 +236,7 @@ export class Missions extends Phaser.Scene {
 
         // 연속 플레이 레이블
         const streakLabel = this.add.text(sectionX + 20, sectionY + 12, '연속 플레이', {
-            fontFamily: 'Arial',
+            fontFamily: FONT_FAMILY,
             fontSize: '18px',
             color: '#AAAAAA',
         });
@@ -244,7 +245,7 @@ export class Missions extends Phaser.Scene {
         // 스트릭 수
         const streakNum = this.streak.current_streak;
         const streakText = this.add.text(sectionX + 20, sectionY + 36, `${streakNum}일 연속`, {
-            fontFamily: 'Arial',
+            fontFamily: FONT_FAMILY,
             fontSize: '28px',
             color: streakNum >= 3 ? '#FF6B35' : '#FFFFFF',
             fontStyle: 'bold',
@@ -253,7 +254,7 @@ export class Missions extends Phaser.Scene {
 
         // 최장 기록
         const longestText = this.add.text(sectionX + 20, sectionY + 68, `최장: ${this.streak.longest_streak}일`, {
-            fontFamily: 'Arial',
+            fontFamily: FONT_FAMILY,
             fontSize: '15px',
             color: '#888888',
         });
@@ -270,7 +271,7 @@ export class Missions extends Phaser.Scene {
             this.streakContainer.add(claimBg);
 
             const claimText = this.add.text(claimX, claimY, '보상 받기', {
-                fontFamily: 'Arial',
+                fontFamily: FONT_FAMILY,
                 fontSize: '18px',
                 color: '#FFFFFF',
                 fontStyle: 'bold',
@@ -296,7 +297,7 @@ export class Missions extends Phaser.Scene {
             });
         } else {
             const claimedText = this.add.text(sectionX + sectionW - 85, sectionY + sectionH / 2, '수령 완료', {
-                fontFamily: 'Arial',
+                fontFamily: FONT_FAMILY,
                 fontSize: '18px',
                 color: '#666666',
             }).setOrigin(0.5);
@@ -350,7 +351,7 @@ export class Missions extends Phaser.Scene {
         const label = MISSION_LABELS[mission.mission_type as MissionType] ?? mission.mission_type;
         const labelColor = isClaimed ? '#666666' : '#FFFFFF';
         const labelText = this.add.text(cardX + 20, cardY + 18, label, {
-            fontFamily: 'Arial',
+            fontFamily: FONT_FAMILY,
             fontSize: '22px',
             color: labelColor,
             fontStyle: 'bold',
@@ -364,7 +365,7 @@ export class Missions extends Phaser.Scene {
         const rewardStr = `보상: ${cardRewardLabel} x${mission.reward_amount}`;
         const rewardColor = isClaimed ? '#555555' : '#FFD700';
         const rewardText = this.add.text(cardX + 20, cardY + 48, rewardStr, {
-            fontFamily: 'Arial',
+            fontFamily: FONT_FAMILY,
             fontSize: '16px',
             color: rewardColor,
         });
@@ -396,7 +397,7 @@ export class Missions extends Phaser.Scene {
         const progressStr = `${mission.current_value} / ${mission.target_value}`;
         const progressColor = isClaimed ? '#555555' : '#AAAAAA';
         const progressText = this.add.text(barX + barW / 2, barY + barH / 2, progressStr, {
-            fontFamily: 'Arial',
+            fontFamily: FONT_FAMILY,
             fontSize: '14px',
             color: progressColor,
         }).setOrigin(0.5, 0.5);
@@ -405,7 +406,7 @@ export class Missions extends Phaser.Scene {
         // 진행도 % 텍스트 (바 오른쪽)
         const pctStr = `${Math.floor(progress * 100)}%`;
         const pctText = this.add.text(barX + barW + 10, barY + barH / 2, pctStr, {
-            fontFamily: 'Arial',
+            fontFamily: FONT_FAMILY,
             fontSize: '14px',
             color: isClaimed ? '#555555' : '#AAAAAA',
         }).setOrigin(0, 0.5);
@@ -424,7 +425,7 @@ export class Missions extends Phaser.Scene {
             container.add(claimBg);
 
             const claimLabel = this.add.text(btnX, btnY, '보상 받기', {
-                fontFamily: 'Arial',
+                fontFamily: FONT_FAMILY,
                 fontSize: '18px',
                 color: '#1A1A00',
                 fontStyle: 'bold',
@@ -451,7 +452,7 @@ export class Missions extends Phaser.Scene {
         } else if (isClaimed) {
             // 수령 완료 레이블
             const doneText = this.add.text(cardX + cardW - 95, cardY + cardH / 2, '수령 완료', {
-                fontFamily: 'Arial',
+                fontFamily: FONT_FAMILY,
                 fontSize: '18px',
                 color: '#555555',
             }).setOrigin(0.5);
@@ -576,7 +577,7 @@ export class Missions extends Phaser.Scene {
     // ─── 보상 팝업 애니메이션 ─────────────────────────────────────────
     private showRewardPopup(container: Phaser.GameObjects.Container, text: string): void {
         const popup = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, text, {
-            fontFamily: 'Arial',
+            fontFamily: FONT_FAMILY,
             fontSize: '28px',
             color: '#FFD700',
             fontStyle: 'bold',
@@ -597,7 +598,7 @@ export class Missions extends Phaser.Scene {
 
     private showRewardPopupAt(x: number, y: number, text: string): void {
         const popup = this.add.text(x, y, text, {
-            fontFamily: 'Arial',
+            fontFamily: FONT_FAMILY,
             fontSize: '26px',
             color: '#FF6B35',
             fontStyle: 'bold',

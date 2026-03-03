@@ -5,6 +5,7 @@ import {
     SCENE_COMPANION_SELECT,
     SCENE_MAIN_MENU,
     COMPANION_CONFIGS,
+    FONT_FAMILY,
     type CompanionId,
     type CompanionConfig,
 } from '../utils/Constants';
@@ -61,7 +62,7 @@ export class CompanionSelect extends Phaser.Scene {
 
         // 제목
         this.add.text(GAME_WIDTH / 2, 50, '동물 친구', {
-            fontFamily: 'Arial', fontSize: '40px', color: '#2E7D32',
+            fontFamily: FONT_FAMILY, fontSize: '40px', color: '#2E7D32',
             fontStyle: 'bold', stroke: '#FFFFFF', strokeThickness: 3,
         }).setOrigin(0.5);
 
@@ -71,11 +72,11 @@ export class CompanionSelect extends Phaser.Scene {
 
         const currentConfig = COMPANION_CONFIGS.find(c => c.id === this.selectedCompanion);
         this.previewNameText = this.add.text(GAME_WIDTH / 2, 340, currentConfig?.name ?? '없음', {
-            fontFamily: 'Arial', fontSize: '28px', color: '#2E7D32', fontStyle: 'bold',
+            fontFamily: FONT_FAMILY, fontSize: '28px', color: '#2E7D32', fontStyle: 'bold',
         }).setOrigin(0.5);
 
         this.previewAbilityText = this.add.text(GAME_WIDTH / 2, 375, currentConfig?.abilityDescription ?? '동물 친구를 선택하세요', {
-            fontFamily: 'Arial', fontSize: '18px', color: '#666666',
+            fontFamily: FONT_FAMILY, fontSize: '18px', color: '#666666',
         }).setOrigin(0.5);
 
         // "없음" 카드 + 동물 카드 (총 4개, 2x2 그리드)
@@ -132,29 +133,115 @@ export class CompanionSelect extends Phaser.Scene {
     }
 
     private drawCompanionPreview(id: CompanionId): void {
-        this.previewGfx.clear();
+        const g = this.previewGfx;
+        g.clear();
+        const cx = GAME_WIDTH / 2;
+        const cy = 210;
+
         if (id === 'none') {
-            this.previewGfx.fillStyle(0xCCCCCC, 1);
-            this.previewGfx.fillCircle(GAME_WIDTH / 2, 210, 60);
-            this.previewGfx.fillStyle(0x999999, 1);
-            this.previewGfx.fillCircle(GAME_WIDTH / 2 - 15, 195, 8);
-            this.previewGfx.fillCircle(GAME_WIDTH / 2 + 15, 195, 8);
+            g.fillStyle(0xCCCCCC, 1);
+            g.fillCircle(cx, cy, 60);
+            g.fillStyle(0x999999, 1);
+            g.fillCircle(cx - 15, cy - 15, 8);
+            g.fillCircle(cx + 15, cy - 15, 8);
+            // 물음표
+            g.fillStyle(0xAAAAAA, 1);
+            g.fillRoundedRect(cx - 8, cy + 8, 16, 20, 4);
             return;
         }
 
         const config = COMPANION_CONFIGS.find(c => c.id === id);
         if (!config) return;
 
-        // 큰 원형 프리뷰
-        this.previewGfx.fillStyle(config.color, 1);
-        this.previewGfx.fillCircle(GAME_WIDTH / 2, 210, 60);
-        // 눈
-        this.previewGfx.fillStyle(0xFFFFFF, 1);
-        this.previewGfx.fillCircle(GAME_WIDTH / 2 - 18, 195, 16);
-        this.previewGfx.fillCircle(GAME_WIDTH / 2 + 18, 195, 16);
-        this.previewGfx.fillStyle(0x000000, 1);
-        this.previewGfx.fillCircle(GAME_WIDTH / 2 - 14, 195, 8);
-        this.previewGfx.fillCircle(GAME_WIDTH / 2 + 22, 195, 8);
+        // 배경 글로우
+        g.fillStyle(config.color, 0.15);
+        g.fillCircle(cx, cy, 72);
+
+        if (id === 'otter') {
+            // 수달: 길쭉한 몸 + 둥근 머리 + 수염
+            g.fillStyle(config.color, 1);
+            g.fillEllipse(cx, cy + 20, 60, 80); // 몸
+            g.fillCircle(cx, cy - 30, 32); // 머리
+            g.fillStyle(0x8B6B47, 1);
+            g.fillEllipse(cx, cy + 10, 40, 50); // 배
+            // 귀
+            g.fillStyle(config.color, 1);
+            g.fillCircle(cx - 25, cy - 48, 10);
+            g.fillCircle(cx + 25, cy - 48, 10);
+            // 눈
+            g.fillStyle(0xFFFFFF, 1);
+            g.fillCircle(cx - 12, cy - 35, 10);
+            g.fillCircle(cx + 12, cy - 35, 10);
+            g.fillStyle(0x000000, 1);
+            g.fillCircle(cx - 10, cy - 35, 5);
+            g.fillCircle(cx + 14, cy - 35, 5);
+            // 코
+            g.fillStyle(0x333333, 1);
+            g.fillCircle(cx, cy - 22, 5);
+            // 수염
+            g.lineStyle(1.5, 0x333333, 0.6);
+            g.lineBetween(cx - 8, cy - 20, cx - 28, cy - 24);
+            g.lineBetween(cx - 8, cy - 18, cx - 26, cy - 16);
+            g.lineBetween(cx + 8, cy - 20, cx + 28, cy - 24);
+            g.lineBetween(cx + 8, cy - 18, cx + 26, cy - 16);
+        } else if (id === 'duck') {
+            // 오리: 둥근 몸 + 부리 + 날개
+            g.fillStyle(config.color, 1);
+            g.fillEllipse(cx, cy + 10, 80, 70); // 몸
+            g.fillCircle(cx, cy - 28, 28); // 머리
+            // 날개
+            g.fillStyle(0xE6C200, 1);
+            g.fillEllipse(cx - 38, cy + 5, 25, 40);
+            g.fillEllipse(cx + 38, cy + 5, 25, 40);
+            // 부리
+            g.fillStyle(0xFF8C00, 1);
+            g.beginPath();
+            g.moveTo(cx - 6, cy - 20);
+            g.lineTo(cx + 6, cy - 20);
+            g.lineTo(cx + 10, cy - 12);
+            g.lineTo(cx - 10, cy - 12);
+            g.closePath();
+            g.fillPath();
+            // 눈
+            g.fillStyle(0x000000, 1);
+            g.fillCircle(cx - 10, cy - 32, 5);
+            g.fillCircle(cx + 10, cy - 32, 5);
+            // 하이라이트
+            g.fillStyle(0xFFFFFF, 0.4);
+            g.fillCircle(cx - 8, cy - 34, 2);
+            g.fillCircle(cx + 12, cy - 34, 2);
+        } else if (id === 'turtle') {
+            // 거북이: 등딱지 + 머리 + 다리
+            // 등딱지
+            g.fillStyle(config.color, 1);
+            g.fillEllipse(cx, cy + 5, 90, 70);
+            // 등딱지 무늬
+            g.lineStyle(2, 0x1B6B3A, 0.5);
+            g.strokeCircle(cx, cy + 5, 20);
+            g.lineBetween(cx - 20, cy + 5, cx - 40, cy + 5);
+            g.lineBetween(cx + 20, cy + 5, cx + 40, cy + 5);
+            g.lineBetween(cx, cy - 15, cx, cy - 30);
+            g.lineBetween(cx, cy + 25, cx, cy + 40);
+            // 머리
+            g.fillStyle(0x3CB371, 1);
+            g.fillCircle(cx, cy - 38, 18);
+            // 다리
+            g.fillEllipse(cx - 35, cy + 35, 16, 22);
+            g.fillEllipse(cx + 35, cy + 35, 16, 22);
+            g.fillEllipse(cx - 30, cy - 20, 14, 18);
+            g.fillEllipse(cx + 30, cy - 20, 14, 18);
+            // 눈
+            g.fillStyle(0xFFFFFF, 1);
+            g.fillCircle(cx - 8, cy - 42, 7);
+            g.fillCircle(cx + 8, cy - 42, 7);
+            g.fillStyle(0x000000, 1);
+            g.fillCircle(cx - 6, cy - 42, 3);
+            g.fillCircle(cx + 10, cy - 42, 3);
+            // 미소
+            g.lineStyle(2, 0x000000, 0.5);
+            g.arc(cx, cy - 32, 6, 0, Math.PI);
+            g.strokePath();
+        }
     }
 
     private selectCompanion(id: CompanionId, name: string, abilityDesc: string): void {
@@ -190,11 +277,11 @@ export class CompanionSelect extends Phaser.Scene {
         iconGfx.strokeCircle(x - w / 2 + 50, y, 22);
 
         this.add.text(x + 10, y - 15, '없음', {
-            fontFamily: 'Arial', fontSize: '20px', color: '#333333', fontStyle: 'bold',
+            fontFamily: FONT_FAMILY, fontSize: '20px', color: '#333333', fontStyle: 'bold',
         }).setOrigin(0, 0.5);
 
         this.add.text(x + 10, y + 15, '동물 친구 없이 달리기', {
-            fontFamily: 'Arial', fontSize: '16px', color: '#999999',
+            fontFamily: FONT_FAMILY, fontSize: '16px', color: '#999999',
         }).setOrigin(0, 0.5);
 
         const hitZone = this.add.zone(x, y, w, h).setInteractive({ useHandCursor: true });
@@ -223,23 +310,41 @@ export class CompanionSelect extends Phaser.Scene {
         this.cardBorders.set(config.id, border);
         this.cardRects.set(config.id, { x, y, w, h });
 
-        // 동물 아이콘 (Graphics로 원형)
+        // 동물 아이콘 (특징적 미니 실루엣)
         const iconGfx = this.add.graphics();
-        iconGfx.fillStyle(isUnlocked ? config.color : 0x666666, 1);
-        iconGfx.fillCircle(x - w / 2 + 50, y, 22);
-        // 눈
+        const ix = x - w / 2 + 50;
+        const iy = y;
+        const col = isUnlocked ? config.color : 0x666666;
+        iconGfx.fillStyle(col, 1);
+        iconGfx.fillCircle(ix, iy, 22); // 몸
         if (isUnlocked) {
+            // 눈
             iconGfx.fillStyle(0xFFFFFF, 1);
-            iconGfx.fillCircle(x - w / 2 + 44, y - 5, 6);
-            iconGfx.fillCircle(x - w / 2 + 56, y - 5, 6);
+            iconGfx.fillCircle(ix - 7, iy - 5, 6);
+            iconGfx.fillCircle(ix + 7, iy - 5, 6);
             iconGfx.fillStyle(0x000000, 1);
-            iconGfx.fillCircle(x - w / 2 + 45, y - 5, 3);
-            iconGfx.fillCircle(x - w / 2 + 57, y - 5, 3);
+            iconGfx.fillCircle(ix - 5, iy - 5, 3);
+            iconGfx.fillCircle(ix + 9, iy - 5, 3);
+            // 동물별 특징
+            if (config.id === 'otter') {
+                // 수달 수염
+                iconGfx.lineStyle(1, 0x333333, 0.6);
+                iconGfx.lineBetween(ix - 5, iy + 3, ix - 18, iy);
+                iconGfx.lineBetween(ix + 5, iy + 3, ix + 18, iy);
+            } else if (config.id === 'duck') {
+                // 오리 부리
+                iconGfx.fillStyle(0xFF8C00, 1);
+                iconGfx.fillRoundedRect(ix - 6, iy + 4, 12, 8, 3);
+            } else if (config.id === 'turtle') {
+                // 거북이 등딱지 무늬
+                iconGfx.lineStyle(1.5, 0x1B6B3A, 0.5);
+                iconGfx.strokeCircle(ix, iy, 10);
+            }
         }
 
         // 이름
         this.add.text(x + 10, y - 25, config.name, {
-            fontFamily: 'Arial', fontSize: '20px',
+            fontFamily: FONT_FAMILY, fontSize: '20px',
             color: isUnlocked ? '#333333' : '#777777',
             fontStyle: 'bold',
         }).setOrigin(0, 0.5);
@@ -247,16 +352,16 @@ export class CompanionSelect extends Phaser.Scene {
         // 능력/잠금 상태
         if (isUnlocked) {
             this.add.text(x + 10, y + 5, config.abilityDescription, {
-                fontFamily: 'Arial', fontSize: '16px', color: '#2E7D32',
+                fontFamily: FONT_FAMILY, fontSize: '16px', color: '#2E7D32',
             }).setOrigin(0, 0.5);
 
             const statusText = isSelected ? '선택됨' : '사용 가능';
             this.add.text(x + 10, y + 28, statusText, {
-                fontFamily: 'Arial', fontSize: '14px', color: '#4CAF50',
+                fontFamily: FONT_FAMILY, fontSize: '14px', color: '#4CAF50',
             }).setOrigin(0, 0.5);
         } else {
             this.add.text(x + 10, y + 5, config.unlockDescription, {
-                fontFamily: 'Arial', fontSize: '16px', color: '#999999',
+                fontFamily: FONT_FAMILY, fontSize: '16px', color: '#999999',
             }).setOrigin(0, 0.5);
 
             // 진행률 바
@@ -271,7 +376,7 @@ export class CompanionSelect extends Phaser.Scene {
             barGfx.fillStyle(0x4CAF50, 1);
             barGfx.fillRoundedRect(barX, barY, barW * progress, barH, 5);
             this.add.text(barX + barW + 8, barY + barH / 2, `${Math.floor(progress * 100)}%`, {
-                fontFamily: 'Arial', fontSize: '12px', color: '#999999',
+                fontFamily: FONT_FAMILY, fontSize: '12px', color: '#999999',
             }).setOrigin(0, 0.5);
         }
 

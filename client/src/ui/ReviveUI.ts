@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../utils/Constants';
+import { GAME_WIDTH, GAME_HEIGHT, FONT_FAMILY } from '../utils/Constants';
 
 /**
  * Modal overlay that asks the player whether to revive or give up.
@@ -23,7 +23,7 @@ export class ReviveUI {
         this.container.add(overlay);
 
         const text = this.scene.add.text(0, -60, 'Continue?', {
-            fontFamily: 'Arial', fontSize: '40px', color: '#FFFFFF', fontStyle: 'bold',
+            fontFamily: FONT_FAMILY, fontSize: '40px', color: '#FFFFFF', fontStyle: 'bold',
         }).setOrigin(0.5);
         this.container.add(text);
 
@@ -61,7 +61,7 @@ export class ReviveUI {
         this.container.add(bg);
 
         const btnText = this.scene.add.text(x, y, label, {
-            fontFamily: 'Arial', fontSize: '22px', color: '#FFFFFF', fontStyle: 'bold',
+            fontFamily: FONT_FAMILY, fontSize: '22px', color: '#FFFFFF', fontStyle: 'bold',
         }).setOrigin(0.5);
         this.container.add(btnText);
 
