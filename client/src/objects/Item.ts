@@ -81,7 +81,11 @@ export class Item extends Phaser.Physics.Arcade.Sprite {
         const screenX = PerspectiveCamera.getLaneScreenX(this.z, this.laneOffset);
         this.setPosition(screenX, screenY);
         this.setScale(scale);
-        this.setDepth(5 + (1 - this.z) * 4);
+        // 깊이 정렬 (플레이어 depth 10 위)
+        this.setDepth(12 + (1 - this.z) * 7);
+
+        // 거리 기반 안개 알파
+        this.setAlpha(Math.min(1, 0.4 + scale * 0.7));
 
         const body = this.body as Phaser.Physics.Arcade.Body;
         const inBand = Math.abs(this.z - PLAYER_Z) < COLLISION_BAND;

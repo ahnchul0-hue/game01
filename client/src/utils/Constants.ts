@@ -243,7 +243,7 @@ export const ROAD_WIDTH_FAR = 80;   // 소실점 근처 도로 폭
 export const LANE_SPREAD = 170;     // 레인 오프셋 배율 (near)
 
 // z좌표 체계: 1.0 = 소실점(멀리), 0.0 = 카메라(가까이)
-export const SPAWN_Z = 0.92;        // 오브젝트 스폰 z
+export const SPAWN_Z = 0.75;        // 오브젝트 스폰 z (0.92→0.75: 가시성 향상)
 export const DESPAWN_Z = -0.05;     // 오브젝트 디스폰 z
 export const PLAYER_Z = 0.08;       // 플레이어 고정 z
 

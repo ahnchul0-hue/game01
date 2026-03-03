@@ -84,8 +84,11 @@ export class Obstacle extends Phaser.Physics.Arcade.Sprite {
         this.setPosition(screenX, screenY);
         this.setScale(scale);
 
-        // 깊이 정렬 (가까울수록 위에)
-        this.setDepth(5 + (1 - this.z) * 4);
+        // 깊이 정렬 (가까울수록 위에, 플레이어 depth 10 위)
+        this.setDepth(12 + (1 - this.z) * 7);
+
+        // 거리 기반 안개 알파 (먼 오브젝트는 약간 투명)
+        this.setAlpha(Math.min(1, 0.4 + scale * 0.7));
 
         // 충돌 밴드 체크: 플레이어 z 근처에서만 body 활성화
         const body = this.body as Phaser.Physics.Arcade.Body;

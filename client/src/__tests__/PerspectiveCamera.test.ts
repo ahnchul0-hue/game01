@@ -13,37 +13,38 @@ describe('PerspectiveCamera', () => {
     // ── projectZ ──────────────────────────────────
 
     describe('projectZ', () => {
-        it('z=1.0 (소실점) → screenY=VANISH_Y, scale=0.05(최솟값)', () => {
+        it('z=1.0 (소실점) → screenY=VANISH_Y, scale=0.15(최솟값)', () => {
             const result = PerspectiveCamera.projectZ(1.0);
             expect(result.screenY).toBe(VANISH_Y);
-            expect(result.scale).toBe(0.05);
+            expect(result.scale).toBe(0.15); // max(0.15, pow(0, 0.55)) = 0.15
             expect(result.t).toBe(0);
         });
 
         it('z=0.0 (카메라) → screenY=CAMERA_Y, scale=1.0', () => {
             const result = PerspectiveCamera.projectZ(0.0);
             expect(result.screenY).toBe(VANISH_Y + ROAD_HEIGHT);
-            expect(result.scale).toBe(1.0);
+            expect(result.scale).toBe(1.0); // pow(1, 0.55) = 1.0
             expect(result.t).toBe(1);
         });
 
-        it('z=0.5 (중간) → 선형 보간', () => {
+        it('z=0.5 (중간) → 비선형 스케일', () => {
             const result = PerspectiveCamera.projectZ(0.5);
             expect(result.screenY).toBe(VANISH_Y + ROAD_HEIGHT * 0.5);
-            expect(result.scale).toBe(0.5);
+            // pow(0.5, 0.55) ≈ 0.6825
+            expect(result.scale).toBeCloseTo(Math.pow(0.5, 0.55), 3);
             expect(result.t).toBe(0.5);
         });
 
-        it('z > 1.0 → scale은 0.05 최솟값 보장', () => {
+        it('z > 1.0 → scale은 0.15 최솟값 보장', () => {
             const result = PerspectiveCamera.projectZ(1.5);
-            expect(result.scale).toBe(0.05);
+            expect(result.scale).toBe(0.15);
             expect(result.t).toBe(-0.5);
         });
 
-        it('z < 0.0 → scale은 t(>1)로 증가', () => {
+        it('z < 0.0 → scale은 pow(t, 0.55)로 증가', () => {
             const result = PerspectiveCamera.projectZ(-0.1);
             expect(result.t).toBeCloseTo(1.1);
-            expect(result.scale).toBeCloseTo(1.1);
+            expect(result.scale).toBeCloseTo(Math.pow(1.1, 0.55), 3);
         });
 
         it('screenY는 z가 감소할수록 증가 (멀리→가까이)', () => {

@@ -30,7 +30,7 @@ export class PerspectiveCamera {
     static projectZ(z: number): { screenY: number; scale: number; t: number } {
         const t = 1 - z;
         const screenY = VANISH_Y + ROAD_HEIGHT * t;
-        const scale = Math.max(0.05, t);
+        const scale = Math.max(0.15, t > 0 ? Math.pow(t, 0.55) : 0);
         return { screenY, scale, t };
     }
 

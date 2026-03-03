@@ -387,6 +387,7 @@ export class Game extends Phaser.Scene {
     }
 
     private showTutorial(): void {
+        this.state = 'paused';
         this.physics.pause();
         this.tutorialContainer = this.add.container(0, 0).setDepth(400);
 
@@ -428,6 +429,7 @@ export class Game extends Phaser.Scene {
             }
             localStorage.setItem(LS_KEY_TUTORIAL_DONE, '1');
             this.physics.resume();
+            this.state = 'playing';
         });
     }
 
