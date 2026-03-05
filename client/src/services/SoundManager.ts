@@ -16,6 +16,8 @@ export class SoundManager {
     private _muted: boolean;
     private _bgmVol: number;
     private _sfxVol: number;
+    private _hitNoiseBuffer: AudioBuffer | null = null;
+    private _onsenNoiseBuffer: AudioBuffer | null = null;
 
     private constructor() {
         this._muted = localStorage.getItem(LS_KEY_MUTED) === 'true';
@@ -93,13 +95,15 @@ export class SoundManager {
         if (!this.ctx || !this.sfxGain) return;
         const t = this._t();
         this._tone('square', 150, 0.15, 80, t);
-        // White noise burst for impact texture
-        const bufSize = Math.floor(this.ctx.sampleRate * 0.12);
-        const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
-        const data = buf.getChannelData(0);
-        for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.4;
+        // Cached noise buffer for impact texture (avoid per-call allocation)
+        if (!this._hitNoiseBuffer) {
+            const bufSize = Math.floor(this.ctx.sampleRate * 0.12);
+            this._hitNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+            const data = this._hitNoiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.4;
+        }
         const noise = this.ctx.createBufferSource();
-        noise.buffer = buf;
+        noise.buffer = this._hitNoiseBuffer;
         const g = this.ctx.createGain();
         g.gain.setValueAtTime(0.5, t);
         g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
@@ -186,13 +190,16 @@ export class SoundManager {
     /** Bandpass-filtered looping white noise for water ambience. */
     private _bgmOnsen(): void {
         if (!this.ctx || !this.bgmGain) return;
-        const bufSize = this.ctx.sampleRate * 4;
-        const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
-        const data = buf.getChannelData(0);
-        for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+        // Cached 4-second noise buffer (avoid per-call allocation)
+        if (!this._onsenNoiseBuffer) {
+            const bufSize = this.ctx.sampleRate * 4;
+            this._onsenNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+            const data = this._onsenNoiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+        }
 
         const source = this.ctx.createBufferSource();
-        source.buffer = buf;
+        source.buffer = this._onsenNoiseBuffer;
         source.loop = true;
 
         const filter = this.ctx.createBiquadFilter();

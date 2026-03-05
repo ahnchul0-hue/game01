@@ -125,8 +125,9 @@ async fn update_progress(
     let today = today_utc();
 
     // Rate limit: max 10 mission progress updates per user per 60 seconds
+    // Only count non-completed missions to prevent bypass via already-completed missions
     let recent_update_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM daily_missions WHERE user_id = ? AND updated_at > datetime('now', '-60 seconds')",
+        "SELECT COUNT(*) FROM daily_missions WHERE user_id = ? AND updated_at > datetime('now', '-60 seconds') AND completed = 0",
     )
     .bind(&u.id)
     .fetch_one(&state.pool)

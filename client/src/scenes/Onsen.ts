@@ -60,8 +60,8 @@ export class Onsen extends Phaser.Scene {
         }
         this.tweens.killAll();
         this.time.removeAllEvents();
-        this.input.off('drag');
-        this.input.off('dragend');
+        this.input.off('drag', this.onDrag, this);
+        this.input.off('dragend', this.onDragEnd, this);
         this.placedSprites = [];
         this.inventoryTexts.clear();
     }
@@ -192,47 +192,50 @@ export class Onsen extends Phaser.Scene {
             },
         });
 
-        // 드래그 설정 (풀 밖으로 끌면 제거)
-        this.input.on('drag', (_pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.Image, dragX: number, dragY: number) => {
-            gameObject.x = dragX;
-            gameObject.y = dragY;
-            // 풀 밖이면 반투명으로 제거 힌트
-            const inside = dragX >= ONSEN_POOL_X && dragX <= ONSEN_POOL_X + ONSEN_POOL_W
-                        && dragY >= ONSEN_POOL_Y && dragY <= ONSEN_POOL_Y + ONSEN_POOL_H;
-            gameObject.setAlpha(inside ? 1 : 0.4);
-        });
+        // 드래그 설정 (풀 밖으로 끌면 제거) — named 참조로 안전한 해제
+        this.input.on('drag', this.onDrag, this);
+        this.input.on('dragend', this.onDragEnd, this);
+    }
 
-        this.input.on('dragend', (_pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.Image) => {
-            const idx = this.placedSprites.indexOf(gameObject);
-            if (idx < 0) return;
+    private onDrag(_pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.Image, dragX: number, dragY: number): void {
+        gameObject.x = dragX;
+        gameObject.y = dragY;
+        // 풀 밖이면 반투명으로 제거 힌트
+        const inside = dragX >= ONSEN_POOL_X && dragX <= ONSEN_POOL_X + ONSEN_POOL_W
+                    && dragY >= ONSEN_POOL_Y && dragY <= ONSEN_POOL_Y + ONSEN_POOL_H;
+        gameObject.setAlpha(inside ? 1 : 0.4);
+    }
 
-            const inside = gameObject.x >= ONSEN_POOL_X && gameObject.x <= ONSEN_POOL_X + ONSEN_POOL_W
-                        && gameObject.y >= ONSEN_POOL_Y && gameObject.y <= ONSEN_POOL_Y + ONSEN_POOL_H;
+    private onDragEnd(_pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.Image): void {
+        const idx = this.placedSprites.indexOf(gameObject);
+        if (idx < 0) return;
 
-            if (inside) {
-                // 풀 안: 위치 저장
-                if (this.layout.placedItems[idx]) {
-                    this.layout.placedItems[idx].x = gameObject.x;
-                    this.layout.placedItems[idx].y = gameObject.y;
-                }
-            } else {
-                // 풀 밖: 아이템 제거 + 인벤토리 복구
-                const removed = this.layout.placedItems.splice(idx, 1)[0];
-                this.placedSprites.splice(idx, 1);
-                gameObject.destroy();
+        const inside = gameObject.x >= ONSEN_POOL_X && gameObject.x <= ONSEN_POOL_X + ONSEN_POOL_W
+                    && gameObject.y >= ONSEN_POOL_Y && gameObject.y <= ONSEN_POOL_Y + ONSEN_POOL_H;
 
-                if (removed) {
-                    this.inventory[removed.itemType]++;
-                    this.inventoryMgr.saveInventory(this.inventory);
-                    const countText = this.inventoryTexts.get(removed.itemType);
-                    if (countText) countText.setText(`x${this.inventory[removed.itemType]}`);
-                }
+        if (inside) {
+            // 풀 안: 위치 저장
+            if (this.layout.placedItems[idx]) {
+                this.layout.placedItems[idx].x = gameObject.x;
+                this.layout.placedItems[idx].y = gameObject.y;
+            }
+        } else {
+            // 풀 밖: 아이템 제거 + 인벤토리 복구
+            const removed = this.layout.placedItems.splice(idx, 1)[0];
+            this.placedSprites.splice(idx, 1);
+            gameObject.destroy();
 
-                this.updateLevelDisplay();
+            if (removed) {
+                this.inventory[removed.itemType]++;
+                this.inventoryMgr.saveInventory(this.inventory);
+                const countText = this.inventoryTexts.get(removed.itemType);
+                if (countText) countText.setText(`x${this.inventory[removed.itemType]}`);
             }
 
-            this.inventoryMgr.saveOnsenLayout(this.layout);
-        });
+            this.updateLevelDisplay();
+        }
+
+        this.inventoryMgr.saveOnsenLayout(this.layout);
     }
 
     private renderPlacedItems(): void {

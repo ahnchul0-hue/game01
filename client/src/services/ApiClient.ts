@@ -140,23 +140,9 @@ export class ApiClient {
     }
 
     async submitScore(score: number, distance: number, itemsCollected: number): Promise<void> {
-        const token = this.getToken();
-        if (!token) return;
-
-        try {
-            const res = await this.fetchWithTimeout(`${this.baseUrl}/api/scores`, {
-                method: 'POST',
-                headers: this.authHeaders(),
-                body: JSON.stringify({
-                    score,
-                    distance,
-                    items_collected: itemsCollected,
-                }),
-            });
-            if (res.status === 401) await this.handleAuthError();
-        } catch {
-            // fire-and-forget
-        }
+        return this.authenticatedWrite('POST', '/api/scores', {
+            score, distance, items_collected: itemsCollected,
+        });
     }
 
     private authHeaders(): Record<string, string> {
@@ -166,12 +152,15 @@ export class ApiClient {
             : { 'Content-Type': 'application/json' };
     }
 
-    async getInventory(): Promise<InventoryResponse | null> {
+    // ---- Generic helpers --------------------------------------------------------
+
+    /** Authenticated GET — returns parsed JSON or null on any failure. */
+    private async authenticatedGet<T>(endpoint: string): Promise<T | null> {
         const token = this.getToken();
         if (!token) return null;
         try {
             const res = await this.fetchWithTimeout(
-                `${this.baseUrl}/api/inventory`,
+                `${this.baseUrl}${endpoint}`,
                 { headers: this.authHeaders() },
             );
             if (res.status === 401) { await this.handleAuthError(); return null; }
@@ -180,183 +169,92 @@ export class ApiClient {
         } catch {
             return null;
         }
+    }
+
+    /** Authenticated POST/PUT — fire-and-forget with 401 re-auth. */
+    private async authenticatedWrite(
+        method: 'POST' | 'PUT', endpoint: string, body?: unknown,
+    ): Promise<void> {
+        const token = this.getToken();
+        if (!token) return;
+        try {
+            const options: RequestInit = { method, headers: this.authHeaders() };
+            if (body !== undefined) options.body = JSON.stringify(body);
+            const res = await this.fetchWithTimeout(`${this.baseUrl}${endpoint}`, options);
+            if (res.status === 401) await this.handleAuthError();
+        } catch {
+            // fire-and-forget
+        }
+    }
+
+    // ---- Inventory --------------------------------------------------------------
+
+    async getInventory(): Promise<InventoryResponse | null> {
+        return this.authenticatedGet<InventoryResponse>('/api/inventory');
     }
 
     async addInventory(items: Partial<Inventory>): Promise<void> {
-        const token = this.getToken();
-        if (!token) return;
-        try {
-            const res = await this.fetchWithTimeout(`${this.baseUrl}/api/inventory`, {
-                method: 'PUT',
-                headers: this.authHeaders(),
-                body: JSON.stringify({
-                    add_mandarin: items.mandarin ?? 0,
-                    add_watermelon: items.watermelon ?? 0,
-                    add_hotspring_material: items.hotspring_material ?? 0,
-                }),
-            });
-            if (res.status === 401) await this.handleAuthError();
-        } catch {
-            // fire-and-forget
-        }
+        return this.authenticatedWrite('PUT', '/api/inventory', {
+            add_mandarin: items.mandarin ?? 0,
+            add_watermelon: items.watermelon ?? 0,
+            add_hotspring_material: items.hotspring_material ?? 0,
+        });
     }
 
+    // ---- Onsen ------------------------------------------------------------------
+
     async getOnsenLayout(): Promise<string | null> {
-        const token = this.getToken();
-        if (!token) return null;
-        try {
-            const res = await this.fetchWithTimeout(
-                `${this.baseUrl}/api/onsen/layout`,
-                { headers: this.authHeaders() },
-            );
-            if (res.status === 401) { await this.handleAuthError(); return null; }
-            if (!res.ok) return null;
-            const data: OnsenLayoutResponse = await res.json();
-            return data.layout_json;
-        } catch {
-            return null;
-        }
+        const data = await this.authenticatedGet<OnsenLayoutResponse>('/api/onsen/layout');
+        return data?.layout_json ?? null;
     }
 
     async saveOnsenLayout(layoutJson: string): Promise<void> {
-        const token = this.getToken();
-        if (!token) return;
-        try {
-            const res = await this.fetchWithTimeout(`${this.baseUrl}/api/onsen/layout`, {
-                method: 'PUT',
-                headers: this.authHeaders(),
-                body: JSON.stringify({ layout_json: layoutJson }),
-            });
-            if (res.status === 401) await this.handleAuthError();
-        } catch {
-            // fire-and-forget
-        }
+        return this.authenticatedWrite('PUT', '/api/onsen/layout', { layout_json: layoutJson });
     }
 
+    // ---- Skins ------------------------------------------------------------------
+
     async getSkins(): Promise<SkinsResponse | null> {
-        const token = this.getToken();
-        if (!token) return null;
-        try {
-            const res = await this.fetchWithTimeout(
-                `${this.baseUrl}/api/skins`,
-                { headers: this.authHeaders() },
-            );
-            if (res.status === 401) { await this.handleAuthError(); return null; }
-            if (!res.ok) return null;
-            return await res.json();
-        } catch {
-            return null;
-        }
+        return this.authenticatedGet<SkinsResponse>('/api/skins');
     }
 
     async saveSkins(selectedSkin: string, unlockedSkins: string[]): Promise<void> {
-        const token = this.getToken();
-        if (!token) return;
-        try {
-            const res = await this.fetchWithTimeout(`${this.baseUrl}/api/skins`, {
-                method: 'PUT',
-                headers: this.authHeaders(),
-                body: JSON.stringify({
-                    selected_skin: selectedSkin,
-                    unlocked_skins: JSON.stringify(unlockedSkins),
-                }),
-            });
-            if (res.status === 401) await this.handleAuthError();
-        } catch {
-            // fire-and-forget
-        }
+        return this.authenticatedWrite('PUT', '/api/skins', {
+            selected_skin: selectedSkin,
+            unlocked_skins: JSON.stringify(unlockedSkins),
+        });
     }
 
+    // ---- Companions -------------------------------------------------------------
+
     async getCompanions(): Promise<CompanionsResponse | null> {
-        const token = this.getToken();
-        if (!token) return null;
-        try {
-            const res = await this.fetchWithTimeout(
-                `${this.baseUrl}/api/companions`,
-                { headers: this.authHeaders() },
-            );
-            if (res.status === 401) { await this.handleAuthError(); return null; }
-            if (!res.ok) return null;
-            return await res.json();
-        } catch {
-            return null;
-        }
+        return this.authenticatedGet<CompanionsResponse>('/api/companions');
     }
 
     async saveCompanions(selectedCompanion: string, unlockedCompanions: string[]): Promise<void> {
-        const token = this.getToken();
-        if (!token) return;
-        try {
-            const res = await this.fetchWithTimeout(`${this.baseUrl}/api/companions`, {
-                method: 'PUT',
-                headers: this.authHeaders(),
-                body: JSON.stringify({
-                    selected_companion: selectedCompanion,
-                    unlocked_companions: unlockedCompanions,
-                }),
-            });
-            if (res.status === 401) await this.handleAuthError();
-        } catch {
-            // fire-and-forget
-        }
+        return this.authenticatedWrite('PUT', '/api/companions', {
+            selected_companion: selectedCompanion,
+            unlocked_companions: unlockedCompanions,
+        });
     }
 
+    // ---- Missions ---------------------------------------------------------------
+
     async getDailyMissions(): Promise<DailyMissionsResponse | null> {
-        const token = this.getToken();
-        if (!token) return null;
-        try {
-            const res = await this.fetchWithTimeout(
-                `${this.baseUrl}/api/missions/daily`,
-                { headers: this.authHeaders() },
-            );
-            if (res.status === 401) { await this.handleAuthError(); return null; }
-            if (!res.ok) return null;
-            return await res.json();
-        } catch {
-            return null;
-        }
+        return this.authenticatedGet<DailyMissionsResponse>('/api/missions/daily');
     }
 
     async updateMissionProgress(missionType: string, progress: number): Promise<void> {
-        const token = this.getToken();
-        if (!token) return;
-        try {
-            const res = await this.fetchWithTimeout(`${this.baseUrl}/api/missions/progress`, {
-                method: 'POST',
-                headers: this.authHeaders(),
-                body: JSON.stringify({ mission_type: missionType, progress }),
-            });
-            if (res.status === 401) await this.handleAuthError();
-        } catch {
-            // fire-and-forget
-        }
+        return this.authenticatedWrite('POST', '/api/missions/progress', {
+            mission_type: missionType, progress,
+        });
     }
 
     async claimMissionReward(missionId: number): Promise<void> {
-        const token = this.getToken();
-        if (!token) return;
-        try {
-            const res = await this.fetchWithTimeout(`${this.baseUrl}/api/missions/${missionId}/claim`, {
-                method: 'POST',
-                headers: this.authHeaders(),
-            });
-            if (res.status === 401) await this.handleAuthError();
-        } catch {
-            // fire-and-forget
-        }
+        return this.authenticatedWrite('POST', `/api/missions/${missionId}/claim`);
     }
 
     async claimStreakReward(): Promise<void> {
-        const token = this.getToken();
-        if (!token) return;
-        try {
-            const res = await this.fetchWithTimeout(`${this.baseUrl}/api/missions/streak/claim`, {
-                method: 'POST',
-                headers: this.authHeaders(),
-            });
-            if (res.status === 401) await this.handleAuthError();
-        } catch {
-            // fire-and-forget
-        }
+        return this.authenticatedWrite('POST', '/api/missions/streak/claim');
     }
 }

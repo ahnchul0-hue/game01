@@ -169,8 +169,8 @@ async fn submit_and_retrieve_scores() {
     let arr = top.as_array().unwrap();
     assert_eq!(arr.len(), 1);
     assert_eq!(arr[0]["score"], 1500);
-    // PublicScore should NOT include user_id
-    assert!(arr[0].get("user_id").is_none());
+    // PublicScore includes user_id for "my score" highlighting in the client
+    assert!(arr[0].get("user_id").is_some());
 }
 
 #[tokio::test]
@@ -433,6 +433,156 @@ async fn streak_claim_works_once_per_day() {
         .as_str()
         .unwrap()
         .contains("already claimed"));
+}
+
+// ===========================================================================
+// Inventory: spend
+// ===========================================================================
+
+#[tokio::test]
+async fn inventory_spend_success() {
+    let pool = test_pool().await;
+    let token = create_user(&pool).await;
+
+    // Add items first
+    put_json(
+        app(pool.clone()),
+        "/api/inventory",
+        json!({ "add_mandarin": 50, "add_watermelon": 0, "add_hotspring_material": 0 }),
+        Some(&token),
+    )
+    .await;
+
+    // Spend some
+    let (status, body) = post_json(
+        app(pool.clone()),
+        "/api/inventory/spend",
+        json!({ "item_type": "mandarin", "amount": 20 }),
+        Some(&token),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["mandarin"], 30);
+}
+
+#[tokio::test]
+async fn inventory_spend_insufficient() {
+    let pool = test_pool().await;
+    let token = create_user(&pool).await;
+
+    // Try to spend without having items
+    let (status, body) = post_json(
+        app(pool),
+        "/api/inventory/spend",
+        json!({ "item_type": "mandarin", "amount": 10 }),
+        Some(&token),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(body["error"].as_str().unwrap().contains("Insufficient"));
+}
+
+#[tokio::test]
+async fn inventory_spend_invalid_type() {
+    let pool = test_pool().await;
+    let token = create_user(&pool).await;
+
+    let (status, body) = post_json(
+        app(pool),
+        "/api/inventory/spend",
+        json!({ "item_type": "diamonds", "amount": 1 }),
+        Some(&token),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(body["error"].as_str().unwrap().contains("Invalid"));
+}
+
+// ===========================================================================
+// Onsen Layout
+// ===========================================================================
+
+#[tokio::test]
+async fn onsen_layout_save_and_get() {
+    let pool = test_pool().await;
+    let token = create_user(&pool).await;
+
+    let layout = json!({ "layout_json": "{\"placedItems\":[{\"itemType\":\"mandarin\",\"x\":100,\"y\":200}]}" });
+    let (status, _) = put_json(
+        app(pool.clone()),
+        "/api/onsen/layout",
+        layout,
+        Some(&token),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (status, body) = get_json(app(pool), "/api/onsen/layout", Some(&token)).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body["layout_json"].as_str().unwrap().contains("mandarin"));
+}
+
+// ===========================================================================
+// Skins
+// ===========================================================================
+
+#[tokio::test]
+async fn skins_save_and_get() {
+    let pool = test_pool().await;
+    let token = create_user(&pool).await;
+
+    // unlocked_skins is stored as a JSON string, not an array
+    let (status, _) = put_json(
+        app(pool.clone()),
+        "/api/skins",
+        json!({ "selected_skin": "towel", "unlocked_skins": "[\"default\",\"towel\"]" }),
+        Some(&token),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (status, body) = get_json(app(pool), "/api/skins", Some(&token)).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["selected_skin"], "towel");
+}
+
+#[tokio::test]
+async fn skins_rejects_invalid_id() {
+    let pool = test_pool().await;
+    let token = create_user(&pool).await;
+
+    let (status, body) = put_json(
+        app(pool),
+        "/api/skins",
+        json!({ "selected_skin": "hacker", "unlocked_skins": "[\"default\"]" }),
+        Some(&token),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(body["error"].as_str().unwrap().contains("Invalid"));
+}
+
+// ===========================================================================
+// Score plausibility (S1)
+// ===========================================================================
+
+#[tokio::test]
+async fn score_plausibility_caps_inflated_score() {
+    let pool = test_pool().await;
+    let token = create_user(&pool).await;
+
+    // Submit a score that's way higher than plausible for the given distance/items
+    // Max plausible = 100*2 + 5*200 + 500 = 1700
+    let (status, body) = post_json(
+        app(pool),
+        "/api/scores",
+        json!({ "score": 999999, "distance": 100, "items_collected": 5 }),
+        Some(&token),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    // Score should be capped, not the submitted value
+    assert!(body["score"].as_i64().unwrap() <= 1700);
 }
 
 // ===========================================================================

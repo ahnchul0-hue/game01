@@ -1,37 +1,17 @@
 import Phaser from 'phaser';
+import { ZObjectPool } from './ZObjectPool';
 import { Item } from '../objects/Item';
 import { ITEM_POOL_SIZE_3D } from '../utils/Constants';
 import type { ItemType } from '../utils/Constants';
 
-export class ItemPool {
-    private group: Phaser.Physics.Arcade.Group;
-
+export class ItemPool extends ZObjectPool<Item> {
     constructor(scene: Phaser.Scene) {
-        this.group = scene.physics.add.group({
-            classType: Item,
-            maxSize: ITEM_POOL_SIZE_3D,
-            runChildUpdate: true,
-            active: false,
-            visible: false,
-        });
+        super(scene, Item, ITEM_POOL_SIZE_3D);
     }
 
     spawn(lane: number, z: number, type: ItemType, zSpeed: number): Item | null {
-        const item = this.group.get() as Item | null;
-        if (!item) return null;
-        item.activate(lane, z, type, zSpeed);
-        return item;
-    }
-
-    deactivateAll(): void {
-        this.group.getChildren().forEach((child) => {
-            if (child.active) {
-                (child as Item).deactivate();
-            }
-        });
-    }
-
-    getGroup(): Phaser.Physics.Arcade.Group {
-        return this.group;
+        const obj = this.acquire();
+        if (obj) obj.activate(lane, z, type, zSpeed);
+        return obj;
     }
 }

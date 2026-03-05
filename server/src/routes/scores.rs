@@ -40,6 +40,25 @@ async fn create_score(
         ));
     }
 
+    // S1: Score plausibility check — cap score based on distance + items
+    // Max ~2 points/meter (distance bonus) + ~200 points/item (combo cap 3.0 × 50pt item × margin)
+    let max_plausible = req.distance * 2 + req.items_collected * 200 + 500; // +500 base margin
+    let req = if req.score > max_plausible {
+        tracing::warn!(
+            submitted = req.score,
+            max = max_plausible,
+            distance = req.distance,
+            items = req.items_collected,
+            "Score exceeds plausibility — capping"
+        );
+        score::CreateScoreRequest {
+            score: max_plausible,
+            ..req
+        }
+    } else {
+        req
+    };
+
     // 토큰으로 유저 조회
     let u = user::find_by_token(&state.pool, token)
         .await

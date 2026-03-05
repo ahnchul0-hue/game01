@@ -44,7 +44,7 @@ export const LANE_MOVE_DURATION = 150; // ms
 // 게임 모드
 export type GameMode = 'normal' | 'relax';
 
-// ========== M2: 장애물 시스템 ==========
+// 장애물 시스템
 export type ObstacleType = 'rock' | 'branch_high' | 'puddle' | 'barrier' | 'car';
 
 export const OBSTACLE_CONFIGS: Record<ObstacleType, { width: number; height: number; color: number }> = {
@@ -55,9 +55,7 @@ export const OBSTACLE_CONFIGS: Record<ObstacleType, { width: number; height: num
     car:         { width: 80, height: 100, color: 0x3366CC },   // 점프 회피
 };
 
-export const OBSTACLE_POOL_SIZE = 6;
-
-// ========== M2: 아이템 시스템 ==========
+// 아이템 시스템
 export type ItemType = 'mandarin' | 'watermelon' | 'hotspring_material';
 
 export const ITEM_POINTS: Record<ItemType, number> = {
@@ -73,9 +71,7 @@ export const ITEM_WEIGHTS: Record<ItemType, number> = {
 };
 
 export const ITEM_SIZE = 50;
-export const ITEM_POOL_SIZE = 8;
-
-// ========== M2: 난이도 곡선 ==========
+// 난이도 곡선
 export const SPAWN_INTERVAL_START = 900;  // ms (초반 밀도 개선)
 export const SPAWN_INTERVAL_MIN = 500;    // ms
 export const SPAWN_INTERVAL_DECAY = 0.15; // 거리당 감소량
@@ -85,23 +81,23 @@ export const DIFFICULTY_MEDIUM_MAX = 1800;
 
 export const ITEM_SPAWN_CHANCE = 0.65;
 
-// ========== M2: 수집 아이템 ==========
+// 수집 아이템
 export interface CollectedItems {
     mandarin: number;
     watermelon: number;
     hotspring_material: number;
 }
 
-// ========== M2: 부활 시스템 ==========
+// 부활 시스템
 export const MAX_FREE_REVIVES = 1;
 export const INVINCIBLE_DURATION = 3000; // ms
 
-// ========== M2: API ==========
+// API
 export const API_BASE_URL = '';  // 프록시 사용 시 빈 문자열
 export const LS_KEY_TOKEN = 'capybara_token';
 export const LS_KEY_USER_ID = 'capybara_user_id';
 
-// ========== M3: 파워업 시스템 ==========
+// 파워업 시스템
 export type PowerUpType = 'helmet' | 'tube' | 'friend' | 'magnet';
 
 export const POWERUP_CONFIGS: Record<PowerUpType, { width: number; height: number; color: number; duration: number }> = {
@@ -111,13 +107,12 @@ export const POWERUP_CONFIGS: Record<PowerUpType, { width: number; height: numbe
     magnet: { width: 50, height: 50, color: 0xCC0000, duration: 7000 },    // 7초
 };
 
-export const POWERUP_POOL_SIZE = 3;
 export const POWERUP_SPAWN_CHANCE = 0.09;
 export const MAGNET_Z_RANGE = 0.4;
 export const POWERUP_MIN_DISTANCE = 300;
 export const POWERUP_SCORE_MULTIPLIER_TUBE = 2;
 
-// ========== M3: 스테이지 시스템 ==========
+// 스테이지 시스템
 export type StageType = 'forest' | 'river' | 'village' | 'onsen';
 
 export const STAGE_THRESHOLDS: { stage: StageType; minDistance: number }[] = [
@@ -145,7 +140,7 @@ export const STAGE_NAMES: Record<StageType, string> = {
 
 export const STAGE_TRANSITION_DURATION = 800;
 
-// ========== M3: 이펙트 상수 ==========
+// 이펙트 상수
 export const EFFECT_RED_FLASH_DURATION = 300;
 export const EFFECT_SLOWMO_DURATION = 700;
 export const EFFECT_SLOWMO_SCALE = 0.25;
@@ -154,24 +149,24 @@ export const EFFECT_STAGE_TEXT_DURATION = 2000;
 export const DEPTH_EFFECT_OVERLAY = 50;
 export const DEPTH_STAGE_TEXT = 250;
 
-// ========== M4: Scene 키 ==========
+// Scene 키
 export const SCENE_ONSEN = 'Onsen';
 export const SCENE_SKIN_SELECT = 'SkinSelect';
 
-// ========== M4: localStorage 키 ==========
+// localStorage 키
 export const LS_KEY_INVENTORY = 'capybara_inventory';
 export const LS_KEY_ONSEN_LAYOUT = 'capybara_onsen_layout';
 export const LS_KEY_SELECTED_SKIN = 'capybara_selected_skin';
 export const LS_KEY_UNLOCKED_SKINS = 'capybara_unlocked_skins';
 
-// ========== M4: 인벤토리 ==========
+// 인벤토리
 export interface Inventory {
     mandarin: number;
     watermelon: number;
     hotspring_material: number;
 }
 
-// ========== M4: 온천 꾸미기 ==========
+// 온천 꾸미기
 export type OnsenLevel = 'basic' | 'forest' | 'snow' | 'luxury';
 
 export interface PlacedItem {
@@ -205,7 +200,7 @@ export const ONSEN_LEVEL_NAMES: Record<OnsenLevel, string> = {
     luxury: '럭셔리 온천',
 };
 
-// ========== M4: 캐릭터 스킨 ==========
+// 캐릭터 스킨
 export type SkinId = 'default' | 'towel' | 'yukata' | 'santa';
 export type UnlockCondition = 'always' | 'distance_5000' | 'onsen_level_3' | 'items_1000';
 
@@ -224,7 +219,7 @@ export const SKIN_CONFIGS: SkinConfig[] = [
     { id: 'santa',   name: '산타 카피바라',   color: 0xCC0000, unlockCondition: 'items_1000', unlockDescription: '아이템 1,000개 수집' },
 ];
 
-// ========== M4: 온천 Scene 상수 ==========
+// 온천 Scene 상수
 export const ONSEN_POOL_X = 110;
 export const ONSEN_POOL_Y = 150;
 export const ONSEN_POOL_W = 500;
@@ -232,11 +227,11 @@ export const ONSEN_POOL_H = 300;
 export const ONSEN_INVENTORY_START_Y = 590;
 export const ONSEN_ITEM_DISPLAY_SIZE = 60;
 
-// ========== M4: localStorage 키 (maxDistance) ==========
+// localStorage 키 (maxDistance)
 export const LS_KEY_MAX_DISTANCE = 'capybara_max_distance';
 export const LS_KEY_TUTORIAL_DONE = 'capybara_tutorial_done';
 
-// ========== 의사-3D 원근 시스템 ==========
+// 의사-3D 원근 시스템
 export const VANISH_Y = 350;       // 소실점 Y (화면 상단)
 export const CAMERA_Y = 1100;      // 카메라 Y (화면 하단)
 export const CENTER_X = 360;       // 화면 가로 중앙
@@ -273,7 +268,7 @@ export const POWERUP_POOL_SIZE_3D = 6;
 // 레인 오프셋: -1, 0, +1
 export const LANE_OFFSETS = [-1, 0, 1];
 
-// ========== M4: 온천 버프 시스템 ==========
+// 온천 버프 시스템
 export interface OnsenBuff {
     scoreMultiplier: number;
     startingShield: boolean;
@@ -287,7 +282,7 @@ export const ONSEN_BUFF_CONFIGS: Record<OnsenLevel, OnsenBuff> = {
     luxury: { scoreMultiplier: 1.3, startingShield: true,  itemMagnetRange: 150 },
 };
 
-// ========== 일일 미션 ==========
+// 일일 미션
 export const SCENE_MISSIONS = 'Missions';
 export type MissionType = 'collect_mandarins' | 'run_distance' | 'dodge_obstacles';
 export const MISSION_LABELS: Record<MissionType, string> = {
@@ -299,7 +294,7 @@ export const MISSION_LABELS: Record<MissionType, string> = {
 export const LS_KEY_DAILY_MISSIONS = 'capybara_daily_missions';
 export const LS_KEY_STREAK = 'capybara_streak';
 
-// ========== M5: 동물 친구 시스템 ==========
+// 동물 친구 시스템
 export const SCENE_COMPANION_SELECT = 'CompanionSelect';
 export const LS_KEY_SELECTED_COMPANION = 'capybara_selected_companion';
 export const LS_KEY_UNLOCKED_COMPANIONS = 'capybara_unlocked_companions';

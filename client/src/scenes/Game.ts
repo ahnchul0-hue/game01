@@ -41,6 +41,8 @@ import { SoundManager } from '../services/SoundManager';
 import { fadeToScene } from '../ui/UIFactory';
 import { InputController } from '../ui/InputController';
 import { ReviveUI } from '../ui/ReviveUI';
+import { GameHUD } from '../ui/GameHUD';
+import { ComboManager } from '../systems/ComboManager';
 
 type GameState = 'playing' | 'paused' | 'revivePrompt' | 'gameOver';
 
@@ -90,10 +92,9 @@ export class Game extends Phaser.Scene {
     // 입력
     private inputController!: InputController;
 
-    // HUD
-    private scoreText!: Phaser.GameObjects.Text;
-    private distanceText!: Phaser.GameObjects.Text;
-    private itemCounterText!: Phaser.GameObjects.Text;
+    // HUD + 콤보
+    private hud!: GameHUD;
+    private combo = new ComboManager();
 
     // 부활 UI
     private reviveUI!: ReviveUI;
@@ -104,21 +105,6 @@ export class Game extends Phaser.Scene {
     // 일시정지
     private pauseContainer: Phaser.GameObjects.Container | null = null;
     private resumeCooldown = false;
-
-    // 팝업 텍스트 추적 (메모리 누수 방지)
-    private popupTexts: Phaser.GameObjects.Text[] = [];
-
-    // 파워업 HUD 타이머 텍스트 (풀링 — 매 프레임 생성/파괴 방지)
-    private powerUpHudTexts: Phaser.GameObjects.Text[] = [];
-    private static readonly HUD_COLORS: Record<string, string> = { tube: '#64B5F6', friend: '#FF6F00', magnet: '#CC0000' };
-    private static readonly HUD_NAMES: Record<string, string> = { tube: '튜브', friend: '친구', magnet: '자석' };
-
-    // 콤보 시스템
-    private comboCount = 0;
-    private comboTimer = 0; // ms 남은 시간
-    private static readonly COMBO_TIMEOUT = 2000; // 2초 내 다음 수집
-    private static readonly COMBO_BONUS = [1, 1, 1.2, 1.5, 2.0]; // 콤보 1x,1x,1.2x,1.5x,2x
-    private comboText: Phaser.GameObjects.Text | null = null;
 
     // 착지 감지 (먼지 파티클용)
     private wasJumping = false;
@@ -146,8 +132,7 @@ export class Game extends Phaser.Scene {
         this.tutorialContainer = null;
         this.pauseContainer = null;
         this.wasJumping = false;
-        this.popupTexts = [];
-        this.powerUpHudTexts = [];
+        this.combo.reset();
         this.resumeCooldown = false;
     }
 
@@ -165,12 +150,7 @@ export class Game extends Phaser.Scene {
             this.pauseContainer.destroy();
             this.pauseContainer = null;
         }
-        for (const t of this.popupTexts) {
-            if (t.scene) t.destroy();
-        }
-        this.popupTexts = [];
-        for (const t of this.powerUpHudTexts) { if (t.scene) t.destroy(); }
-        this.powerUpHudTexts = [];
+        if (this.hud) this.hud.destroy();
         if (this.effectManager) this.effectManager.destroy();
         if (this.roadRenderer) this.roadRenderer.destroy();
         if (this.sceneryManager) this.sceneryManager.destroy();
@@ -257,46 +237,8 @@ export class Game extends Phaser.Scene {
         // 부활 UI
         this.reviveUI = new ReviveUI(this);
 
-        // HUD
-        this.scoreText = this.add.text(20, 20, '0', {
-            fontFamily: FONT_FAMILY, fontSize: '32px', color: '#FFFFFF',
-            stroke: '#000000', strokeThickness: 3,
-        }).setScrollFactor(0).setDepth(100);
-        if (this.mode === 'relax') {
-            this.scoreText.setVisible(false);
-        }
-
-        this.distanceText = this.add.text(GAME_WIDTH - 20, 20, '0m', {
-            fontFamily: FONT_FAMILY, fontSize: '28px', color: '#FFFFFF',
-            stroke: '#000000', strokeThickness: 3,
-        }).setOrigin(1, 0).setScrollFactor(0).setDepth(100);
-
-        // HUD 아이템 카운터
-        this.itemCounterText = this.add.text(20, 100, '', {
-            fontFamily: FONT_FAMILY, fontSize: '18px', color: '#FFD700',
-            stroke: '#000000', strokeThickness: 2,
-        }).setScrollFactor(0).setDepth(100);
-
-        // 모드 표시
-        if (this.mode === 'relax') {
-            const badge = this.add.graphics();
-            badge.fillStyle(0x81C784, 0.8);
-            badge.fillRoundedRect(GAME_WIDTH / 2 - 60, 8, 120, 32, 10);
-            badge.setScrollFactor(0).setDepth(99);
-            this.add.text(GAME_WIDTH / 2, 24, 'RELAX', {
-                fontFamily: FONT_FAMILY, fontSize: '20px', color: '#FFFFFF',
-                fontStyle: 'bold',
-            }).setOrigin(0.5).setScrollFactor(0).setDepth(100);
-        }
-
-        // 온천 버프 표시
-        if (this.onsenBuff.scoreMultiplier > 1) {
-            const buffLabel = `x${this.onsenBuff.scoreMultiplier.toFixed(1)}`;
-            this.add.text(20, 60, buffLabel, {
-                fontFamily: FONT_FAMILY, fontSize: '18px', color: '#FF8C00',
-                stroke: '#000000', strokeThickness: 2,
-            }).setScrollFactor(0).setDepth(100);
-        }
+        // HUD (score, distance, items, power-up timers, combo, popups)
+        this.hud = new GameHUD(this, this.mode === 'relax', this.onsenBuff.scoreMultiplier);
 
         // 일시정지 버튼
         const pauseBtn = this.add.text(GAME_WIDTH - 20, GAME_HEIGHT - 40, '❚❚', {
@@ -306,16 +248,6 @@ export class Game extends Phaser.Scene {
         pauseBtn.on('pointerdown', () => {
             if (this.state === 'playing' && !this.resumeCooldown) this.pauseGame();
         });
-
-        // 파워업 HUD 텍스트 풀 (최대 3개 — 매 프레임 생성/파괴 방지)
-        this.powerUpHudTexts = [];
-        for (let i = 0; i < 3; i++) {
-            const t = this.add.text(GAME_WIDTH - 20, 160 + i * 40, '', {
-                fontFamily: FONT_FAMILY, fontSize: '22px', color: '#FFFFFF',
-                stroke: '#000000', strokeThickness: 3,
-            }).setOrigin(1, 0).setScrollFactor(0).setDepth(100).setVisible(false);
-            this.powerUpHudTexts.push(t);
-        }
 
         // 게임 BGM
         SoundManager.getInstance().playBgm(this.mode === 'relax' ? 'bgm-onsen' : 'bgm-game');
@@ -495,13 +427,8 @@ export class Game extends Phaser.Scene {
         }
 
         // 콤보 타이머 감소
-        if (this.comboTimer > 0) {
-            this.comboTimer -= effectiveDelta;
-            if (this.comboTimer <= 0) {
-                this.comboCount = 0;
-                if (this.comboText) { this.comboText.setVisible(false); }
-            }
-        }
+        const comboExpired = this.combo.update(effectiveDelta);
+        if (comboExpired) this.hud.updateCombo(0);
 
         // 자동 수집: magnet(전레인) > friend(같은 레인 200) > 온천 버프 > 동물 친구
         if (this.player.getHasMagnet()) {
@@ -537,29 +464,12 @@ export class Game extends Phaser.Scene {
         this.prevActiveObstacles = this.currentActiveObstacles;
         this.currentActiveObstacles = tmp;
 
-        // HUD 업데이트 (값 변경 시에만)
-        const scoreStr = `${this.score}`;
-        if (this.scoreText.text !== scoreStr) this.scoreText.setText(scoreStr);
-        const distStr = `${Math.floor(this.distance)}m`;
-        if (this.distanceText.text !== distStr) this.distanceText.setText(distStr);
+        // HUD 업데이트
+        this.hud.updateScore(this.score);
+        this.hud.updateDistance(this.distance);
         const totalItems = this.collectedItems.mandarin + this.collectedItems.watermelon + this.collectedItems.hotspring_material;
-        const itemStr = totalItems > 0 ? `x${totalItems}` : '';
-        if (this.itemCounterText.text !== itemStr) this.itemCounterText.setText(itemStr);
-
-        // 파워업 HUD 업데이트 (풀링 — 매 프레임 생성/파괴 방지)
-        const activeTimers = this.player.getActivePowerUpTimers();
-        for (let i = 0; i < this.powerUpHudTexts.length; i++) {
-            const hudText = this.powerUpHudTexts[i];
-            if (i < activeTimers.length) {
-                const timer = activeTimers[i];
-                const secs = Math.ceil(timer.remaining / 1000);
-                hudText.setText(`${Game.HUD_NAMES[timer.type]} ${secs}s`);
-                hudText.setColor(Game.HUD_COLORS[timer.type] ?? '#FFFFFF');
-                hudText.setVisible(true);
-            } else {
-                hudText.setVisible(false);
-            }
-        }
+        this.hud.updateItems(totalItems);
+        this.hud.updatePowerUps(this.player.getActivePowerUpTimers());
         } catch (err) {
             console.error('[Game.update] error:', err);
             this.triggerGameOver();
@@ -620,81 +530,28 @@ export class Game extends Phaser.Scene {
     private onCollectItem(item: Item): void {
         SoundManager.getInstance().playSfx('collect');
 
-        // 콤보 업데이트
-        this.comboCount++;
-        this.comboTimer = Game.COMBO_TIMEOUT;
-        const comboIdx = Math.min(this.comboCount, Game.COMBO_BONUS.length - 1);
-        const comboMultiplier = Game.COMBO_BONUS[comboIdx];
-
+        const comboMultiplier = this.combo.hit();
+        const comboCount = this.combo.getCount();
         const rawMultiplier = this.player.getScoreMultiplier() * this.onsenBuff.scoreMultiplier * this.companionBuff.scoreMultiplier * comboMultiplier;
         const points = Math.floor(item.points * Math.min(3.0, rawMultiplier));
         this.score += points;
         this.collectedItems[item.itemType]++;
 
-        this.effectManager.onItemCollected(item.x, item.y, this.scoreText);
-
-        // 포인트 팝업
-        const comboLabel = this.comboCount >= 3 ? ` x${this.comboCount}` : '';
-        const popColor = this.comboCount >= 5 ? '#FF4444' : this.comboCount >= 3 ? '#FF8800' : '#FFD700';
-        const popupText = this.add.text(item.x, item.y, `+${points}${comboLabel}`, {
-            fontFamily: FONT_FAMILY, fontSize: this.comboCount >= 3 ? '28px' : '24px', color: popColor,
-            fontStyle: 'bold', stroke: '#000000', strokeThickness: 2,
-        }).setOrigin(0.5).setDepth(200);
-        this.popupTexts.push(popupText);
-
-        this.tweens.add({
-            targets: popupText,
-            y: popupText.y - 60,
-            alpha: 0,
-            duration: 600,
-            ease: 'Power2',
-            onComplete: () => {
-                const idx = this.popupTexts.indexOf(popupText);
-                if (idx !== -1) this.popupTexts.splice(idx, 1);
-                popupText.destroy();
-            },
-        });
-
-        // 콤보 HUD (3콤보 이상)
-        if (this.comboCount >= 3) {
-            if (!this.comboText) {
-                this.comboText = this.add.text(GAME_WIDTH / 2, 110, '', {
-                    fontFamily: FONT_FAMILY, fontSize: '22px', color: '#FF8800',
-                    fontStyle: 'bold', stroke: '#000000', strokeThickness: 3,
-                }).setOrigin(0.5).setDepth(100);
-            }
-            this.comboText.setText(`COMBO x${this.comboCount}`).setVisible(true);
-            if (this.comboCount >= 5) this.comboText.setColor('#FF4444');
-            else this.comboText.setColor('#FF8800');
-        }
+        this.effectManager.onItemCollected(item.x, item.y, this.hud.getScoreText());
+        this.hud.showPointsPopup(item.x, item.y, points, comboCount);
+        this.hud.updateCombo(comboCount);
 
         item.deactivate();
     }
 
-    // M3: 파워업 수집
     // 니어미스 시각 피드백 + 보너스 점수
     private showNearMiss(x: number, y: number): void {
         const bonus = 5;
         this.score += bonus;
-        const popup = this.add.text(x, y - 30, `NEAR MISS! +${bonus}`, {
-            fontFamily: FONT_FAMILY, fontSize: '20px', color: '#00FF88',
-            fontStyle: 'bold', stroke: '#000000', strokeThickness: 2,
-        }).setOrigin(0.5).setDepth(200);
-        this.popupTexts.push(popup);
-        this.tweens.add({
-            targets: popup,
-            y: popup.y - 50,
-            alpha: 0,
-            duration: 800,
-            ease: 'Power2',
-            onComplete: () => {
-                const idx = this.popupTexts.indexOf(popup);
-                if (idx !== -1) this.popupTexts.splice(idx, 1);
-                popup.destroy();
-            },
-        });
+        this.hud.showNearMiss(x, y, bonus);
     }
 
+    // M3: 파워업 수집
     private onCollectPowerUp(powerUp: PowerUp): void {
         SoundManager.getInstance().playSfx('powerup');
         this.player.applyPowerUp(powerUp.powerUpType);
