@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { PerspectiveCamera } from '../utils/PerspectiveCamera';
 import { DESPAWN_Z, PLAYER_Z, COLLISION_BAND } from '../utils/Constants';
+import { ATLAS_GAME_KEY } from '../utils/TextureAtlasBuilder';
 
 /**
  * Base class for z-axis moving game objects (obstacles, items, power-ups).
@@ -11,8 +12,8 @@ export class ZObject extends Phaser.Physics.Arcade.Sprite {
     laneOffset = 0;
     protected zSpeed = 0;
 
-    constructor(scene: Phaser.Scene, x: number, y: number, texture: string) {
-        super(scene, x, y, texture);
+    constructor(scene: Phaser.Scene, x: number, y: number, texture: string, frame?: string) {
+        super(scene, x, y, texture, frame);
         this.setActive(false);
         this.setVisible(false);
     }
@@ -25,7 +26,7 @@ export class ZObject extends Phaser.Physics.Arcade.Sprite {
         this.laneOffset = lane;
         this.z = z;
         this.zSpeed = zSpeed;
-        this.setTexture(texture);
+        this.setTexture(ATLAS_GAME_KEY, texture);
 
         const { screenY, scale } = PerspectiveCamera.projectZ(z);
         const screenX = PerspectiveCamera.getLaneScreenX(z, lane);

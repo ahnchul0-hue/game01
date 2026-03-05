@@ -24,6 +24,7 @@ import { getOnsenLevel } from '../utils/OnsenLogic';
 import { InventoryManager } from '../services/InventoryManager';
 import { SoundManager } from '../services/SoundManager';
 import { createButton, fadeToScene, fadeIn, type ButtonHandle } from '../ui/UIFactory';
+import { ATLAS_UI_KEY } from '../utils/TextureAtlasBuilder';
 
 /** 온천 씬 동물 친구 배치 위치 (온천 풀 내부 절대 좌표) */
 const COMPANION_POSITIONS: Record<Exclude<CompanionId, 'none'>, { x: number; y: number }> = {
@@ -151,7 +152,8 @@ export class Onsen extends Phaser.Scene {
         }
 
         // 온천 김(steam) 파티클
-        this.steamEmitter = this.add.particles(ONSEN_POOL_X + ONSEN_POOL_W / 2, ONSEN_POOL_Y + 20, 'particle', {
+        this.steamEmitter = this.add.particles(ONSEN_POOL_X + ONSEN_POOL_W / 2, ONSEN_POOL_Y + 20, ATLAS_UI_KEY, {
+            frame: 'particle',
             x: { min: -ONSEN_POOL_W / 3, max: ONSEN_POOL_W / 3 },
             speedY: { min: -30, max: -15 },
             speedX: { min: -5, max: 5 },
@@ -280,7 +282,7 @@ export class Onsen extends Phaser.Scene {
         this.placedSprites = [];
 
         for (const item of this.layout.placedItems) {
-            const sprite = this.add.image(item.x, item.y, `onsen-deco-${item.itemType}`)
+            const sprite = this.add.image(item.x, item.y, ATLAS_UI_KEY, `onsen-deco-${item.itemType}`)
                 .setDisplaySize(ONSEN_ITEM_DISPLAY_SIZE * 0.8, ONSEN_ITEM_DISPLAY_SIZE * 0.8)
                 .setInteractive({ draggable: true, useHandCursor: true });
             this.placedSprites.push(sprite);
@@ -485,7 +487,7 @@ export class Onsen extends Phaser.Scene {
             const count = this.inventory[itemType];
 
             // 아이콘
-            const icon = this.add.image(x, startY, `onsen-deco-${itemType}`)
+            const icon = this.add.image(x, startY, ATLAS_UI_KEY, `onsen-deco-${itemType}`)
                 .setDisplaySize(50, 50);
 
             // 이름
@@ -528,7 +530,7 @@ export class Onsen extends Phaser.Scene {
 
         // 고스트 스프라이트 (포인터를 따라다님)
         if (this.ghostSprite) this.ghostSprite.destroy();
-        this.ghostSprite = this.add.image(GAME_WIDTH / 2, ONSEN_POOL_Y + ONSEN_POOL_H / 2, `onsen-deco-${itemType}`)
+        this.ghostSprite = this.add.image(GAME_WIDTH / 2, ONSEN_POOL_Y + ONSEN_POOL_H / 2, ATLAS_UI_KEY, `onsen-deco-${itemType}`)
             .setDisplaySize(ONSEN_ITEM_DISPLAY_SIZE * 0.8, ONSEN_ITEM_DISPLAY_SIZE * 0.8)
             .setAlpha(0.5);
 
@@ -570,7 +572,7 @@ export class Onsen extends Phaser.Scene {
         this.inventoryMgr.saveOnsenLayout(this.layout);
 
         // 스프라이트 추가
-        const sprite = this.add.image(px, py, `onsen-deco-${itemType}`)
+        const sprite = this.add.image(px, py, ATLAS_UI_KEY, `onsen-deco-${itemType}`)
             .setDisplaySize(ONSEN_ITEM_DISPLAY_SIZE * 0.8, ONSEN_ITEM_DISPLAY_SIZE * 0.8)
             .setInteractive({ draggable: true, useHandCursor: true });
         this.placedSprites.push(sprite);

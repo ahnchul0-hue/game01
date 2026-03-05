@@ -406,14 +406,13 @@ function buildGameAtlas(scene: Phaser.Scene): void {
 
     gfx.destroy();
 
-    // RenderTexture → 스냅샷 방식으로 TextureManager에 등록
-    // Phaser는 rt.texture 를 직접 참조할 수 있으나, 프레임을 수동 추가해야 함
-    const atlasTexture = rt.texture;
+    // saveTexture()로 RenderTexture 내용을 영구 텍스처로 등록한 뒤 RT 게임오브젝트만 제거.
+    // rt.destroy()는 내부 DynamicTexture도 파괴하므로 반드시 saveTexture() 선행 필수.
+    const savedTexture = rt.saveTexture(ATLAS_GAME_KEY);
     for (const f of frames) {
-        atlasTexture.add(f.key, 0, f.x, f.y, f.w, f.h);
+        savedTexture.add(f.key, 0, f.x, f.y, f.w, f.h);
     }
 
-    // RenderTexture 게임오브젝트는 씬에서 제거 (텍스처는 TextureManager에 유지)
     rt.destroy();
 }
 
@@ -495,9 +494,9 @@ function buildUIAtlas(scene: Phaser.Scene): void {
 
     gfx.destroy();
 
-    const atlasTexture = rt.texture;
+    const savedTexture = rt.saveTexture(ATLAS_UI_KEY);
     for (const f of frames) {
-        atlasTexture.add(f.key, 0, f.x, f.y, f.w, f.h);
+        savedTexture.add(f.key, 0, f.x, f.y, f.w, f.h);
     }
 
     rt.destroy();

@@ -12,6 +12,7 @@ import {
     FONT_FAMILY,
 } from '../utils/Constants';
 import type { StageType } from '../utils/Constants';
+import { ATLAS_UI_KEY } from '../utils/TextureAtlasBuilder';
 
 export class EffectManager {
     private scene: Phaser.Scene;
@@ -41,7 +42,8 @@ export class EffectManager {
         this.flashOverlay.setAlpha(0);
 
         // 파티클 이미터 (burst 모드로 사용)
-        this.particleEmitter = scene.add.particles(0, 0, 'particle', {
+        this.particleEmitter = scene.add.particles(0, 0, ATLAS_UI_KEY, {
+            frame: 'particle',
             speed: { min: 50, max: 150 },
             scale: { start: 1, end: 0 },
             lifespan: EFFECT_PARTICLE_LIFESPAN,
@@ -50,7 +52,8 @@ export class EffectManager {
         }).setDepth(DEPTH_EFFECT_OVERLAY);
 
         // 먼지 파티클 (점프/착지용)
-        this.dustEmitter = scene.add.particles(0, 0, 'particle', {
+        this.dustEmitter = scene.add.particles(0, 0, ATLAS_UI_KEY, {
+            frame: 'particle',
             speed: { min: 20, max: 60 },
             scale: { start: 0.6, end: 0 },
             alpha: { start: 0.5, end: 0 },
@@ -61,7 +64,8 @@ export class EffectManager {
         }).setDepth(DEPTH_EFFECT_OVERLAY);
 
         // G2: 물결 파티클 (오리 튜브 파워업 활성 시)
-        this.waterEmitter = scene.add.particles(0, 0, 'particle', {
+        this.waterEmitter = scene.add.particles(0, 0, ATLAS_UI_KEY, {
+            frame: 'particle',
             speed: { min: 15, max: 40 },
             scale: { start: 0.8, end: 0.1 },
             alpha: { start: 0.6, end: 0 },

@@ -13,6 +13,7 @@ import {
     COMPANION_CONFIGS,
 } from '../utils/Constants';
 import type { PowerUpType, SkinId, CompanionId } from '../utils/Constants';
+import { ATLAS_UI_KEY } from '../utils/TextureAtlasBuilder';
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
     private currentLane = 1; // 0=좌, 1=중, 2=우
@@ -278,7 +279,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             case 'helmet':
                 this.hasHelmet = true;
                 if (!this.helmetOverlay) {
-                    this.helmetOverlay = this.scene.add.sprite(this.x, this.y - 70 * this.baseScale, 'helmet-overlay');
+                    this.helmetOverlay = this.scene.add.sprite(this.x, this.y - 70 * this.baseScale, ATLAS_UI_KEY, 'helmet-overlay');
                     this.helmetOverlay.setDepth(this.depth + 1);
                     this.helmetOverlay.setScale(this.baseScale);
                 }
@@ -303,7 +304,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
                     this.friendSprite = this.scene.add.sprite(
                         this.x - 70 * this.baseScale,
                         this.y + 10 * this.baseScale,
-                        'friend-sprite'
+                        ATLAS_UI_KEY, 'friend-sprite'
                     );
                     this.friendSprite.setDepth(this.depth);
                     this.friendSprite.setScale(this.baseScale);

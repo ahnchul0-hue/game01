@@ -7,7 +7,7 @@ import {
     LS_KEY_SELECTED_SKIN,
 } from '../utils/Constants';
 import { ensureStageTextures, ensureSkinTexture } from '../utils/TextureUtils';
-import { buildAllAtlases, ATLAS_GAME_KEY, ATLAS_UI_KEY } from '../utils/TextureAtlasBuilder';
+import { buildAllAtlases } from '../utils/TextureAtlasBuilder';
 
 export class Preloader extends Phaser.Scene {
     constructor() {
@@ -65,12 +65,7 @@ export class Preloader extends Phaser.Scene {
         //     → activateZ(), setTexture() 호출부는 아래 _applyAtlasTextures() 참조.
         buildAllAtlases(this);
 
-        // 아틀라스 프레임 → 레거시 단일 텍스처 키 호환 레이어
-        // 기존 코드(Obstacle.ts, Item.ts 등)가 `this.setTexture('obstacle-rock')` 형태로
-        // 단일 키를 사용하므로, 아틀라스 프레임을 독립 텍스처로도 등록합니다.
-        // 이로써 setTexture(key) / add.image(x, y, key) 두 방식 모두 동작합니다.
-        this._registerAtlasFramesAsTextures(ATLAS_GAME_KEY);
-        this._registerAtlasFramesAsTextures(ATLAS_UI_KEY);
+        // 아틀라스 프레임은 setTexture(atlasKey, frameName)으로 직접 참조합니다.
 
         // M3: 스테이지 배경 — 시작 스테이지만 생성 (나머지는 StageManager에서 lazy 생성)
         ensureStageTextures(this, 'forest');
@@ -85,40 +80,8 @@ export class Preloader extends Phaser.Scene {
         // (온천 배경은 Onsen Scene에서 Graphics로 직접 렌더링 — 데드 텍스처 제거됨)
     }
 
-    /**
-     * 아틀라스의 각 프레임을 독립 Texture 항목으로도 등록합니다.
-     *
-     * Phaser의 setTexture(key) / add.image(x, y, key) API는 TextureManager에서
-     * 단일 키로 조회하므로, 아틀라스 프레임 이름을 독립 텍스처로 aliasing합니다.
-     *
-     * 구현: atlasTexture에서 각 프레임의 픽셀 영역을 참조하는 새 Texture를
-     * 동일 source(ImageData)를 공유하는 방식으로 등록합니다.
-     * → 추가 GPU 메모리 비용 없이 두 가지 접근 방식을 모두 지원합니다.
-     *
-     * [EXTEND] Phaser 버전 업그레이드 시 Texture.addFrame() API 변경 가능 — 확인 필요.
-     */
-    private _registerAtlasFramesAsTextures(atlasKey: string): void {
-        const atlasTexture = this.textures.get(atlasKey);
-        if (!atlasTexture) return;
-
-        // 아틀라스의 '__BASE' 프레임을 제외한 모든 명명 프레임을 순회
-        const frameNames = atlasTexture.getFrameNames(false);
-        for (const frameName of frameNames) {
-            // 이미 독립 텍스처로 등록된 키는 건너뜀
-            if (this.textures.exists(frameName)) continue;
-
-            const frame = atlasTexture.get(frameName);
-            if (!frame) continue;
-
-            // 아틀라스 소스 이미지를 공유하는 새 Texture 등록
-            // source[0]은 RenderTexture의 WebGL 텍스처 소스
-            const newTex = this.textures.addImage(frameName, frame.source.image as HTMLImageElement);
-            if (newTex) {
-                // 프레임 영역 제한: 아틀라스 내 해당 서브렉트만 사용하도록 프레임 추가
-                newTex.add('__BASE', 0, frame.cutX, frame.cutY, frame.cutWidth, frame.cutHeight);
-            }
-        }
-    }
+    // 아틀라스 프레임 → 독립 텍스처 등록은 더 이상 사용하지 않습니다.
+    // ZObject.activateZ()가 setTexture(atlasKey, frameName)으로 아틀라스를 직접 참조합니다.
 
     // (스테이지 배경 텍스처는 TextureUtils.ensureStageTextures에서 lazy 생성)
     // (장애물/아이템/파워업/UI 텍스처는 TextureAtlasBuilder.buildAllAtlases에서 아틀라스로 생성)
