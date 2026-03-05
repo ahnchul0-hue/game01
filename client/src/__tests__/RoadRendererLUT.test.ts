@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PerspectiveCamera } from '../systems/PerspectiveCamera';
+import { PerspectiveCamera } from '../utils/PerspectiveCamera';
 
 /**
  * RoadRenderer LUT 보간 정확도 테스트.

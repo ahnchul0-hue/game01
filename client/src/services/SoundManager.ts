@@ -14,16 +14,16 @@ export class SoundManager {
     private sfxGain: GainNode | null = null;
     private bgmGain: GainNode | null = null;
     private bgmNodes: AudioNode[] = [];
-    private _muted: boolean;
-    private _bgmVol: number;
-    private _sfxVol: number;
-    private _hitNoiseBuffer: AudioBuffer | null = null;
-    private _onsenNoiseBuffer: AudioBuffer | null = null;
+    private muted: boolean;
+    private bgmVol: number;
+    private sfxVol: number;
+    private hitNoiseBuffer: AudioBuffer | null = null;
+    private onsenNoiseBuffer: AudioBuffer | null = null;
 
     private constructor() {
-        this._muted = localStorage.getItem(LS_KEY_MUTED) === 'true';
-        this._bgmVol = parseFloat(localStorage.getItem(LS_KEY_BGM_VOL) ?? '0.18');
-        this._sfxVol = parseFloat(localStorage.getItem(LS_KEY_SFX_VOL) ?? '0.6');
+        this.muted = localStorage.getItem(LS_KEY_MUTED) === 'true';
+        this.bgmVol = parseFloat(localStorage.getItem(LS_KEY_BGM_VOL) ?? '0.18');
+        this.sfxVol = parseFloat(localStorage.getItem(LS_KEY_SFX_VOL) ?? '0.6');
     }
 
     static getInstance(): SoundManager {
@@ -36,41 +36,41 @@ export class SoundManager {
         if (this.ctx) return;
         this.ctx = new AudioContext();
         this.sfxGain = this.ctx.createGain();
-        this.sfxGain.gain.value = this._muted ? 0 : this._sfxVol;
+        this.sfxGain.gain.value = this.muted ? 0 : this.sfxVol;
         this.sfxGain.connect(this.ctx.destination);
         this.bgmGain = this.ctx.createGain();
-        this.bgmGain.gain.value = this._muted ? 0 : this._bgmVol;
+        this.bgmGain.gain.value = this.muted ? 0 : this.bgmVol;
         this.bgmGain.connect(this.ctx.destination);
     }
 
     // ---- SFX ----------------------------------------------------------------
 
     playSfx(name: SfxName): void {
-        if (!this.ctx || !this.sfxGain || this._muted) return;
+        if (!this.ctx || !this.sfxGain || this.muted) return;
         switch (name) {
-            case 'jump':     this._tone('sine',     440,  0.08, 660);  break;
-            case 'slide':    this._tone('sawtooth', 220,  0.12, 110);  break;
-            case 'collect':  this._collect();                          break;
-            case 'hit':      this._hit();                              break;
-            case 'powerup':  this._tone('sine',     660,  0.25, 1320); break;
-            case 'button':   this._tone('sine',     600,  0.04);       break;
-            case 'gameover': this._tone('sine',     440,  0.4,  220);  break;
-            case 'levelup':  this._levelup();                          break;
-            case 'move':        this._tone('sine', 800, 0.03);          break;
-            case 'revive':      this._revive();                          break;
-            case 'collect_rare': this._collectRare();                    break;
+            case 'jump':     this.playTone('sine',     440,  0.08, 660);  break;
+            case 'slide':    this.playTone('sawtooth', 220,  0.12, 110);  break;
+            case 'collect':  this.playSfxCollect();                       break;
+            case 'hit':      this.playSfxHit();                           break;
+            case 'powerup':  this.playTone('sine',     660,  0.25, 1320); break;
+            case 'button':   this.playTone('sine',     600,  0.04);       break;
+            case 'gameover': this.playTone('sine',     440,  0.4,  220);  break;
+            case 'levelup':  this.playSfxLevelup();                       break;
+            case 'move':        this.playTone('sine', 800, 0.03);         break;
+            case 'revive':      this.playSfxRevive();                     break;
+            case 'collect_rare': this.playSfxCollectRare();               break;
         }
     }
 
-    private _t(): number {
+    private now(): number {
         if (!this.ctx) return 0;
         return this.ctx.currentTime;
     }
 
     /** Schedule one oscillator tone with exponential fade-out. */
-    private _tone(
+    private playTone(
         type: OscillatorType, freq: number, dur: number,
-        freqEnd?: number, at: number = this._t(),
+        freqEnd?: number, at: number = this.now(),
     ): void {
         if (!this.ctx || !this.sfxGain) return;
         const osc = this.ctx.createOscillator();
@@ -86,25 +86,25 @@ export class SoundManager {
         osc.stop(at + dur + 0.01);
     }
 
-    private _collect(): void {
-        const t = this._t();
-        this._tone('sine', 523, 0.1, undefined, t);
-        this._tone('sine', 659, 0.1, undefined, t + 0.1);
+    private playSfxCollect(): void {
+        const t = this.now();
+        this.playTone('sine', 523, 0.1, undefined, t);
+        this.playTone('sine', 659, 0.1, undefined, t + 0.1);
     }
 
-    private _hit(): void {
+    private playSfxHit(): void {
         if (!this.ctx || !this.sfxGain) return;
-        const t = this._t();
-        this._tone('square', 150, 0.15, 80, t);
+        const t = this.now();
+        this.playTone('square', 150, 0.15, 80, t);
         // Cached noise buffer for impact texture (avoid per-call allocation)
-        if (!this._hitNoiseBuffer) {
+        if (!this.hitNoiseBuffer) {
             const bufSize = Math.floor(this.ctx.sampleRate * 0.12);
-            this._hitNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
-            const data = this._hitNoiseBuffer.getChannelData(0);
+            this.hitNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+            const data = this.hitNoiseBuffer.getChannelData(0);
             for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.4;
         }
         const noise = this.ctx.createBufferSource();
-        noise.buffer = this._hitNoiseBuffer;
+        noise.buffer = this.hitNoiseBuffer;
         const g = this.ctx.createGain();
         g.gain.setValueAtTime(0.5, t);
         g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
@@ -113,21 +113,21 @@ export class SoundManager {
         noise.start(t);
     }
 
-    private _levelup(): void {
-        const t = this._t();
-        [523, 659, 784].forEach((f, i) => this._tone('sine', f, 0.08, undefined, t + i * 0.08));
+    private playSfxLevelup(): void {
+        const t = this.now();
+        [523, 659, 784].forEach((f, i) => this.playTone('sine', f, 0.08, undefined, t + i * 0.08));
     }
 
-    private _revive(): void {
-        const t = this._t();
-        [392, 523, 659].forEach((f, i) => this._tone('sine', f, 0.1, undefined, t + i * 0.1));
+    private playSfxRevive(): void {
+        const t = this.now();
+        [392, 523, 659].forEach((f, i) => this.playTone('sine', f, 0.1, undefined, t + i * 0.1));
     }
 
-    private _collectRare(): void {
-        const t = this._t();
-        this._tone('sine', 523, 0.08, undefined, t);
-        this._tone('sine', 659, 0.08, undefined, t + 0.08);
-        this._tone('sine', 784, 0.12, undefined, t + 0.16);
+    private playSfxCollectRare(): void {
+        const t = this.now();
+        this.playTone('sine', 523, 0.08, undefined, t);
+        this.playTone('sine', 659, 0.08, undefined, t + 0.08);
+        this.playTone('sine', 784, 0.12, undefined, t + 0.16);
     }
 
     // ---- BGM ----------------------------------------------------------------
@@ -136,14 +136,14 @@ export class SoundManager {
         if (!this.ctx || !this.bgmGain) return;
         this.stopBgm();
         switch (name) {
-            case 'bgm-menu':         this._bgmMenu();          break;
-            case 'bgm-game':         this._bgmGame();          break;
-            case 'bgm-onsen':        this._bgmOnsen();         break;
+            case 'bgm-menu':         this.createBgmMenu();          break;
+            case 'bgm-game':         this.createBgmGame();          break;
+            case 'bgm-onsen':        this.createBgmOnsen();         break;
             // 스테이지별 BGM
-            case 'bgm-forest':       this._bgmForest();        break;
-            case 'bgm-river':        this._bgmRiver();         break;
-            case 'bgm-village':      this._bgmVillage();       break;
-            case 'bgm-onsen-stage':  this._bgmOnsenStage();    break;
+            case 'bgm-forest':       this.createBgmForest();        break;
+            case 'bgm-river':        this.createBgmRiver();         break;
+            case 'bgm-village':      this.createBgmVillage();       break;
+            case 'bgm-onsen-stage':  this.createBgmOnsenStage();    break;
         }
     }
 
@@ -156,7 +156,7 @@ export class SoundManager {
     }
 
     /** Soft pad: C4+E4+G4 sine chord, looping. */
-    private _bgmMenu(): void {
+    private createBgmMenu(): void {
         if (!this.ctx || !this.bgmGain) return;
         for (const freq of [261.63, 329.63, 392.0]) {
             const osc = this.ctx.createOscillator();
@@ -169,7 +169,7 @@ export class SoundManager {
     }
 
     /** Bass drone + LFO tremolo for a rhythmic pulse. */
-    private _bgmGame(): void {
+    private createBgmGame(): void {
         if (!this.ctx || !this.bgmGain) return;
         const drone = this.ctx.createOscillator();
         drone.type = 'sine';
@@ -194,18 +194,18 @@ export class SoundManager {
     }
 
     /** Bandpass-filtered looping white noise for water ambience. */
-    private _bgmOnsen(): void {
+    private createBgmOnsen(): void {
         if (!this.ctx || !this.bgmGain) return;
         // Cached 4-second noise buffer (avoid per-call allocation)
-        if (!this._onsenNoiseBuffer) {
+        if (!this.onsenNoiseBuffer) {
             const bufSize = this.ctx.sampleRate * 4;
-            this._onsenNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
-            const data = this._onsenNoiseBuffer.getChannelData(0);
+            this.onsenNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+            const data = this.onsenNoiseBuffer.getChannelData(0);
             for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
         }
 
         const source = this.ctx.createBufferSource();
-        source.buffer = this._onsenNoiseBuffer;
+        source.buffer = this.onsenNoiseBuffer;
         source.loop = true;
 
         const filter = this.ctx.createBiquadFilter();
@@ -223,7 +223,7 @@ export class SoundManager {
      * 숲속(forest): 밝고 경쾌한 BGM.
      * 베이스 드론(110Hz) + 빠른 LFO(3.2Hz) + 고음 하모닉(330Hz, 삼각파) 조합.
      */
-    private _bgmForest(): void {
+    private createBgmForest(): void {
         if (!this.ctx || !this.bgmGain) return;
 
         // 베이스 드론 (bgm-game과 유사하지만 LFO가 조금 더 빠름)
@@ -273,7 +273,7 @@ export class SoundManager {
      * 강가(river): 물 흐르는 느낌의 약간 어두운 톤.
      * 저음 드론(82Hz) + 느린 LFO(1.8Hz) + 밴드패스 노이즈(물소리).
      */
-    private _bgmRiver(): void {
+    private createBgmRiver(): void {
         if (!this.ctx || !this.bgmGain) return;
 
         // 저음 드론 (약간 어두운 톤)
@@ -296,14 +296,14 @@ export class SoundManager {
         pulseGain.connect(this.bgmGain);
 
         // 물소리 텍스처: 저주파 밴드패스 노이즈
-        if (!this._onsenNoiseBuffer) {
+        if (!this.onsenNoiseBuffer) {
             const bufSize = this.ctx.sampleRate * 4;
-            this._onsenNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
-            const data = this._onsenNoiseBuffer.getChannelData(0);
+            this.onsenNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+            const data = this.onsenNoiseBuffer.getChannelData(0);
             for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
         }
         const noiseSource = this.ctx.createBufferSource();
-        noiseSource.buffer = this._onsenNoiseBuffer;
+        noiseSource.buffer = this.onsenNoiseBuffer;
         noiseSource.loop = true;
 
         const noiseFilter = this.ctx.createBiquadFilter();
@@ -340,7 +340,7 @@ export class SoundManager {
      * 마을(village): 웅장하고 따뜻한 느낌.
      * 베이스 드론(130Hz) + 느린 LFO(1.2Hz) + 5도 화음(195Hz) + 고음 삼각파(390Hz).
      */
-    private _bgmVillage(): void {
+    private createBgmVillage(): void {
         if (!this.ctx || !this.bgmGain) return;
 
         // 베이스 드론 C3 (웅장함)
@@ -404,7 +404,7 @@ export class SoundManager {
      * 온천 스테이지(onsen-stage): 릴렉싱하고 몽환적인 느낌.
      * 저주파 드론(65Hz) + 매우 느린 LFO(0.6Hz) + 밴드패스 노이즈(물 김) + 고음 사인파(523Hz).
      */
-    private _bgmOnsenStage(): void {
+    private createBgmOnsenStage(): void {
         if (!this.ctx || !this.bgmGain) return;
 
         // 깊은 저음 드론 C2 (릴렉스)
@@ -427,14 +427,14 @@ export class SoundManager {
         pulseGain.connect(this.bgmGain);
 
         // 온천 수증기: 고주파 밴드패스 노이즈
-        if (!this._onsenNoiseBuffer) {
+        if (!this.onsenNoiseBuffer) {
             const bufSize = this.ctx.sampleRate * 4;
-            this._onsenNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
-            const data = this._onsenNoiseBuffer.getChannelData(0);
+            this.onsenNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+            const data = this.onsenNoiseBuffer.getChannelData(0);
             for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
         }
         const steamSource = this.ctx.createBufferSource();
-        steamSource.buffer = this._onsenNoiseBuffer;
+        steamSource.buffer = this.onsenNoiseBuffer;
         steamSource.loop = true;
 
         const steamFilter = this.ctx.createBiquadFilter();
@@ -491,31 +491,31 @@ export class SoundManager {
     // ---- Volume / Mute ------------------------------------------------------
 
     setMuted(muted: boolean): void {
-        this._muted = muted;
+        this.muted = muted;
         localStorage.setItem(LS_KEY_MUTED, String(muted));
-        if (this.sfxGain) this.sfxGain.gain.value = muted ? 0 : this._sfxVol;
-        if (this.bgmGain) this.bgmGain.gain.value = muted ? 0 : this._bgmVol;
+        if (this.sfxGain) this.sfxGain.gain.value = muted ? 0 : this.sfxVol;
+        if (this.bgmGain) this.bgmGain.gain.value = muted ? 0 : this.bgmVol;
     }
 
-    getBgmVolume(): number { return this._bgmVol; }
-    getSfxVolume(): number { return this._sfxVol; }
+    getBgmVolume(): number { return this.bgmVol; }
+    getSfxVolume(): number { return this.sfxVol; }
 
     setBgmVolume(vol: number): void {
-        this._bgmVol = Math.max(0, Math.min(1, vol));
-        localStorage.setItem(LS_KEY_BGM_VOL, this._bgmVol.toString());
-        if (this.bgmGain && !this._muted) {
-            this.bgmGain.gain.value = this._bgmVol;
+        this.bgmVol = Math.max(0, Math.min(1, vol));
+        localStorage.setItem(LS_KEY_BGM_VOL, this.bgmVol.toString());
+        if (this.bgmGain && !this.muted) {
+            this.bgmGain.gain.value = this.bgmVol;
         }
     }
 
     setSfxVolume(vol: number): void {
-        this._sfxVol = Math.max(0, Math.min(1, vol));
-        localStorage.setItem(LS_KEY_SFX_VOL, this._sfxVol.toString());
-        if (this.sfxGain && !this._muted) {
-            this.sfxGain.gain.value = this._sfxVol;
+        this.sfxVol = Math.max(0, Math.min(1, vol));
+        localStorage.setItem(LS_KEY_SFX_VOL, this.sfxVol.toString());
+        if (this.sfxGain && !this.muted) {
+            this.sfxGain.gain.value = this.sfxVol;
         }
     }
 
-    isMuted(): boolean { return this._muted; }
+    isMuted(): boolean { return this.muted; }
     isReady(): boolean { return this.ctx !== null; }
 }

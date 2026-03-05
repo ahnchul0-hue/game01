@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { PerspectiveCamera } from '../systems/PerspectiveCamera';
+import { PerspectiveCamera } from '../utils/PerspectiveCamera';
 import { DESPAWN_Z, PLAYER_Z, COLLISION_BAND } from '../utils/Constants';
 
 /**

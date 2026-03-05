@@ -1,7 +1,5 @@
 import Phaser from 'phaser';
 import type { Mission } from '../services/ApiClient';
-import { ApiClient } from '../services/ApiClient';
-import { InventoryManager } from '../services/InventoryManager';
 import { SoundManager } from '../services/SoundManager';
 import { FONT_FAMILY, GAME_WIDTH, GAME_HEIGHT, MISSION_LABELS } from '../utils/Constants';
 import type { MissionType } from '../utils/Constants';
@@ -10,8 +8,12 @@ import type { MissionType } from '../utils/Constants';
 export interface MissionCardConfig {
     /** 카드 세로 위치 */
     cardY: number;
-    /** 로컬 캐시 업데이트 콜백 (보상 수령 후 캐시 갱신) */
-    onRewardClaimed: (missionId: number) => void;
+    /**
+     * 보상 수령 버튼 클릭 후 호출되는 콜백.
+     * UI 낙관적 업데이트가 완료된 시점에 호출되므로,
+     * 부모 Scene 은 이 콜백 안에서 API 호출 + 인벤토리 변경을 수행한다.
+     */
+    onRewardClaimed: (mission: Mission) => void;
 }
 
 // ─── MissionCard 클래스 ──────────────────────────────────────────────────────
@@ -24,7 +26,7 @@ export interface MissionCardConfig {
  *  - 미션 라벨, 보상 텍스트
  *  - 진행도 바 + 수치 텍스트
  *  - "보상 받기" 버튼 (완료 & 미수령) / "수령 완료" 텍스트
- *  - 보상 수령 처리 (낙관적 UI 갱신 + 서버 fire-and-forget + 로컬 인벤토리 반영)
+ *  - 보상 수령 처리 (낙관적 UI 갱신 + onRewardClaimed 콜백 호출)
  *  - 보상 팝업 애니메이션
  */
 export class MissionCard extends Phaser.GameObjects.Container {
@@ -241,19 +243,8 @@ export class MissionCard extends Phaser.GameObjects.Container {
         rewardText.setStyle({ color: '#555555' });
         labelText.setStyle({ color: '#666666' });
 
-        // 로컬 캐시 업데이트 (Missions.ts 에 위임)
-        this.config.onRewardClaimed(mission.id);
-
-        // 서버 업데이트 (fire-and-forget)
-        ApiClient.getInstance().claimMissionReward(mission.id);
-
-        // 로컬 인벤토리에 보상 반영
-        const rewardItems = { mandarin: 0, watermelon: 0, hotspring_material: 0 };
-        const rewardType = mission.reward_type as keyof typeof rewardItems;
-        if (rewardType in rewardItems) {
-            rewardItems[rewardType] = mission.reward_amount;
-        }
-        InventoryManager.getInstance().addItems(rewardItems);
+        // 부모 Scene 에 API 호출 + 인벤토리 변경 위임
+        this.config.onRewardClaimed(mission);
 
         // 보상 팝업 텍스트
         const rewardLabel = this.getRewardLabel(mission.reward_type);

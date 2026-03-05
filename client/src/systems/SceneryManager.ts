@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { PerspectiveCamera } from './PerspectiveCamera';
+import { PerspectiveCamera } from '../utils/PerspectiveCamera';
 import {
     DESPAWN_Z,
     STAGE_COLORS,

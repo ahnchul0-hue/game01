@@ -325,22 +325,35 @@ export class Missions extends Phaser.Scene {
             const cardY = cardStartY + index * cardGap;
             const card = new MissionCard(this, mission, {
                 cardY,
-                onRewardClaimed: (missionId) => this.onMissionRewardClaimed(missionId),
+                onRewardClaimed: (claimedMission) => this.onMissionRewardClaimed(claimedMission),
             });
             this.missionCards.push(card);
         });
     }
 
-    // ─── 미션 보상 수령 후 로컬 캐시 업데이트 (MissionCard 콜백) ─────
-    private onMissionRewardClaimed(missionId: number): void {
+    // ─── 미션 보상 수령 후 처리 (MissionCard 콜백) ───────────────────
+    // UI 낙관적 업데이트가 끝난 뒤 호출되므로 여기서 서버 + 인벤토리를 처리한다.
+    private onMissionRewardClaimed(mission: Mission): void {
+        // 로컬 캐시 업데이트
         const cached = loadLocalCache();
         if (cached) {
-            const found = cached.missions.find(m => m.id === missionId);
+            const found = cached.missions.find(m => m.id === mission.id);
             if (found) {
                 found.reward_claimed = 1;
                 saveLocalCache(cached);
             }
         }
+
+        // 서버 업데이트 (fire-and-forget)
+        ApiClient.getInstance().claimMissionReward(mission.id);
+
+        // 로컬 인벤토리에 보상 반영
+        const rewardItems = { mandarin: 0, watermelon: 0, hotspring_material: 0 };
+        const rewardType = mission.reward_type as keyof typeof rewardItems;
+        if (rewardType in rewardItems) {
+            rewardItems[rewardType] = mission.reward_amount;
+        }
+        InventoryManager.getInstance().addItems(rewardItems);
     }
 
     // ─── 스트릭 보상 수령 처리 ────────────────────────────────────────

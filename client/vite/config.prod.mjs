@@ -59,36 +59,6 @@ export default defineConfig({
                 navigateFallback: 'index.html',
                 navigateFallbackDenylist: [/^\/api\//],
                 runtimeCaching: [
-                    // Google Fonts CSS (스타일시트) — StaleWhileRevalidate: 빠른 응답 + 백그라운드 갱신
-                    {
-                        urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-                        handler: 'StaleWhileRevalidate',
-                        options: {
-                            cacheName: 'google-fonts-stylesheets',
-                            expiration: {
-                                maxEntries: 10,
-                                maxAgeSeconds: 60 * 60 * 24 * 30, // 30일
-                            },
-                            cacheableResponse: {
-                                statuses: [0, 200],
-                            },
-                        },
-                    },
-                    // Google Fonts 실제 폰트 파일 (fonts.gstatic.com) — CacheFirst: 한 번 받으면 로컬 우선
-                    {
-                        urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-                        handler: 'CacheFirst',
-                        options: {
-                            cacheName: 'google-fonts-webfonts',
-                            expiration: {
-                                maxEntries: 20,
-                                maxAgeSeconds: 60 * 60 * 24 * 30, // 30일
-                            },
-                            cacheableResponse: {
-                                statuses: [0, 200],
-                            },
-                        },
-                    },
                     // 오디오 파일 — CacheFirst + rangeRequests (Safari 호환)
                     {
                         urlPattern: /\.(?:mp3|ogg|wav)$/i,

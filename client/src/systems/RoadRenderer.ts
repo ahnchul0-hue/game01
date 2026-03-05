@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { PerspectiveCamera } from './PerspectiveCamera';
+import { PerspectiveCamera } from '../utils/PerspectiveCamera';
 import {
     GAME_WIDTH,
     VANISH_Y,

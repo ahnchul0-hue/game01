@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PerspectiveCamera } from '../systems/PerspectiveCamera';
+import { PerspectiveCamera } from '../utils/PerspectiveCamera';
 import {
     VANISH_Y,
     ROAD_HEIGHT,
