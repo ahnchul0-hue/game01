@@ -173,6 +173,8 @@ export class Game extends Phaser.Scene {
         if (this.roadRenderer) this.roadRenderer.destroy();
         if (this.sceneryManager) this.sceneryManager.destroy();
         if (this.speedLineRenderer) this.speedLineRenderer.destroy();
+        if (this.questBarBg) { this.questBarBg.destroy(); this.questBarBg = null; }
+        if (this.questBarFill) { this.questBarFill.destroy(); this.questBarFill = null; }
     }
 
     create(): void {

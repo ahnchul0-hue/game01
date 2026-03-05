@@ -26,6 +26,8 @@ export class SkinSelect extends Phaser.Scene {
     }
 
     shutdown(): void {
+        this.tweens.killAll();
+        this.time.removeAllEvents();
         this.cardBorders.clear();
     }
 

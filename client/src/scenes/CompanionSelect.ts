@@ -35,7 +35,10 @@ export class CompanionSelect extends Phaser.Scene {
     }
 
     shutdown(): void {
+        this.tweens.killAll();
+        this.time.removeAllEvents();
         this.cardBorders.clear();
+        this.cardRects.clear();
     }
 
     create(): void {

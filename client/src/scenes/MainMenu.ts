@@ -34,6 +34,7 @@ export class MainMenu extends Phaser.Scene {
         this.onOnline = null;
         this.onOffline = null;
         this.tweens.killAll();
+        this.time.removeAllEvents();
     }
 
     create(): void {

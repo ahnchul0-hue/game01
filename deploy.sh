@@ -35,10 +35,27 @@ cd "$PROJECT_DIR/server"
 cargo build --release
 
 # 3. Restart service
-echo "[3/3] Restarting service..."
+echo "[3/4] Restarting service..."
 sudo systemctl restart capybara-api || echo "Warning: systemctl restart failed (service may not exist yet)"
 
-# 4. Ensure DB backup cron is registered (idempotent)
+# 4. Post-deploy health check
+echo "[4/4] Running health check..."
+HEALTH_OK=false
+for i in 1 2 3 4 5; do
+    sleep 1
+    if curl -sf http://127.0.0.1:3000/api/health | grep -q '"status":"ok"'; then
+        HEALTH_OK=true
+        break
+    fi
+    echo "  Health check attempt $i/5 failed, retrying..."
+done
+if [ "$HEALTH_OK" = true ]; then
+    echo "[4/4] Health check PASSED — API server is running."
+else
+    echo "WARNING: Health check failed after 5 attempts. Check: sudo systemctl status capybara-api"
+fi
+
+# 5. Ensure DB backup cron is registered (idempotent)
 BACKUP_CMD="0 */6 * * * $PROJECT_DIR/deploy/backup-db.sh >> /var/log/capybara-backup.log 2>&1"
 if ! crontab -l 2>/dev/null | grep -qF "backup-db.sh"; then
     (crontab -l 2>/dev/null; echo "$BACKUP_CMD") | crontab -
