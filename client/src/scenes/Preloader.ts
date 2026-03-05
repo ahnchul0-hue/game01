@@ -80,9 +80,7 @@ export class Preloader extends Phaser.Scene {
         // (온천 배경은 Onsen Scene에서 Graphics로 직접 렌더링 — 데드 텍스처 제거됨)
     }
 
-    // 아틀라스 프레임 → 독립 텍스처 등록은 더 이상 사용하지 않습니다.
-    // ZObject.activateZ()가 setTexture(atlasKey, frameName)으로 아틀라스를 직접 참조합니다.
-
-    // (스테이지 배경 텍스처는 TextureUtils.ensureStageTextures에서 lazy 생성)
-    // (장애물/아이템/파워업/UI 텍스처는 TextureAtlasBuilder.buildAllAtlases에서 아틀라스로 생성)
+    shutdown(): void {
+        this.time.removeAllEvents();
+    }
 }

@@ -161,6 +161,7 @@ export class Onsen extends Phaser.Scene {
             alpha: { start: 0.25, end: 0 },
             lifespan: { min: 1500, max: 2500 },
             frequency: 200,
+            reserve: 12,
             tint: 0xFFFFFF,
         }).setDepth(5);
 

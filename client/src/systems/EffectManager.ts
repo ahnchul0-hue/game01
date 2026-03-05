@@ -48,6 +48,7 @@ export class EffectManager {
             scale: { start: 1, end: 0 },
             lifespan: EFFECT_PARTICLE_LIFESPAN,
             quantity: 6,
+            reserve: 8,
             emitting: false,
         }).setDepth(DEPTH_EFFECT_OVERLAY);
 
@@ -60,6 +61,7 @@ export class EffectManager {
             lifespan: 300,
             tint: 0xBBAAAA,
             quantity: 4,
+            reserve: 6,
             emitting: false,
         }).setDepth(DEPTH_EFFECT_OVERLAY);
 
@@ -74,6 +76,7 @@ export class EffectManager {
             gravityY: -20,
             quantity: 1,
             frequency: 120,
+            reserve: 6,
             emitting: false,
         }).setDepth(DEPTH_EFFECT_OVERLAY);
     }
