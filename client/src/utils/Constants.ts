@@ -42,10 +42,16 @@ export const RELAX_OBSTACLE_SKIP = 0.4;   // 릴렉스 모드 장애물 스킵 �
 export const LANE_MOVE_DURATION = 150; // ms
 
 // 게임 모드
-export type GameMode = 'normal' | 'relax';
+export type GameMode = 'normal' | 'relax' | 'quest';
+
+// 퀘스트 모드 Scene 키
+export const SCENE_QUEST_SELECT = 'QuestSelect';
+
+// 퀘스트 모드: 완료 시 보너스 점수 배율 (목표 달성 보너스)
+export const QUEST_COMPLETION_BONUS_SCORE = 500;
 
 // 장애물 시스템
-export type ObstacleType = 'rock' | 'branch_high' | 'puddle' | 'barrier' | 'car';
+export type ObstacleType = 'rock' | 'branch_high' | 'puddle' | 'barrier' | 'car' | 'snake';
 
 export const OBSTACLE_CONFIGS: Record<ObstacleType, { width: number; height: number; color: number }> = {
     rock:        { width: 80, height: 80, color: 0x808080 },
@@ -53,6 +59,7 @@ export const OBSTACLE_CONFIGS: Record<ObstacleType, { width: number; height: num
     puddle:      { width: 100, height: 30, color: 0x4FC3F7 },
     barrier:     { width: 160, height: 60, color: 0xFF4444 },  // 2레인 차단
     car:         { width: 80, height: 100, color: 0x3366CC },   // 점프 회피
+    snake:       { width: 90, height: 30, color: 0x4CAF50 },   // 뱀 — 넓고 낮음 (점프로만 회피)
 };
 
 // 아이템 시스템

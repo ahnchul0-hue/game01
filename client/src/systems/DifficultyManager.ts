@@ -42,7 +42,7 @@ export class DifficultyManager {
         if (isRelax) return ['rock', 'puddle'];
         if (level === 'easy') return ['rock'];
         if (level === 'medium') return ['rock', 'branch_high', 'puddle', 'barrier'];
-        return ['rock', 'branch_high', 'puddle', 'barrier', 'car'];
+        return ['rock', 'branch_high', 'puddle', 'barrier', 'car', 'snake'];
     }
 
     getMaxObstaclesPerSpawn(level: DifficultyLevel, isRelax = false): number {

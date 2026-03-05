@@ -4,16 +4,15 @@ import {
     GAME_HEIGHT,
     SCENE_MISSIONS,
     SCENE_MAIN_MENU,
-    MISSION_LABELS,
     LS_KEY_DAILY_MISSIONS,
     LS_KEY_STREAK,
     FONT_FAMILY,
 } from '../utils/Constants';
-import type { MissionType } from '../utils/Constants';
 import { ApiClient, type Mission, type StreakInfo, type DailyMissionsResponse } from '../services/ApiClient';
 import { InventoryManager } from '../services/InventoryManager';
 import { createButton, fadeToScene, fadeIn } from '../ui/UIFactory';
 import { SoundManager } from '../services/SoundManager';
+import { MissionCard } from '../ui/MissionCard';
 
 // ─── 로컬 미션 캐시 구조 ────────────────────────────────────────────
 interface LocalMissionCache {
@@ -95,7 +94,19 @@ function loadLocalStreak(): StreakInfo {
     try {
         const raw = localStorage.getItem(LS_KEY_STREAK);
         if (!raw) return defaultStreak();
-        return JSON.parse(raw) as StreakInfo;
+        const parsed = JSON.parse(raw);
+        // C4: 구조 검증 — 필수 필드 타입 확인
+        if (
+            parsed === null || typeof parsed !== 'object' ||
+            typeof parsed.current_streak !== 'number' ||
+            typeof parsed.longest_streak !== 'number' ||
+            (parsed.last_play_date !== null && typeof parsed.last_play_date !== 'string') ||
+            typeof parsed.today_reward_claimed !== 'boolean'
+        ) {
+            console.warn('[loadLocalStreak] Malformed streak data, using defaults');
+            return defaultStreak();
+        }
+        return parsed as StreakInfo;
     } catch {
         return defaultStreak();
     }
@@ -113,7 +124,7 @@ function saveLocalStreak(streak: StreakInfo): void {
 export class Missions extends Phaser.Scene {
     private missions: Mission[] = [];
     private streak: StreakInfo = defaultStreak();
-    private missionCards: Phaser.GameObjects.Container[] = [];
+    private missionCards: MissionCard[] = [];
     private streakContainer: Phaser.GameObjects.Container | null = null;
     private loadingText: Phaser.GameObjects.Text | null = null;
 
@@ -312,215 +323,24 @@ export class Missions extends Phaser.Scene {
 
         this.missions.forEach((mission, index) => {
             const cardY = cardStartY + index * cardGap;
-            const card = this.buildMissionCard(mission, cardY);
+            const card = new MissionCard(this, mission, {
+                cardY,
+                onRewardClaimed: (missionId) => this.onMissionRewardClaimed(missionId),
+            });
             this.missionCards.push(card);
         });
     }
 
-    private buildMissionCard(mission: Mission, cardY: number): Phaser.GameObjects.Container {
-        const container = this.add.container(0, 0);
-        const cardX = GAME_WIDTH / 2 - 310;
-        const cardW = 620;
-        const cardH = 160;
-        const isCompleted = mission.completed === 1;
-        const isClaimed = mission.reward_claimed === 1;
-
-        // 카드 배경
-        const cardBg = this.add.graphics();
-        let bgColor: number;
-        if (isClaimed) {
-            bgColor = 0x2A2A2A; // 수령 완료 — 어두운 회색
-        } else if (isCompleted) {
-            bgColor = 0x3A3A1A; // 완료 미수령 — 어두운 골드 배경
-        } else {
-            bgColor = 0x1E2A3A; // 진행 중 — 어두운 파랑
-        }
-        cardBg.fillStyle(bgColor, 1);
-        cardBg.fillRoundedRect(cardX, cardY, cardW, cardH, 14);
-
-        // 완료 테두리
-        if (isCompleted && !isClaimed) {
-            const border = this.add.graphics();
-            border.lineStyle(2, 0xFFD700, 1);
-            border.strokeRoundedRect(cardX, cardY, cardW, cardH, 14);
-            container.add(border);
-        }
-        container.add(cardBg);
-
-        // 미션 라벨
-        const label = MISSION_LABELS[mission.mission_type as MissionType] ?? mission.mission_type;
-        const labelColor = isClaimed ? '#666666' : '#FFFFFF';
-        const labelText = this.add.text(cardX + 20, cardY + 18, label, {
-            fontFamily: FONT_FAMILY,
-            fontSize: '22px',
-            color: labelColor,
-            fontStyle: 'bold',
-        });
-        container.add(labelText);
-
-        // 보상 텍스트
-        const cardRewardLabel = mission.reward_type === 'mandarin' ? '귤'
-            : mission.reward_type === 'watermelon' ? '수박'
-            : '온천 재료';
-        const rewardStr = `보상: ${cardRewardLabel} x${mission.reward_amount}`;
-        const rewardColor = isClaimed ? '#555555' : '#FFD700';
-        const rewardText = this.add.text(cardX + 20, cardY + 48, rewardStr, {
-            fontFamily: FONT_FAMILY,
-            fontSize: '16px',
-            color: rewardColor,
-        });
-        container.add(rewardText);
-
-        // 진행도 바 (y = cardY + 90)
-        const barX = cardX + 20;
-        const barY = cardY + 84;
-        const barW = isClaimed ? 340 : 300;
-        const barH = 20;
-        const progress = Math.min(mission.current_value / Math.max(mission.target_value, 1), 1);
-
-        // 배경 바
-        const barBg = this.add.graphics();
-        barBg.fillStyle(0x111111, 1);
-        barBg.fillRoundedRect(barX, barY, barW, barH, 8);
-        container.add(barBg);
-
-        // 진행 바 (항상 선언, progress > 0일 때만 채움)
-        const barFill = this.add.graphics();
-        if (progress > 0) {
-            const fillColor = isClaimed ? 0x444444 : isCompleted ? 0xFFD700 : 0x4CAF50;
-            barFill.fillStyle(fillColor, 1);
-            barFill.fillRoundedRect(barX, barY, Math.floor(barW * progress), barH, 8);
-        }
-        container.add(barFill);
-
-        // 진행도 텍스트 (current / target)
-        const progressStr = `${mission.current_value} / ${mission.target_value}`;
-        const progressColor = isClaimed ? '#555555' : '#AAAAAA';
-        const progressText = this.add.text(barX + barW / 2, barY + barH / 2, progressStr, {
-            fontFamily: FONT_FAMILY,
-            fontSize: '14px',
-            color: progressColor,
-        }).setOrigin(0.5, 0.5);
-        container.add(progressText);
-
-        // 진행도 % 텍스트 (바 오른쪽)
-        const pctStr = `${Math.floor(progress * 100)}%`;
-        const pctText = this.add.text(barX + barW + 10, barY + barH / 2, pctStr, {
-            fontFamily: FONT_FAMILY,
-            fontSize: '14px',
-            color: isClaimed ? '#555555' : '#AAAAAA',
-        }).setOrigin(0, 0.5);
-        container.add(pctText);
-
-        // "보상 받기" 버튼 — 완료 & 미수령일 때만 표시
-        if (isCompleted && !isClaimed) {
-            const btnX = cardX + cardW - 100;
-            const btnY = cardY + cardH / 2;
-            const btnW2 = 140;
-            const btnH2 = 44;
-
-            const claimBg = this.add.graphics();
-            claimBg.fillStyle(0xFFD700, 1);
-            claimBg.fillRoundedRect(btnX - btnW2 / 2, btnY - btnH2 / 2, btnW2, btnH2, 10);
-            container.add(claimBg);
-
-            const claimLabel = this.add.text(btnX, btnY, '보상 받기', {
-                fontFamily: FONT_FAMILY,
-                fontSize: '18px',
-                color: '#1A1A00',
-                fontStyle: 'bold',
-            }).setOrigin(0.5);
-            container.add(claimLabel);
-
-            const claimZone = this.add.zone(btnX, btnY, btnW2, btnH2)
-                .setInteractive({ useHandCursor: true });
-            container.add(claimZone);
-
-            claimZone.on('pointerdown', () => {
-                SoundManager.getInstance().playSfx('button');
-                this.onClaimMissionReward(mission, container, claimBg, claimLabel, claimZone, barFill ?? null, progressText, pctText, rewardText, labelText);
-            });
-
-            // 골드 펄싱 글로우
-            this.tweens.add({
-                targets: claimLabel,
-                alpha: 0.5,
-                duration: 600,
-                yoyo: true,
-                repeat: -1,
-            });
-        } else if (isClaimed) {
-            // 수령 완료 레이블
-            const doneText = this.add.text(cardX + cardW - 95, cardY + cardH / 2, '수령 완료', {
-                fontFamily: FONT_FAMILY,
-                fontSize: '18px',
-                color: '#555555',
-            }).setOrigin(0.5);
-            container.add(doneText);
-        }
-
-        return container;
-    }
-
-    // ─── 미션 보상 수령 처리 ──────────────────────────────────────────
-    private onClaimMissionReward(
-        mission: Mission,
-        container: Phaser.GameObjects.Container,
-        claimBg: Phaser.GameObjects.Graphics,
-        claimLabel: Phaser.GameObjects.Text,
-        claimZone: Phaser.GameObjects.Zone,
-        barFill: Phaser.GameObjects.Graphics,
-        progressText: Phaser.GameObjects.Text,
-        pctText: Phaser.GameObjects.Text,
-        rewardText: Phaser.GameObjects.Text,
-        labelText: Phaser.GameObjects.Text,
-    ): void {
-        // 즉시 UI 반영 (낙관적 업데이트)
-        mission.reward_claimed = 1;
-        claimZone.disableInteractive();
-
-        // 버튼 배경 숨김 (Graphics 좌표 복잡성 회피 — 라벨로 상태 표현)
-        claimBg.setAlpha(0.3);
-
-        claimLabel.setText('수령 완료');
-        claimLabel.setStyle({ color: '#999999' });
-        this.tweens.killTweensOf(claimLabel);
-        claimLabel.setAlpha(1);
-
-        // 진행 바 색상 → 회색 (clear 후 재렌더 불필요 — alpha로 처리)
-        barFill.setAlpha(0.3);
-
-        progressText.setStyle({ color: '#555555' });
-        pctText.setStyle({ color: '#555555' });
-        rewardText.setStyle({ color: '#555555' });
-        labelText.setStyle({ color: '#666666' });
-
-        // 로컬 캐시 업데이트
+    // ─── 미션 보상 수령 후 로컬 캐시 업데이트 (MissionCard 콜백) ─────
+    private onMissionRewardClaimed(missionId: number): void {
         const cached = loadLocalCache();
         if (cached) {
-            const found = cached.missions.find(m => m.id === mission.id);
+            const found = cached.missions.find(m => m.id === missionId);
             if (found) {
                 found.reward_claimed = 1;
                 saveLocalCache(cached);
             }
         }
-
-        // 서버 업데이트 (fire-and-forget)
-        ApiClient.getInstance().claimMissionReward(mission.id);
-
-        // 로컬 인벤토리에 보상 반영
-        const rewardItems = { mandarin: 0, watermelon: 0, hotspring_material: 0 };
-        const rewardType = mission.reward_type as keyof typeof rewardItems;
-        if (rewardType in rewardItems) {
-            rewardItems[rewardType] = mission.reward_amount;
-        }
-        InventoryManager.getInstance().addItems(rewardItems);
-
-        // 보상 팝업 텍스트
-        const rewardLabel = mission.reward_type === 'mandarin' ? '귤'
-            : mission.reward_type === 'watermelon' ? '수박'
-            : '온천 재료';
-        this.showRewardPopup(container, `+${rewardLabel} x${mission.reward_amount}`);
     }
 
     // ─── 스트릭 보상 수령 처리 ────────────────────────────────────────
@@ -574,28 +394,7 @@ export class Missions extends Phaser.Scene {
         }
     }
 
-    // ─── 보상 팝업 애니메이션 ─────────────────────────────────────────
-    private showRewardPopup(container: Phaser.GameObjects.Container, text: string): void {
-        const popup = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, text, {
-            fontFamily: FONT_FAMILY,
-            fontSize: '28px',
-            color: '#FFD700',
-            fontStyle: 'bold',
-            stroke: '#000000',
-            strokeThickness: 3,
-        }).setOrigin(0.5).setDepth(500);
-        container.add(popup);
-
-        this.tweens.add({
-            targets: popup,
-            y: popup.y - 80,
-            alpha: 0,
-            duration: 1200,
-            ease: 'Power2',
-            onComplete: () => popup.destroy(),
-        });
-    }
-
+    // ─── 보상 팝업 애니메이션 (스트릭용) ────────────────────────────
     private showRewardPopupAt(x: number, y: number, text: string): void {
         const popup = this.add.text(x, y, text, {
             fontFamily: FONT_FAMILY,

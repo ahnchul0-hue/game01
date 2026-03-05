@@ -40,6 +40,15 @@ async fn save_companions(
         }
     }
 
+    // C2: Verify selected_companion is actually in the unlocked list (or is 'none')
+    if req.selected_companion != "none"
+        && !req.unlocked_companions.contains(&req.selected_companion)
+    {
+        return Err(AppError::BadRequest(
+            "selected_companion is not in unlocked_companions".to_string(),
+        ));
+    }
+
     let token = extract_token(&headers)?;
     let u = user::find_by_token(&state.pool, token)
         .await

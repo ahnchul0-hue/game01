@@ -1,5 +1,5 @@
 use axum::extract::State;
-use axum::http::{HeaderMap, StatusCode};
+use axum::http::HeaderMap;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 
@@ -59,6 +59,12 @@ async fn add_inventory(
             tracing::warn!("Unauthorized inventory add attempt: {:?}", e);
             AppError::Unauthorized
         })?;
+
+    // S1: Per-user rate limit — 1 request per 2 seconds
+    if !state.inventory_limiter.check(&u.id, 2) {
+        return Err(AppError::TooManyRequests);
+    }
+
     let inv = inventory::add_inventory(&state.pool, &u.id, &req).await?;
     Ok(Json(inv))
 }
@@ -159,6 +165,13 @@ async fn save_skins(
         if !VALID_SKINS.contains(&skin.as_str()) {
             return Err(AppError::BadRequest(format!("Invalid skin id: {}", skin)));
         }
+    }
+
+    // C1: Verify selected_skin is actually in the unlocked list
+    if !unlocked.iter().any(|s| s == &req.selected_skin) {
+        return Err(AppError::BadRequest(
+            "selected_skin is not in unlocked_skins".to_string(),
+        ));
     }
 
     let token = extract_token(&headers)?;

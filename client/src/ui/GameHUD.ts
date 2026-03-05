@@ -1,10 +1,19 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, FONT_FAMILY } from '../utils/Constants';
+import { GAME_WIDTH, FONT_FAMILY, type PowerUpType } from '../utils/Constants';
 
 interface PowerUpTimer {
-    type: string;
+    type: PowerUpType;
     remaining: number;
 }
+
+/** 팝업 풀 슬롯: Text 오브젝트 + 활성 여부 + 활성화된 타임스탬프 */
+interface PopupSlot {
+    text: Phaser.GameObjects.Text;
+    active: boolean;
+    activatedAt: number; // 가장 오래된 슬롯 회수용
+}
+
+const MAX_POPUP_POOL = 8;
 
 const HUD_COLORS: Record<string, string> = { tube: '#64B5F6', friend: '#FF6F00', magnet: '#CC0000' };
 const HUD_NAMES: Record<string, string> = { tube: '튜브', friend: '친구', magnet: '자석' };
@@ -17,7 +26,8 @@ export class GameHUD {
     private itemCounterText: Phaser.GameObjects.Text;
     private powerUpHudTexts: Phaser.GameObjects.Text[] = [];
     private comboText: Phaser.GameObjects.Text | null = null;
-    private popupTexts: Phaser.GameObjects.Text[] = [];
+    /** 팝업 Text 풀 (최대 MAX_POPUP_POOL개 미리 할당, 재사용) */
+    private popupPool: PopupSlot[] = [];
 
     constructor(scene: Phaser.Scene, isRelax: boolean, onsenBuffMultiplier: number) {
         this.scene = scene;
@@ -64,6 +74,15 @@ export class GameHUD {
                 stroke: '#000000', strokeThickness: 3,
             }).setOrigin(1, 0).setScrollFactor(0).setDepth(100).setVisible(false);
             this.powerUpHudTexts.push(t);
+        }
+
+        // 팝업 Text 풀 미리 할당 (최대 MAX_POPUP_POOL개)
+        for (let i = 0; i < MAX_POPUP_POOL; i++) {
+            const t = scene.add.text(0, 0, '', {
+                fontFamily: FONT_FAMILY, fontSize: '24px', color: '#FFD700',
+                fontStyle: 'bold', stroke: '#000000', strokeThickness: 2,
+            }).setOrigin(0.5).setDepth(200).setVisible(false).setAlpha(1);
+            this.popupPool.push({ text: t, active: false, activatedAt: 0 });
         }
     }
 
@@ -128,15 +147,39 @@ export class GameHUD {
         this._popup(x, y - 30, `NEAR MISS! +${bonus}`, '#00FF88', '20px', 800, 50);
     }
 
+    /**
+     * 풀에서 비활성 슬롯을 가져와 팝업을 표시합니다.
+     * 비활성 슬롯이 없으면 가장 오래된 활성 슬롯을 강제 회수합니다.
+     */
     private _popup(
         x: number, y: number, text: string,
         color: string, fontSize: string, duration: number, rise: number,
     ): void {
-        const popup = this.scene.add.text(x, y, text, {
-            fontFamily: FONT_FAMILY, fontSize, color,
-            fontStyle: 'bold', stroke: '#000000', strokeThickness: 2,
-        }).setOrigin(0.5).setDepth(200);
-        this.popupTexts.push(popup);
+        // 1) 비활성 슬롯 검색
+        let slot = this.popupPool.find(s => !s.active) ?? null;
+
+        // 2) 비활성 슬롯이 없으면 가장 오래된 활성 슬롯을 회수
+        if (!slot) {
+            slot = this.popupPool.reduce((oldest, s) =>
+                s.activatedAt < oldest.activatedAt ? s : oldest
+            );
+            // 기존 트윈 중단 후 초기화
+            this.scene.tweens.killTweensOf(slot.text);
+            slot.active = false;
+        }
+
+        // 3) 슬롯 재설정 후 활성화
+        const popup = slot.text;
+        slot.active = true;
+        slot.activatedAt = Date.now();
+
+        popup
+            .setText(text)
+            .setColor(color)
+            .setFontSize(fontSize)
+            .setPosition(x, y)
+            .setAlpha(1)
+            .setVisible(true);
 
         this.scene.tweens.add({
             targets: popup,
@@ -145,9 +188,8 @@ export class GameHUD {
             duration,
             ease: 'Power2',
             onComplete: () => {
-                const idx = this.popupTexts.indexOf(popup);
-                if (idx !== -1) this.popupTexts.splice(idx, 1);
-                popup.destroy();
+                popup.setVisible(false);
+                slot!.active = false;
             },
         });
     }
@@ -155,8 +197,11 @@ export class GameHUD {
     // ---- Cleanup -----------------------------------------------------------------
 
     destroy(): void {
-        for (const t of this.popupTexts) { if (t.scene) t.destroy(); }
-        this.popupTexts = [];
+        for (const slot of this.popupPool) {
+            this.scene.tweens.killTweensOf(slot.text);
+            if (slot.text.scene) slot.text.destroy();
+        }
+        this.popupPool = [];
         for (const t of this.powerUpHudTexts) { if (t.scene) t.destroy(); }
         this.powerUpHudTexts = [];
         if (this.comboText?.scene) this.comboText.destroy();

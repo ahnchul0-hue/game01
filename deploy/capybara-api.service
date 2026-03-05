@@ -14,5 +14,17 @@ ExecStart=/home/cc2/game01/server/target/release/capybara-server
 Restart=on-failure
 RestartSec=5
 
+# Security hardening
+ProtectSystem=strict
+ProtectHome=true
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+ReadWritePaths=/home/cc2/game01/server /home/cc2/backups/capybara
+
 [Install]
 WantedBy=multi-user.target

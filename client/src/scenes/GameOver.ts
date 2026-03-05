@@ -6,11 +6,13 @@ import {
     SCENE_GAME,
     SCENE_MAIN_MENU,
     SCENE_ONSEN,
+    SCENE_QUEST_SELECT,
     LS_KEY_USER_ID,
     FONT_FAMILY,
 } from '../utils/Constants';
 import type { GameMode, CollectedItems, SkinConfig } from '../utils/Constants';
 import { SKIN_CONFIGS } from '../utils/Constants';
+import { DEFAULT_QUESTS } from '../systems/QuestManager';
 import { getUnlockProgress, getOnsenLevelIndex, getTotalItems, getOnsenLevel, type UnlockStats } from '../utils/OnsenLogic';
 import { ApiClient, type ScoreEntry } from '../services/ApiClient';
 import { InventoryManager } from '../services/InventoryManager';
@@ -23,6 +25,9 @@ interface GameOverData {
     mode?: GameMode;
     collectedItems?: CollectedItems;
     dodgedObstacles?: number;
+    questId?: string;
+    questCompleted?: boolean;
+    questRewardMandarin?: number;
 }
 
 export class GameOver extends Phaser.Scene {
@@ -31,6 +36,9 @@ export class GameOver extends Phaser.Scene {
     private lastMode: GameMode = 'normal';
     private collectedItems: CollectedItems = { mandarin: 0, watermelon: 0, hotspring_material: 0 };
     private dodgedObstacles = 0;
+    private questId: string | null = null;
+    private questCompleted = false;
+    private questRewardMandarin = 0;
 
     constructor() {
         super(SCENE_GAME_OVER);
@@ -47,6 +55,9 @@ export class GameOver extends Phaser.Scene {
         this.lastMode = data.mode ?? 'normal';
         this.collectedItems = data.collectedItems ?? { mandarin: 0, watermelon: 0, hotspring_material: 0 };
         this.dodgedObstacles = data.dodgedObstacles ?? 0;
+        this.questId = data.questId ?? null;
+        this.questCompleted = data.questCompleted ?? false;
+        this.questRewardMandarin = data.questRewardMandarin ?? 0;
     }
 
     create(): void {
@@ -56,12 +67,12 @@ export class GameOver extends Phaser.Scene {
         // BGM 정지 (Game에서 이미 했지만 안전장치)
         SoundManager.getInstance().stopBgm();
 
-        // 점수 API 전송 후 리더보드 로드 (릴렉스 모드는 리더보드 제외)
+        // 점수 API 전송 후 리더보드 로드 (릴렉스/퀘스트 모드는 리더보드 제외)
         const totalItems = this.collectedItems.mandarin
             + this.collectedItems.watermelon
             + this.collectedItems.hotspring_material;
         const api = ApiClient.getInstance();
-        if (this.lastMode !== 'relax') {
+        if (this.lastMode !== 'relax' && this.lastMode !== 'quest') {
             api.submitScore(this.finalScore, this.finalDistance, totalItems)
                 .then(() => api.getTopScores(5))
                 .then(scores => {
@@ -82,8 +93,11 @@ export class GameOver extends Phaser.Scene {
         }
 
         // M4: 인벤토리 누적 + 최고 거리 갱신
+        // 퀘스트 완료 보상 귤은 Game.ts에서 이미 반영했으므로 중복 방지
         const inventoryMgr = InventoryManager.getInstance();
-        inventoryMgr.addItems(this.collectedItems);
+        if (this.lastMode !== 'quest') {
+            inventoryMgr.addItems(this.collectedItems);
+        }
         inventoryMgr.updateMaxDistance(this.finalDistance);
 
         // 어두운 오버레이
@@ -91,9 +105,25 @@ export class GameOver extends Phaser.Scene {
         overlay.fillStyle(0x000000, 0.7);
         overlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-        // 게임 오버 텍스트
-        const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.15, 'GAME OVER', {
-            fontFamily: FONT_FAMILY, fontSize: '56px', color: '#FF6B6B',
+        // 퀘스트 모드 전용 헤더 — 성공/실패 분기
+        const isQuestMode = this.lastMode === 'quest';
+
+        let titleText: string;
+        let titleColor: string;
+        if (isQuestMode && this.questCompleted) {
+            titleText = 'QUEST CLEAR!';
+            titleColor = '#FFD700';
+        } else if (isQuestMode && !this.questCompleted) {
+            titleText = 'QUEST FAIL';
+            titleColor = '#EF9A9A';
+        } else {
+            titleText = 'GAME OVER';
+            titleColor = '#FF6B6B';
+        }
+
+        // 타이틀 텍스트
+        const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.15, titleText, {
+            fontFamily: FONT_FAMILY, fontSize: '56px', color: titleColor,
             fontStyle: 'bold', stroke: '#000000', strokeThickness: 4,
         }).setOrigin(0.5);
 
@@ -104,6 +134,11 @@ export class GameOver extends Phaser.Scene {
             targets: title, y: title.y + 50, alpha: 1,
             duration: 500, ease: 'Bounce.easeOut',
         });
+
+        // 퀘스트 모드: 퀘스트 설명 + 결과 표시
+        if (isQuestMode) {
+            this.showQuestResult();
+        }
 
         // 카피바라 (선택된 스킨)
         const selectedSkin = inventoryMgr.getSelectedSkin();
@@ -154,19 +189,33 @@ export class GameOver extends Phaser.Scene {
             }).setOrigin(0.5);
         }
 
-        // 리더보드 영역 (비동기 로드 — 0.70 이하 표시됨)
+        // 리더보드 영역 (비동기 로드 — 0.70 이하 표시됨, 퀘스트 모드는 제외)
 
         // 재시작 + 온천 (같은 줄)
-        createButton(this, {
-            x: GAME_WIDTH / 2 - 110, y: GAME_HEIGHT * 0.80,
-            label: 'RETRY', color: 0x4CAF50, width: 180, height: 48,
-            callback: () => fadeToScene(this, SCENE_GAME, { mode: this.lastMode }),
-        });
-        createButton(this, {
-            x: GAME_WIDTH / 2 + 110, y: GAME_HEIGHT * 0.80,
-            label: 'ONSEN', color: 0xFF8C00, width: 180, height: 48,
-            callback: () => fadeToScene(this, SCENE_ONSEN),
-        });
+        // 퀘스트 모드: RETRY → 퀘스트 재도전, 좌측 버튼은 퀘스트 목록
+        if (this.lastMode === 'quest') {
+            createButton(this, {
+                x: GAME_WIDTH / 2 - 110, y: GAME_HEIGHT * 0.80,
+                label: '재도전', color: 0x4CAF50, width: 180, height: 48,
+                callback: () => fadeToScene(this, SCENE_GAME, { mode: 'quest', questId: this.questId ?? undefined }),
+            });
+            createButton(this, {
+                x: GAME_WIDTH / 2 + 110, y: GAME_HEIGHT * 0.80,
+                label: '퀘스트 목록', color: 0xF57C00, width: 180, height: 48,
+                callback: () => fadeToScene(this, SCENE_QUEST_SELECT),
+            });
+        } else {
+            createButton(this, {
+                x: GAME_WIDTH / 2 - 110, y: GAME_HEIGHT * 0.80,
+                label: 'RETRY', color: 0x4CAF50, width: 180, height: 48,
+                callback: () => fadeToScene(this, SCENE_GAME, { mode: this.lastMode }),
+            });
+            createButton(this, {
+                x: GAME_WIDTH / 2 + 110, y: GAME_HEIGHT * 0.80,
+                label: 'ONSEN', color: 0xFF8C00, width: 180, height: 48,
+                callback: () => fadeToScene(this, SCENE_ONSEN),
+            });
+        }
 
         // 공유 + 메뉴 (같은 줄)
         createButton(this, {
@@ -261,6 +310,70 @@ export class GameOver extends Phaser.Scene {
                 fontFamily: FONT_FAMILY, fontSize: '15px', color,
             }).setOrigin(0.5);
         });
+    }
+
+    /**
+     * 퀘스트 모드 전용 결과 패널 표시
+     * 성공 시: 완료 메시지 + 귤 보상 표시
+     * 실패 시: 퀘스트 이름 + 실패 메시지
+     */
+    private showQuestResult(): void {
+        const questDef = this.questId
+            ? DEFAULT_QUESTS.find(q => q.id === this.questId) ?? null
+            : null;
+
+        const panelY = GAME_HEIGHT * 0.25;
+        const panelH = 140;
+
+        // 패널 배경
+        const panelBg = this.add.graphics();
+        if (this.questCompleted) {
+            panelBg.fillStyle(0x1B5E20, 0.85);
+        } else {
+            panelBg.fillStyle(0x4A0000, 0.85);
+        }
+        panelBg.fillRoundedRect(50, panelY, GAME_WIDTH - 100, panelH, 14);
+
+        // 퀘스트 이름
+        const questName = questDef ? questDef.description : '퀘스트';
+        this.add.text(GAME_WIDTH / 2, panelY + 18, questName, {
+            fontFamily: FONT_FAMILY,
+            fontSize: '20px',
+            color: '#FFFFFF',
+            fontStyle: 'bold',
+        }).setOrigin(0.5);
+
+        if (this.questCompleted) {
+            // 완료 메시지
+            this.add.text(GAME_WIDTH / 2, panelY + 52, '목표 달성!', {
+                fontFamily: FONT_FAMILY, fontSize: '26px', color: '#FFD700', fontStyle: 'bold',
+            }).setOrigin(0.5);
+
+            // 보상 귤 표시
+            this.add.text(GAME_WIDTH / 2, panelY + 90, `귤 +${this.questRewardMandarin}개 획득!`, {
+                fontFamily: FONT_FAMILY, fontSize: '20px', color: '#FFA726',
+            }).setOrigin(0.5);
+
+            // 반짝임 효과
+            const stars = this.add.text(GAME_WIDTH / 2, panelY + 118, '★ ★ ★', {
+                fontFamily: FONT_FAMILY, fontSize: '22px', color: '#FFD700',
+            }).setOrigin(0.5);
+            this.tweens.add({
+                targets: stars, alpha: 0.3, duration: 600,
+                yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+            });
+        } else {
+            // 실패 메시지
+            this.add.text(GAME_WIDTH / 2, panelY + 52, '목표 미달..', {
+                fontFamily: FONT_FAMILY, fontSize: '24px', color: '#EF9A9A',
+            }).setOrigin(0.5);
+
+            if (questDef) {
+                this.add.text(GAME_WIDTH / 2, panelY + 88, `다시 도전해보세요!`, {
+                    fontFamily: FONT_FAMILY, fontSize: '18px', color: '#AAAAAA',
+                }).setOrigin(0.5);
+            }
+        }
     }
 
 }

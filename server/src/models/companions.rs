@@ -6,6 +6,7 @@ pub const VALID_IDS: &[&str] = &["none", "otter", "duck", "turtle"];
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct CompanionRow {
     #[serde(skip_serializing)]
+    #[allow(dead_code)]
     pub user_id: String,
     pub selected_companion: String,
     pub unlocked_companions: String,

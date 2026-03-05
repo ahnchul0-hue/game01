@@ -49,9 +49,41 @@ export default defineConfig({
         VitePWA({
             registerType: 'autoUpdate',
             workbox: {
-                globPatterns: ['**/*.{js,css,html,png,jpg,svg,woff2}'],
+                // 로컬 번들: JS/CSS/HTML + 이미지(png/jpg/svg/webp/gif) + 오디오(mp3/ogg/wav) + 폰트(woff2/woff/ttf)
+                globPatterns: ['**/*.{js,css,html,png,jpg,jpeg,svg,webp,gif,mp3,ogg,wav,woff2,woff,ttf}'],
                 navigateFallback: 'index.html',
                 runtimeCaching: [
+                    // Google Fonts CSS (스타일시트) — StaleWhileRevalidate: 빠른 응답 + 백그라운드 갱신
+                    {
+                        urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+                        handler: 'StaleWhileRevalidate',
+                        options: {
+                            cacheName: 'google-fonts-stylesheets',
+                            expiration: {
+                                maxEntries: 10,
+                                maxAgeSeconds: 60 * 60 * 24 * 30, // 30일
+                            },
+                            cacheableResponse: {
+                                statuses: [0, 200],
+                            },
+                        },
+                    },
+                    // Google Fonts 실제 폰트 파일 (fonts.gstatic.com) — CacheFirst: 한 번 받으면 로컬 우선
+                    {
+                        urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+                        handler: 'CacheFirst',
+                        options: {
+                            cacheName: 'google-fonts-webfonts',
+                            expiration: {
+                                maxEntries: 20,
+                                maxAgeSeconds: 60 * 60 * 24 * 30, // 30일
+                            },
+                            cacheableResponse: {
+                                statuses: [0, 200],
+                            },
+                        },
+                    },
+                    // API 요청은 항상 네트워크 (캐싱 금지)
                     {
                         urlPattern: /\/api\//,
                         handler: 'NetworkOnly',

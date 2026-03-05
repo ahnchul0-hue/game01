@@ -25,6 +25,18 @@ interface SegmentCache {
 }
 
 /**
+ * 레인 대시 LUT (Look-Up Table) 항목.
+ * z 그리드의 각 샘플 지점에 대한 사전 계산 투영값.
+ */
+interface LaneDashLUT {
+    screenY: number;
+    edgeRight: number; // CENTER_X 기준 오른쪽 가장자리 X (왼쪽은 -edgeRight로 대칭)
+}
+
+/** 레인 대시 LUT 해상도 (z=[0,1]을 몇 단계로 분할할지) */
+const LANE_DASH_LUT_SIZE = 128;
+
+/**
  * 의사-3D 원근 도로 렌더러 (최적화 버전).
  *
  * 최적화 전략:
@@ -40,6 +52,12 @@ export class RoadRenderer {
 
     // 세그먼트 투영 좌표 캐시 (생성자에서 1회 계산)
     private segmentCache: SegmentCache[] = [];
+
+    // 레인 대시 투영 LUT: z=[0,1]을 LANE_DASH_LUT_SIZE 단계로 분할하여 사전 계산
+    // projectZ / getRoadEdgeX는 순수 함수이므로 화면 크기가 변하지 않는 한 유효
+    private laneDashLUT: LaneDashLUT[] = [];
+    // LUT 유효 여부 (화면 크기 변경 시 false로 초기화)
+    private laneDashLUTDirty = true;
 
     // 대시 마킹 이동용 오프셋 (0~1 루프)
     private dashOffset = 0;
@@ -86,6 +104,9 @@ export class RoadRenderer {
 
         // 세그먼트 투영 좌표 사전 계산 (z값은 고정이므로 1회만)
         this.buildSegmentCache();
+
+        // 레인 대시 LUT 사전 계산 (화면 크기가 변하지 않는 한 1회만)
+        this.buildLaneDashLUT();
     }
 
     /** 세그먼트별 투영 좌표를 1회 계산하여 캐시 */
@@ -104,6 +125,51 @@ export class RoadRenderer {
                 leftX1: edge1.left, rightX1: edge1.right,
             });
         }
+    }
+
+    /**
+     * 레인 대시 투영 LUT를 구축한다.
+     *
+     * z=[0,1] 구간을 LANE_DASH_LUT_SIZE 개 샘플로 분할하여
+     * projectZ()와 getRoadEdgeX()를 사전 계산한다.
+     * 화면 크기(VANISH_Y, ROAD_HEIGHT 등 Constants)가 변하지 않는 한
+     * 생성자에서 1회만 호출하면 된다.
+     */
+    private buildLaneDashLUT(): void {
+        this.laneDashLUT = new Array(LANE_DASH_LUT_SIZE + 1);
+        for (let i = 0; i <= LANE_DASH_LUT_SIZE; i++) {
+            const z = i / LANE_DASH_LUT_SIZE;
+            const { screenY } = PerspectiveCamera.projectZ(z);
+            const { right } = PerspectiveCamera.getRoadEdgeX(z);
+            this.laneDashLUT[i] = { screenY, edgeRight: right };
+        }
+        this.laneDashLUTDirty = false;
+    }
+
+    /**
+     * LUT에서 z값에 대한 투영 결과를 선형 보간하여 반환.
+     *
+     * z를 [0, LANE_DASH_LUT_SIZE] 인덱스로 매핑한 뒤
+     * 인접 두 샘플을 보간하므로 projectZ() 직접 호출 대비
+     * 오차는 무시할 수준(<0.1px)이고 연산 비용은 크게 절감된다.
+     */
+    private sampleLaneDash(z: number): LaneDashLUT {
+        // LUT가 무효화된 경우 재빌드 (화면 크기 변경 등)
+        if (this.laneDashLUTDirty) {
+            this.buildLaneDashLUT();
+        }
+
+        const raw = Math.max(0, Math.min(1, z)) * LANE_DASH_LUT_SIZE;
+        const lo = Math.floor(raw);
+        const hi = Math.min(lo + 1, LANE_DASH_LUT_SIZE);
+        const frac = raw - lo;
+
+        const a = this.laneDashLUT[lo];
+        const b = this.laneDashLUT[hi];
+        return {
+            screenY: a.screenY + (b.screenY - a.screenY) * frac,
+            edgeRight: a.edgeRight + (b.edgeRight - a.edgeRight) * frac,
+        };
     }
 
     /**
@@ -175,6 +241,21 @@ export class RoadRenderer {
         this.startGroundColor = this.groundColor;
         this.startRoadColor = this.roadColor;
         this.transitionProgress = 1;
+        this.skyDirty = true;
+        this.roadDirty = true;
+    }
+
+    /**
+     * 화면 크기가 변경되었을 때 호출.
+     *
+     * PerspectiveCamera의 투영 결과(screenY, edgeX)는 Constants의
+     * VANISH_Y / ROAD_HEIGHT 등에 의존하므로, 런타임에 화면 크기가
+     * 바뀌는 경우 LUT와 segmentCache를 재빌드해야 한다.
+     * (현재 게임은 고정 해상도이지만 향후 리사이즈 대응을 위해 제공)
+     */
+    onResize(): void {
+        this.buildSegmentCache();
+        this.buildLaneDashLUT();
         this.skyDirty = true;
         this.roadDirty = true;
     }
@@ -264,7 +345,7 @@ export class RoadRenderer {
         this.staticRoadGfx.strokePath();
     }
 
-    /** 레인 사이 점선 */
+    /** 레인 사이 점선 — LUT로 projectZ/getRoadEdgeX 캐시 활용 */
     private drawLaneDashes(lanePos: number): void {
         this.stripeGfx.lineStyle(1, this.laneColor, 0.25);
 
@@ -273,22 +354,21 @@ export class RoadRenderer {
             const z0 = baseZ;
             const z1 = Math.min(baseZ + DASH_LENGTH, 1);
 
-            const { screenY: y0 } = PerspectiveCamera.projectZ(z0);
-            const { screenY: y1 } = PerspectiveCamera.projectZ(z1);
+            // projectZ + getRoadEdgeX를 LUT 조회로 대체 (매프레임 재계산 방지)
+            const s0 = this.sampleLaneDash(z0);
+            const s1 = this.sampleLaneDash(z1);
 
-            const edge0 = PerspectiveCamera.getRoadEdgeX(z0);
-            const edge1 = PerspectiveCamera.getRoadEdgeX(z1);
-            const x0 = CENTER_X + (edge0.right - CENTER_X) * lanePos * 2 / 3 * 2;
-            const x1 = CENTER_X + (edge1.right - CENTER_X) * lanePos * 2 / 3 * 2;
+            const x0 = CENTER_X + (s0.edgeRight - CENTER_X) * lanePos * 2 / 3 * 2;
+            const x1 = CENTER_X + (s1.edgeRight - CENTER_X) * lanePos * 2 / 3 * 2;
 
             this.stripeGfx.beginPath();
-            this.stripeGfx.moveTo(x0, y0);
-            this.stripeGfx.lineTo(x1, y1);
+            this.stripeGfx.moveTo(x0, s0.screenY);
+            this.stripeGfx.lineTo(x1, s1.screenY);
             this.stripeGfx.strokePath();
         }
     }
 
-    /** 속도에 맞춰 이동하는 중앙 대시 마킹 */
+    /** 속도에 맞춰 이동하는 중앙 대시 마킹 — LUT로 projectZ 캐시 활용 */
     private drawMovingDashes(): void {
         this.stripeGfx.lineStyle(2, 0xFFFF00, 0.4);
 
@@ -297,8 +377,9 @@ export class RoadRenderer {
             const z0 = baseZ;
             const z1 = Math.min(baseZ + DASH_LENGTH * 0.5, 1);
 
-            const { screenY: y0 } = PerspectiveCamera.projectZ(z0);
-            const { screenY: y1 } = PerspectiveCamera.projectZ(z1);
+            // screenY만 LUT 조회로 대체 (edgeRight는 중앙선이므로 불필요)
+            const y0 = this.sampleLaneDash(z0).screenY;
+            const y1 = this.sampleLaneDash(z1).screenY;
 
             this.stripeGfx.beginPath();
             this.stripeGfx.moveTo(CENTER_X, y0);

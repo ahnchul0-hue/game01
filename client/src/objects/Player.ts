@@ -269,6 +269,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     getIsSliding(): boolean { return this.isSliding; }
     getIsJumping(): boolean { return this.isJumping; }
     getCurrentLane(): number { return this.currentLane; }
+    getHasTube(): boolean { return this.hasTube; }
 
     // ========== 파워업 메서드 ==========
 

@@ -5,6 +5,19 @@ PROJECT_DIR="/home/cc2/game01"
 
 echo "=== Capybara Runner Deploy ==="
 
+# 0. Pre-deploy DB backup
+echo "[0/4] Backing up database before deploy..."
+BACKUP_SCRIPT="$PROJECT_DIR/deploy/backup-db.sh"
+if [ ! -f "$BACKUP_SCRIPT" ]; then
+    echo "ERROR: Backup script not found at $BACKUP_SCRIPT — aborting deploy."
+    exit 1
+fi
+if ! bash "$BACKUP_SCRIPT"; then
+    echo "ERROR: Database backup failed — aborting deploy."
+    exit 1
+fi
+echo "[0/4] Database backup successful."
+
 echo "=== Running client tests ==="
 cd "$PROJECT_DIR/client" && npm test && cd "$PROJECT_DIR"
 

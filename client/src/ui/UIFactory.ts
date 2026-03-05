@@ -37,10 +37,17 @@ export function fadeIn(scene: Phaser.Scene): void {
     scene.cameras.main.fadeIn(FADE_DURATION, 0, 0, 0);
 }
 
+export interface ButtonHandle {
+    container: Phaser.GameObjects.Container;
+    hitArea: Phaser.GameObjects.Zone;
+    setVisible(v: boolean): void;
+}
+
 /**
  * Shared UI button factory — replaces duplicated createButton across 5 scenes.
+ * Returns a ButtonHandle so callers can show/hide the button programmatically.
  */
-export function createButton(scene: Phaser.Scene, config: ButtonConfig): void {
+export function createButton(scene: Phaser.Scene, config: ButtonConfig): ButtonHandle {
     const {
         x, y, label, color, callback,
         width: btnW = 240,
@@ -82,4 +89,20 @@ export function createButton(scene: Phaser.Scene, config: ButtonConfig): void {
             callback();
         });
     });
+
+    const handle: ButtonHandle = {
+        container,
+        hitArea,
+        setVisible(v: boolean): void {
+            container.setVisible(v);
+            hitArea.setVisible(v);
+            // 숨김 상태일 때 인터랙션도 비활성화하여 클릭 관통 방지
+            if (v) {
+                hitArea.setInteractive({ useHandCursor: true });
+            } else {
+                hitArea.disableInteractive();
+            }
+        },
+    };
+    return handle;
 }

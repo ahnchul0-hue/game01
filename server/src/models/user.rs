@@ -28,13 +28,6 @@ pub async fn create_user(pool: &SqlitePool) -> Result<UserResponse, sqlx::Error>
     Ok(UserResponse { id, token })
 }
 
-pub async fn find_by_id(pool: &SqlitePool, id: &str) -> Result<User, sqlx::Error> {
-    sqlx::query_as::<_, User>("SELECT id, token, created_at FROM users WHERE id = ?")
-        .bind(id)
-        .fetch_one(pool)
-        .await
-}
-
 pub async fn find_by_token(pool: &SqlitePool, token: &str) -> Result<User, sqlx::Error> {
     sqlx::query_as::<_, User>("SELECT id, token, created_at FROM users WHERE token = ?")
         .bind(token)

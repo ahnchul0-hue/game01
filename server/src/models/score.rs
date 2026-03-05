@@ -58,15 +58,6 @@ pub async fn create_score(
     })
 }
 
-pub async fn find_by_id(pool: &SqlitePool, id: &str) -> Result<Score, sqlx::Error> {
-    sqlx::query_as::<_, Score>(
-        "SELECT id, user_id, score, distance, items_collected, created_at FROM scores WHERE id = ?",
-    )
-    .bind(id)
-    .fetch_one(pool)
-    .await
-}
-
 pub async fn get_top_scores(pool: &SqlitePool, limit: i64) -> Result<Vec<Score>, sqlx::Error> {
     sqlx::query_as::<_, Score>(
         "SELECT id, user_id, score, distance, items_collected, created_at FROM scores ORDER BY score DESC LIMIT ?",

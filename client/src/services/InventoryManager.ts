@@ -168,39 +168,39 @@ export class InventoryManager {
     // --- Server sync ---
 
     async syncFromServer(): Promise<void> {
-        try {
-            const [inv, layoutJson, skins, companions] = await Promise.all([
-                this.api.getInventory(),
-                this.api.getOnsenLayout(),
-                this.api.getSkins(),
-                this.api.getCompanions(),
-            ]);
+        const results = await Promise.allSettled([
+            this.api.getInventory(),
+            this.api.getOnsenLayout(),
+            this.api.getSkins(),
+            this.api.getCompanions(),
+        ]);
 
-            if (inv) {
-                // 머지 전략: 로컬 vs 서버 중 더 큰 값 유지 (오프라인 수집 데이터 보호)
-                const local = this.getInventory();
-                this.saveInventory({
-                    mandarin: Math.max(local.mandarin, inv.mandarin),
-                    watermelon: Math.max(local.watermelon, inv.watermelon),
-                    hotspring_material: Math.max(local.hotspring_material, inv.hotspring_material),
-                });
-            }
+        const [invResult, layoutResult, skinsResult, companionsResult] = results;
 
-            if (layoutJson) {
-                localStorage.setItem(LS_KEY_ONSEN_LAYOUT, layoutJson);
-            }
+        if (invResult.status === 'fulfilled' && invResult.value) {
+            const inv = invResult.value;
+            const local = this.getInventory();
+            this.saveInventory({
+                mandarin: Math.max(local.mandarin, inv.mandarin),
+                watermelon: Math.max(local.watermelon, inv.watermelon),
+                hotspring_material: Math.max(local.hotspring_material, inv.hotspring_material),
+            });
+        }
 
-            if (skins) {
-                localStorage.setItem(LS_KEY_SELECTED_SKIN, skins.selected_skin);
-                localStorage.setItem(LS_KEY_UNLOCKED_SKINS, skins.unlocked_skins);
-            }
+        if (layoutResult.status === 'fulfilled' && layoutResult.value) {
+            localStorage.setItem(LS_KEY_ONSEN_LAYOUT, layoutResult.value);
+        }
 
-            if (companions) {
-                localStorage.setItem(LS_KEY_SELECTED_COMPANION, companions.selected_companion);
-                localStorage.setItem(LS_KEY_UNLOCKED_COMPANIONS, companions.unlocked_companions);
-            }
-        } catch {
-            // offline — use localStorage values
+        if (skinsResult.status === 'fulfilled' && skinsResult.value) {
+            const skins = skinsResult.value;
+            localStorage.setItem(LS_KEY_SELECTED_SKIN, skins.selected_skin);
+            localStorage.setItem(LS_KEY_UNLOCKED_SKINS, skins.unlocked_skins);
+        }
+
+        if (companionsResult.status === 'fulfilled' && companionsResult.value) {
+            const companions = companionsResult.value;
+            localStorage.setItem(LS_KEY_SELECTED_COMPANION, companions.selected_companion);
+            localStorage.setItem(LS_KEY_UNLOCKED_COMPANIONS, companions.unlocked_companions);
         }
     }
 }

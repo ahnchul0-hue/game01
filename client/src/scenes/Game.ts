@@ -33,21 +33,26 @@ import {
     MAGNET_Z_RANGE,
     FONT_FAMILY,
 } from '../utils/Constants';
-import type { GameMode, CollectedItems, OnsenBuff, CompanionAbility } from '../utils/Constants';
+import type { GameMode, CollectedItems, OnsenBuff, CompanionAbility, StageType } from '../utils/Constants';
 import { NO_COMPANION_ABILITY } from '../utils/Constants';
 import { getOnsenLevel, getOnsenBuff, getCompanionAbility } from '../utils/OnsenLogic';
 import { InventoryManager } from '../services/InventoryManager';
-import { SoundManager } from '../services/SoundManager';
+import { SoundManager, type BgmName } from '../services/SoundManager';
 import { fadeToScene } from '../ui/UIFactory';
 import { InputController } from '../ui/InputController';
 import { ReviveUI } from '../ui/ReviveUI';
 import { GameHUD } from '../ui/GameHUD';
+import { PauseOverlay } from '../ui/PauseOverlay';
+import { TutorialOverlay } from '../ui/TutorialOverlay';
 import { ComboManager } from '../systems/ComboManager';
+import { QuestManager } from '../systems/QuestManager';
+import { QUEST_COMPLETION_BONUS_SCORE } from '../utils/Constants';
 
 type GameState = 'playing' | 'paused' | 'revivePrompt' | 'gameOver';
 
 interface GameInitData {
     mode?: GameMode;
+    questId?: string;
 }
 
 export class Game extends Phaser.Scene {
@@ -100,11 +105,15 @@ export class Game extends Phaser.Scene {
     private reviveUI!: ReviveUI;
 
     // 튜토리얼
-    private tutorialContainer: Phaser.GameObjects.Container | null = null;
+    private tutorialOverlay: TutorialOverlay | null = null;
 
     // 일시정지
-    private pauseContainer: Phaser.GameObjects.Container | null = null;
+    private pauseOverlay: PauseOverlay | null = null;
     private resumeCooldown = false;
+
+    // 퀘스트 모드
+    private questManager: QuestManager | null = null;
+    private questId: string | null = null;
 
     // 착지 감지 (먼지 파티클용)
     private wasJumping = false;
@@ -129,11 +138,19 @@ export class Game extends Phaser.Scene {
         this.dodgedObstacles = 0;
         this.prevActiveObstacles = new Set();
         this.currentActiveObstacles = new Set();
-        this.tutorialContainer = null;
-        this.pauseContainer = null;
+        this.tutorialOverlay = null;
+        this.pauseOverlay = null;
         this.wasJumping = false;
         this.combo.reset();
         this.resumeCooldown = false;
+
+        // 퀘스트 모드 초기화
+        this.questId = data.questId ?? null;
+        if (this.mode === 'quest' && this.questId) {
+            this.questManager = QuestManager.fromId(this.questId);
+        } else {
+            this.questManager = null;
+        }
     }
 
     shutdown(): void {
@@ -142,13 +159,13 @@ export class Game extends Phaser.Scene {
         this.time.removeAllEvents();
         this.cameras.main.resetFX();
         if (this.reviveUI) this.reviveUI.destroy();
-        if (this.tutorialContainer) {
-            this.tutorialContainer.destroy();
-            this.tutorialContainer = null;
+        if (this.tutorialOverlay) {
+            this.tutorialOverlay.destroy();
+            this.tutorialOverlay = null;
         }
-        if (this.pauseContainer) {
-            this.pauseContainer.destroy();
-            this.pauseContainer = null;
+        if (this.pauseOverlay) {
+            this.pauseOverlay.destroy();
+            this.pauseOverlay = null;
         }
         if (this.hud) this.hud.destroy();
         if (this.effectManager) this.effectManager.destroy();
@@ -161,6 +178,10 @@ export class Game extends Phaser.Scene {
         // 릴렉스 모드: 따뜻한 배경색
         if (this.mode === 'relax') {
             this.cameras.main.setBackgroundColor('#FFF3E0');
+        }
+        // 퀘스트 모드: 약간 다른 배경색으로 구분
+        if (this.mode === 'quest') {
+            this.cameras.main.setBackgroundColor('#FFF8E1');
         }
 
         // 의사-3D 렌더링
@@ -196,7 +217,7 @@ export class Game extends Phaser.Scene {
         this.spawnManager = new SpawnManager(this.obstaclePool, this.itemPool, this.powerUpPool, this.difficulty);
 
         // 스테이지/이펙트 매니저 (RoadRenderer와 연동)
-        this.stageManager = new StageManager(this, this.roadRenderer);
+        this.stageManager = new StageManager(this, this.roadRenderer, this.mode);
         this.effectManager = new EffectManager(this);
 
         // M2: 충돌 감지
@@ -240,17 +261,25 @@ export class Game extends Phaser.Scene {
         // HUD (score, distance, items, power-up timers, combo, popups)
         this.hud = new GameHUD(this, this.mode === 'relax', this.onsenBuff.scoreMultiplier);
 
+        // 퀘스트 모드: 퀘스트 진행 HUD
+        if (this.mode === 'quest' && this.questManager) {
+            this.createQuestHUD();
+        }
+
         // 일시정지 버튼
         const pauseBtn = this.add.text(GAME_WIDTH - 20, GAME_HEIGHT - 40, '❚❚', {
             fontFamily: FONT_FAMILY, fontSize: '32px', color: '#FFFFFF',
             stroke: '#000000', strokeThickness: 3,
+            padding: { left: 10, right: 10, top: 4, bottom: 4 },
         }).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100).setInteractive({ useHandCursor: true });
         pauseBtn.on('pointerdown', () => {
             if (this.state === 'playing' && !this.resumeCooldown) this.pauseGame();
         });
 
-        // 게임 BGM
-        SoundManager.getInstance().playBgm(this.mode === 'relax' ? 'bgm-onsen' : 'bgm-game');
+        // 게임 BGM: 릴렉스 모드는 bgm-onsen 고정, 노멀 모드는 현재 스테이지 BGM
+        SoundManager.getInstance().playBgm(
+            this.mode === 'relax' ? 'bgm-onsen' : this._stageBgm(this.stageManager.getCurrentStage()),
+        );
 
         // 첫 플레이 튜토리얼
         if (!localStorage.getItem(LS_KEY_TUTORIAL_DONE)) {
@@ -258,69 +287,44 @@ export class Game extends Phaser.Scene {
         }
     }
 
+    /** G3: 스테이지 타입 → BGM 키 매핑 */
+    private _stageBgm(stage: StageType): BgmName {
+        const map: Record<StageType, BgmName> = {
+            forest: 'bgm-forest',
+            river: 'bgm-river',
+            village: 'bgm-village',
+            onsen: 'bgm-onsen-stage',
+        };
+        return map[stage] ?? 'bgm-game';
+    }
+
     private pauseGame(): void {
         this.state = 'paused';
         this.physics.pause();
         SoundManager.getInstance().stopBgm();
 
-        this.pauseContainer = this.add.container(0, 0).setDepth(400);
-
-        const overlay = this.add.graphics();
-        overlay.fillStyle(0x000000, 0.5);
-        overlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-        this.pauseContainer.add(overlay);
-
-        const pauseText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 80, '일시정지', {
-            fontFamily: FONT_FAMILY, fontSize: '48px', color: '#FFFFFF', fontStyle: 'bold',
-        }).setOrigin(0.5);
-        this.pauseContainer.add(pauseText);
-
-        // RESUME 버튼
-        const resumeBg = this.add.graphics();
-        resumeBg.fillStyle(0x4CAF50, 1);
-        resumeBg.fillRoundedRect(GAME_WIDTH / 2 - 120, GAME_HEIGHT / 2 - 10, 240, 60, 12);
-        this.pauseContainer.add(resumeBg);
-
-        const resumeLabel = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20, '계속하기', {
-            fontFamily: FONT_FAMILY, fontSize: '28px', color: '#FFFFFF', fontStyle: 'bold',
-        }).setOrigin(0.5);
-        this.pauseContainer.add(resumeLabel);
-
-        const resumeZone = this.add.zone(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20, 240, 60)
-            .setInteractive({ useHandCursor: true });
-        this.pauseContainer.add(resumeZone);
-        resumeZone.once('pointerdown', () => this.resumeGame());
-
-        // MENU 버튼
-        const menuBg = this.add.graphics();
-        menuBg.fillStyle(0x757575, 1);
-        menuBg.fillRoundedRect(GAME_WIDTH / 2 - 120, GAME_HEIGHT / 2 + 70, 240, 60, 12);
-        this.pauseContainer.add(menuBg);
-
-        const menuLabel = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100, '메인 메뉴', {
-            fontFamily: FONT_FAMILY, fontSize: '28px', color: '#FFFFFF', fontStyle: 'bold',
-        }).setOrigin(0.5);
-        this.pauseContainer.add(menuLabel);
-
-        const menuZone = this.add.zone(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 100, 240, 60)
-            .setInteractive({ useHandCursor: true });
-        this.pauseContainer.add(menuZone);
-        menuZone.once('pointerdown', () => {
-            this.pauseContainer?.destroy();
-            this.pauseContainer = null;
-            this.physics.resume();
-            fadeToScene(this, SCENE_MAIN_MENU);
-        });
+        this.pauseOverlay = new PauseOverlay(
+            this,
+            () => this.resumeGame(),
+            () => {
+                this.pauseOverlay?.destroy();
+                this.pauseOverlay = null;
+                this.physics.resume();
+                fadeToScene(this, SCENE_MAIN_MENU);
+            },
+        );
     }
 
     private resumeGame(): void {
-        if (this.pauseContainer) {
-            this.pauseContainer.destroy();
-            this.pauseContainer = null;
+        if (this.pauseOverlay) {
+            this.pauseOverlay.destroy();
+            this.pauseOverlay = null;
         }
         this.physics.resume();
         this.state = 'playing';
-        SoundManager.getInstance().playBgm(this.mode === 'relax' ? 'bgm-onsen' : 'bgm-game');
+        SoundManager.getInstance().playBgm(
+            this.mode === 'relax' ? 'bgm-onsen' : this._stageBgm(this.stageManager.getCurrentStage()),
+        );
         // Prevent immediate re-pause (100ms cooldown)
         this.resumeCooldown = true;
         this.time.delayedCall(100, () => { this.resumeCooldown = false; });
@@ -329,43 +333,11 @@ export class Game extends Phaser.Scene {
     private showTutorial(): void {
         this.state = 'paused';
         this.physics.pause();
-        this.tutorialContainer = this.add.container(0, 0).setDepth(400);
 
-        const overlay = this.add.graphics();
-        overlay.fillStyle(0x000000, 0.5);
-        overlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-        this.tutorialContainer.add(overlay);
-
-        const hints = [
-            { icon: '←  →', desc: '좌우 스와이프: 레인 이동', y: GAME_HEIGHT / 2 - 100 },
-            { icon: '↑', desc: '위로 스와이프: 점프', y: GAME_HEIGHT / 2 - 30 },
-            { icon: '↓', desc: '아래로 스와이프: 슬라이드', y: GAME_HEIGHT / 2 + 40 },
-        ];
-
-        for (const h of hints) {
-            const iconText = this.add.text(GAME_WIDTH / 2 - 120, h.y, h.icon, {
-                fontFamily: FONT_FAMILY, fontSize: '32px', color: '#FFD700', fontStyle: 'bold',
-            }).setOrigin(0.5);
-            const descText = this.add.text(GAME_WIDTH / 2 + 40, h.y, h.desc, {
-                fontFamily: FONT_FAMILY, fontSize: '22px', color: '#FFFFFF',
-            }).setOrigin(0, 0.5);
-            this.tutorialContainer.add([iconText, descText]);
-        }
-
-        const tapText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 140, '탭하여 시작', {
-            fontFamily: FONT_FAMILY, fontSize: '28px', color: '#FFFFFF', fontStyle: 'bold',
-        }).setOrigin(0.5);
-        this.tutorialContainer.add(tapText);
-        this.tweens.add({ targets: tapText, alpha: 0.3, duration: 600, yoyo: true, repeat: -1 });
-
-        const dismissZone = this.add.zone(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT)
-            .setInteractive();
-        this.tutorialContainer.add(dismissZone);
-
-        dismissZone.once('pointerdown', () => {
-            if (this.tutorialContainer) {
-                this.tutorialContainer.destroy();
-                this.tutorialContainer = null;
+        this.tutorialOverlay = new TutorialOverlay(this, () => {
+            if (this.tutorialOverlay) {
+                this.tutorialOverlay.destroy();
+                this.tutorialOverlay = null;
             }
             localStorage.setItem(LS_KEY_TUTORIAL_DONE, '1');
             this.physics.resume();
@@ -377,102 +349,117 @@ export class Game extends Phaser.Scene {
         if (this.state !== 'playing') return;
         if (!this.player || !this.player.active) return;
 
+        // C3: 시스템별 개별 try-catch (하나의 시스템 오류가 전체 게임을 중단하지 않도록)
+        let effectiveDelta = delta;
         try {
-        // M3: 슬로우모션 적용
-        this.effectManager.update(time);
-        const effectiveDelta = this.effectManager.isSlowmo ? delta * EFFECT_SLOWMO_SCALE : delta;
+            this.effectManager.update(time);
+            effectiveDelta = this.effectManager.isSlowmo ? delta * EFFECT_SLOWMO_SCALE : delta;
+        } catch (e) { console.error('[EffectManager] update error:', e); }
 
         const dt = effectiveDelta / 1000;
         const isRelax = this.mode === 'relax';
 
-        // 속도 증가 (DifficultyManager 사용)
-        this.gameSpeed = this.difficulty.getSpeed(this.distance, isRelax);
+        try {
+            this.gameSpeed = this.difficulty.getSpeed(this.distance, isRelax);
+        } catch (e) { console.error('[DifficultyManager] update error:', e); }
 
-        // 거리 누적
         this.distance += this.gameSpeed * dt;
 
-        // 의사-3D 렌더링 업데이트
-        const zSpeed = this.gameSpeed / ROAD_HEIGHT;
-        this.roadRenderer.update(this.gameSpeed, dt);
-        this.sceneryManager.update(zSpeed, dt);
-        this.speedLineRenderer.update(this.gameSpeed, dt);
+        try {
+            const zSpeed = this.gameSpeed / ROAD_HEIGHT;
+            this.roadRenderer.update(this.gameSpeed, dt);
+            this.sceneryManager.update(zSpeed, dt);
+            this.speedLineRenderer.update(this.gameSpeed, dt);
+        } catch (e) { console.error('[Renderer] update error:', e); }
 
-        // 키보드 입력 폴링
-        this.inputController.pollKeyboard();
+        try { this.inputController.pollKeyboard(); }
+        catch (e) { console.error('[InputController] error:', e); }
 
-        // 플레이어 업데이트
-        this.player.update();
-
-        // 착지 감지 → 먼지 파티클
-        const jumping = this.player.getIsJumping();
-        if (this.wasJumping && !jumping) {
-            this.effectManager.onLand(this.player.x, this.player.y);
-        }
-        this.wasJumping = jumping;
-
-        // M2: 스폰 업데이트
-        this.spawnManager.update(effectiveDelta, this.distance, this.gameSpeed, isRelax);
-
-        // 스테이지 전환 체크 + 스테이지 BGM 전환
-        const newStage = this.stageManager.update(this.distance);
-        if (newStage) {
-            this.effectManager.onStageTransition(newStage);
-            this.sceneryManager.setStageColors(newStage);
-            SoundManager.getInstance().playSfx('levelup');
-            if (newStage === 'onsen') {
-                SoundManager.getInstance().playBgm('bgm-onsen');
-            } else if (this.mode !== 'relax') {
-                SoundManager.getInstance().playBgm('bgm-game');
+        try {
+            this.player.update();
+            const jumping = this.player.getIsJumping();
+            if (this.wasJumping && !jumping) {
+                this.effectManager.onLand(this.player.x, this.player.y);
             }
-        }
+            this.wasJumping = jumping;
+            // G2: 오리 튜브 물결 이펙트
+            this.effectManager.setWaterEffect(this.player.getHasTube(), this.player.x, this.player.y);
+        } catch (e) { console.error('[Player] update error:', e); }
 
-        // 콤보 타이머 감소
-        const comboExpired = this.combo.update(effectiveDelta);
-        if (comboExpired) this.hud.updateCombo(0);
+        try {
+            this.spawnManager.update(effectiveDelta, this.distance, this.gameSpeed, isRelax);
+        } catch (e) { console.error('[SpawnManager] update error:', e); }
 
-        // 자동 수집: magnet(전레인) > friend(같은 레인 200) > 온천 버프 > 동물 친구
-        if (this.player.getHasMagnet()) {
-            this.autoCollectAllLanes(MAGNET_Z_RANGE);
-        } else if (this.player.getHasFriend()) {
-            this.autoCollectItems(200);
-        } else if (this.onsenBuff.itemMagnetRange > 0) {
-            this.autoCollectItems(this.onsenBuff.itemMagnetRange);
-        } else if (this.companionBuff.itemMagnetRange > 0) {
-            this.autoCollectItems(this.companionBuff.itemMagnetRange);
-        }
+        try {
+            const newStage = this.stageManager.update(this.distance);
+            if (newStage) {
+                this.effectManager.onStageTransition(newStage);
+                this.sceneryManager.setStageColors(newStage);
+                SoundManager.getInstance().playSfx('levelup');
+                // BGM 전환은 StageManager.transitionTo() 내부에서 처리
+            }
+        } catch (e) { console.error('[StageManager] update error:', e); }
 
-        // 회피 감지: 이전 프레임 활성 장애물 중 현재 비활성으로 전환된 것 = 플레이어가 회피
-        this.currentActiveObstacles.clear();
-        const obstacleChildren = this.obstaclePool.getGroup().getChildren();
-        for (const child of obstacleChildren) {
-            const obs = child as Obstacle;
-            if (obs.active) this.currentActiveObstacles.add(obs);
-        }
-        for (const obs of this.prevActiveObstacles) {
-            if (!obs.active) {
-                this.dodgedObstacles++;
-                // 니어미스: 인접 레인에서 피한 경우 (|레인차이| == 1)
-                const playerLane = this.player.getCurrentLane();
-                const obsLane = obs.laneOffset + 1; // -1,0,1 → 0,1,2
-                if (Math.abs(playerLane - obsLane) <= 1) {
-                    this.showNearMiss(obs.x, obs.y);
+        try {
+            const comboExpired = this.combo.update(effectiveDelta);
+            if (comboExpired) this.hud.updateCombo(0);
+        } catch (e) { console.error('[ComboManager] update error:', e); }
+
+        try {
+            if (this.player.getHasMagnet()) {
+                this.autoCollectAllLanes(MAGNET_Z_RANGE);
+            } else if (this.player.getHasFriend()) {
+                this.autoCollectItems(200);
+            } else if (this.onsenBuff.itemMagnetRange > 0) {
+                this.autoCollectItems(this.onsenBuff.itemMagnetRange);
+            } else if (this.companionBuff.itemMagnetRange > 0) {
+                this.autoCollectItems(this.companionBuff.itemMagnetRange);
+            }
+        } catch (e) { console.error('[AutoCollect] error:', e); }
+
+        try {
+            this.currentActiveObstacles.clear();
+            const obstacleChildren = this.obstaclePool.getGroup().getChildren();
+            for (const child of obstacleChildren) {
+                const obs = child as Obstacle;
+                if (obs.active) this.currentActiveObstacles.add(obs);
+            }
+            for (const obs of this.prevActiveObstacles) {
+                if (!obs.active) {
+                    this.dodgedObstacles++;
+                    const playerLane = this.player.getCurrentLane();
+                    const obsLane = obs.laneOffset + 1;
+                    if (Math.abs(playerLane - obsLane) <= 1) {
+                        this.showNearMiss(obs.x, obs.y);
+                    }
                 }
             }
-        }
-        // Swap refs so prevActiveObstacles points to the new set, reuse old set next frame
-        const tmp = this.prevActiveObstacles;
-        this.prevActiveObstacles = this.currentActiveObstacles;
-        this.currentActiveObstacles = tmp;
+            const tmp = this.prevActiveObstacles;
+            this.prevActiveObstacles = this.currentActiveObstacles;
+            this.currentActiveObstacles = tmp;
+        } catch (e) { console.error('[DodgeDetection] error:', e); }
 
-        // HUD 업데이트
-        this.hud.updateScore(this.score);
-        this.hud.updateDistance(this.distance);
-        const totalItems = this.collectedItems.mandarin + this.collectedItems.watermelon + this.collectedItems.hotspring_material;
-        this.hud.updateItems(totalItems);
-        this.hud.updatePowerUps(this.player.getActivePowerUpTimers());
-        } catch (err) {
-            console.error('[Game.update] error:', err);
-            this.triggerGameOver();
+        try {
+            this.hud.updateScore(this.score);
+            this.hud.updateDistance(this.distance);
+            const totalItems = this.collectedItems.mandarin + this.collectedItems.watermelon + this.collectedItems.hotspring_material;
+            this.hud.updateItems(totalItems);
+            this.hud.updatePowerUps(this.player.getActivePowerUpTimers());
+        } catch (e) { console.error('[GameHUD] update error:', e); }
+
+        // 퀘스트 모드: 진행도 업데이트 + 완료 감지
+        if (this.mode === 'quest' && this.questManager) {
+            try {
+                this.questManager.update(
+                    this.distance,
+                    this.collectedItems.mandarin,
+                    this.dodgedObstacles,
+                );
+                this.updateQuestHUD();
+                if (this.questManager.isComplete()) {
+                    this.triggerQuestComplete();
+                }
+            } catch (e) { console.error('[QuestManager] update error:', e); }
         }
     }
 
@@ -649,7 +636,7 @@ export class Game extends Phaser.Scene {
         if (this.state === 'gameOver') return;
         if (this.state === 'paused') {
             this.physics.resume();
-            if (this.pauseContainer) { this.pauseContainer.destroy(); this.pauseContainer = null; }
+            if (this.pauseOverlay) { this.pauseOverlay.destroy(); this.pauseOverlay = null; }
         }
         this.state = 'gameOver';
 
@@ -672,7 +659,121 @@ export class Game extends Phaser.Scene {
                 mode: this.mode,
                 collectedItems: { ...this.collectedItems },
                 dodgedObstacles: this.dodgedObstacles,
+                questId: this.questId ?? undefined,
+                questCompleted: false,
             });
         });
     }
+
+    /** 퀘스트 목표 달성 — 보상 지급 후 GameOver Scene으로 전환 */
+    private triggerQuestComplete(): void {
+        if (this.state === 'gameOver') return;
+        this.state = 'gameOver';
+
+        const snd = SoundManager.getInstance();
+        snd.stopBgm();
+        snd.playSfx('levelup');
+
+        // 퀘스트 완료 보너스 점수
+        this.score += QUEST_COMPLETION_BONUS_SCORE;
+        // 거리 보너스
+        this.score += Math.floor(this.distance * 0.5);
+
+        // 퀘스트 보상 귤을 인벤토리에 즉시 반영
+        const quest = this.questManager!.getQuest();
+        const inventoryMgr = InventoryManager.getInstance();
+        inventoryMgr.addItems({
+            mandarin: quest.rewardMandarin,
+            watermelon: 0,
+            hotspring_material: 0,
+        });
+
+        this.player.clearAllPowerUps();
+        this.reviveUI.hide();
+        this.physics.pause();
+
+        // 완료 연출 — 잠깐 대기 후 GameOver Scene으로 이동
+        this.time.delayedCall(600, () => {
+            if (!this.scene || !this.scene.isActive()) return;
+            fadeToScene(this, SCENE_GAME_OVER, {
+                score: this.score,
+                distance: Math.floor(this.distance),
+                mode: this.mode,
+                collectedItems: { ...this.collectedItems },
+                dodgedObstacles: this.dodgedObstacles,
+                questId: quest.id,
+                questCompleted: true,
+                questRewardMandarin: quest.rewardMandarin,
+            });
+        });
+    }
+
+    // ─── 퀘스트 HUD ─────────────────────────────────────────────
+
+    /** 퀘스트 진행 바 + 텍스트 (화면 상단) */
+    private questBarBg: Phaser.GameObjects.Graphics | null = null;
+    private questBarFill: Phaser.GameObjects.Graphics | null = null;
+    private questProgressText: Phaser.GameObjects.Text | null = null;
+
+    private createQuestHUD(): void {
+        if (!this.questManager) return;
+        const quest = this.questManager.getQuest();
+        const BAR_X = 60;
+        const BAR_Y = 44;
+        const BAR_W = GAME_WIDTH - 120;
+        const BAR_H = 14;
+
+        // 배경 바
+        this.questBarBg = this.add.graphics().setDepth(90);
+        this.questBarBg.fillStyle(0x000000, 0.35);
+        this.questBarBg.fillRoundedRect(BAR_X, BAR_Y, BAR_W, BAR_H, 7);
+
+        // 채움 바
+        this.questBarFill = this.add.graphics().setDepth(91);
+
+        // 목표 레이블 (매 프레임 갱신 불필요 — 지역 변수로 유지)
+        this.add.text(GAME_WIDTH / 2, BAR_Y - 18, `퀘스트: ${quest.description}`, {
+            fontFamily: FONT_FAMILY,
+            fontSize: '16px',
+            color: '#FFCC80',
+            stroke: '#000000',
+            strokeThickness: 2,
+        }).setOrigin(0.5, 0).setDepth(92);
+
+        // 진행 텍스트
+        this.questProgressText = this.add.text(GAME_WIDTH / 2, BAR_Y + BAR_H + 4, '0%', {
+            fontFamily: FONT_FAMILY,
+            fontSize: '14px',
+            color: '#FFFFFF',
+            stroke: '#000000',
+            strokeThickness: 2,
+        }).setOrigin(0.5, 0).setDepth(92);
+    }
+
+    private updateQuestHUD(): void {
+        if (!this.questManager || !this.questBarFill || !this.questProgressText) return;
+
+        const pct = this.questManager.getProgress();
+        const quest = this.questManager.getQuest();
+        const current = this.questManager.getCurrent();
+
+        const BAR_X = 60;
+        const BAR_Y = 44;
+        const BAR_W = GAME_WIDTH - 120;
+        const BAR_H = 14;
+        const fillW = Math.floor((BAR_W * pct) / 100);
+
+        this.questBarFill.clear();
+        // 완료 직전(90%+)은 금색, 나머지는 주황
+        const fillColor = pct >= 90 ? 0xFFD700 : 0xFF7043;
+        this.questBarFill.fillStyle(fillColor, 1);
+        if (fillW > 0) {
+            this.questBarFill.fillRoundedRect(BAR_X, BAR_Y, fillW, BAR_H, 7);
+        }
+
+        // 진행 텍스트 갱신
+        const unit = quest.type === 'distance' ? 'm' : '개';
+        this.questProgressText.setText(`${current} / ${quest.target}${unit}`);
+    }
 }
+

@@ -8,15 +8,19 @@ import {
     SCENE_SKIN_SELECT,
     SCENE_MISSIONS,
     SCENE_COMPANION_SELECT,
+    SCENE_QUEST_SELECT,
     FONT_FAMILY,
 } from '../utils/Constants';
 import { ApiClient } from '../services/ApiClient';
 import { InventoryManager } from '../services/InventoryManager';
 import { SoundManager } from '../services/SoundManager';
 import { createButton, fadeToScene, fadeIn } from '../ui/UIFactory';
+import { isSpecialEvent, getEventBanner, getSeasonTheme } from '../systems/SeasonManager';
 
 export class MainMenu extends Phaser.Scene {
     private onFirstPointer: (() => void) | null = null;
+    private onOnline: (() => void) | null = null;
+    private onOffline: (() => void) | null = null;
 
     constructor() {
         super(SCENE_MAIN_MENU);
@@ -25,6 +29,10 @@ export class MainMenu extends Phaser.Scene {
     shutdown(): void {
         if (this.onFirstPointer) this.input.off('pointerdown', this.onFirstPointer);
         this.onFirstPointer = null;
+        if (this.onOnline) window.removeEventListener('online', this.onOnline);
+        if (this.onOffline) window.removeEventListener('offline', this.onOffline);
+        this.onOnline = null;
+        this.onOffline = null;
         this.tweens.killAll();
     }
 
@@ -47,8 +55,9 @@ export class MainMenu extends Phaser.Scene {
         // 페이드인
         fadeIn(this);
 
-        // 배경
-        this.cameras.main.setBackgroundColor('#87CEEB');
+        // 시즌 테마 배경색 적용
+        const seasonTheme = getSeasonTheme();
+        this.cameras.main.setBackgroundColor(seasonTheme.bgCss);
 
         // 타이틀
         const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.2, 'Capybara Runner', {
@@ -77,45 +86,105 @@ export class MainMenu extends Phaser.Scene {
 
         // 시작 버튼
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.46,
-            label: 'START', color: 0x4CAF50, width: 280, height: 56, fontSize: '26px', radius: 14,
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.44,
+            label: 'START', color: 0x4CAF50, width: 280, height: 50, fontSize: '24px', radius: 14,
             callback: () => fadeToScene(this, SCENE_GAME, { mode: 'normal' }),
         });
 
         // 릴렉스 모드 버튼
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.53,
-            label: 'RELAX MODE', color: 0x81C784, width: 280, height: 56, fontSize: '26px', radius: 14,
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.505,
+            label: 'RELAX MODE', color: 0x81C784, width: 280, height: 50, fontSize: '24px', radius: 14,
             callback: () => fadeToScene(this, SCENE_GAME, { mode: 'relax' }),
+        });
+
+        // 퀘스트 모드 버튼
+        createButton(this, {
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.57,
+            label: 'QUEST', color: 0xF57C00, width: 280, height: 50, fontSize: '24px', radius: 14,
+            callback: () => fadeToScene(this, SCENE_QUEST_SELECT),
         });
 
         // 온천 버튼
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.60,
-            label: 'ONSEN', color: 0xFF8C00, width: 280, height: 56, fontSize: '26px', radius: 14,
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.635,
+            label: 'ONSEN', color: 0xFF8C00, width: 280, height: 50, fontSize: '24px', radius: 14,
             callback: () => fadeToScene(this, SCENE_ONSEN),
         });
 
         // 스킨 버튼
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.67,
-            label: 'SKINS', color: 0x8B008B, width: 280, height: 56, fontSize: '26px', radius: 14,
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.70,
+            label: 'SKINS', color: 0x8B008B, width: 280, height: 50, fontSize: '24px', radius: 14,
             callback: () => fadeToScene(this, SCENE_SKIN_SELECT),
         });
 
         // 동물 친구 버튼
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.74,
-            label: 'COMPANIONS', color: 0x2E7D32, width: 280, height: 56, fontSize: '26px', radius: 14,
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.765,
+            label: 'COMPANIONS', color: 0x2E7D32, width: 280, height: 50, fontSize: '24px', radius: 14,
             callback: () => fadeToScene(this, SCENE_COMPANION_SELECT),
         });
 
         // 미션 버튼
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.81,
-            label: '미션', color: 0x1565C0, width: 280, height: 56, fontSize: '26px', radius: 14,
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.83,
+            label: '미션', color: 0x1565C0, width: 280, height: 50, fontSize: '24px', radius: 14,
             callback: () => fadeToScene(this, SCENE_MISSIONS),
         });
+
+        // 특별 이벤트 배너 표시
+        if (isSpecialEvent()) {
+            const banner = getEventBanner();
+            if (banner) {
+                // 배너 배경 그래픽
+                const bannerGfx = this.add.graphics();
+                bannerGfx.fillStyle(banner.bgColor, 0.92);
+                bannerGfx.fillRoundedRect(
+                    GAME_WIDTH * 0.1,
+                    GAME_HEIGHT * 0.875,
+                    GAME_WIDTH * 0.8,
+                    52,
+                    12,
+                );
+                bannerGfx.setDepth(100);
+
+                // 배너 텍스트
+                const bannerText = this.add.text(
+                    GAME_WIDTH / 2,
+                    GAME_HEIGHT * 0.875 + 26,
+                    banner.text,
+                    {
+                        fontFamily: FONT_FAMILY,
+                        fontSize: '22px',
+                        color: banner.textColor,
+                        fontStyle: 'bold',
+                        stroke: '#00000033',
+                        strokeThickness: 2,
+                    },
+                ).setOrigin(0.5).setDepth(101);
+
+                // 배너 등장/사라짐 루프 애니메이션
+                this.tweens.add({
+                    targets: [bannerGfx, bannerText],
+                    alpha: { from: 0.85, to: 1 },
+                    duration: 900,
+                    ease: 'Sine.easeInOut',
+                    yoyo: true,
+                    repeat: -1,
+                });
+            }
+        }
+
+        // P5: 오프라인 상태 표시
+        const offlineBadge = this.add.text(GAME_WIDTH / 2, 10, 'OFFLINE', {
+            fontFamily: FONT_FAMILY, fontSize: '14px', color: '#FFFFFF',
+            backgroundColor: '#E53935', padding: { left: 12, right: 12, top: 4, bottom: 4 },
+        }).setOrigin(0.5, 0).setDepth(500).setVisible(!navigator.onLine);
+        this.onOnline = () => offlineBadge.setVisible(false);
+        this.onOffline = () => offlineBadge.setVisible(true);
+        window.addEventListener('online', this.onOnline);
+        window.addEventListener('offline', this.onOffline);
 
         // 사운드 컨트롤 (우측 하단)
         const controlY = GAME_HEIGHT - 30;

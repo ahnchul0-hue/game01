@@ -75,14 +75,15 @@ describe('POWERUP_CONFIGS', () => {
 });
 
 describe('OBSTACLE_CONFIGS', () => {
-    it('contains 5 obstacle types', () => {
+    it('contains 6 obstacle types', () => {
         const keys = Object.keys(OBSTACLE_CONFIGS) as ObstacleType[];
-        expect(keys).toHaveLength(5);
+        expect(keys).toHaveLength(6);
         expect(keys).toContain('rock');
         expect(keys).toContain('branch_high');
         expect(keys).toContain('puddle');
         expect(keys).toContain('barrier');
         expect(keys).toContain('car');
+        expect(keys).toContain('snake');
     });
 
     it('all have positive dimensions', () => {

@@ -27,6 +27,10 @@ export class EffectManager {
     private particleEmitter: Phaser.GameObjects.Particles.ParticleEmitter;
     private dustEmitter: Phaser.GameObjects.Particles.ParticleEmitter;
 
+    // G2: 오리 튜브 물 파티클
+    private waterEmitter: Phaser.GameObjects.Particles.ParticleEmitter;
+    private waterActive = false;
+
     constructor(scene: Phaser.Scene) {
         this.scene = scene;
 
@@ -53,6 +57,19 @@ export class EffectManager {
             lifespan: 300,
             tint: 0xBBAAAA,
             quantity: 4,
+            emitting: false,
+        }).setDepth(DEPTH_EFFECT_OVERLAY);
+
+        // G2: 물결 파티클 (오리 튜브 파워업 활성 시)
+        this.waterEmitter = scene.add.particles(0, 0, 'particle', {
+            speed: { min: 15, max: 40 },
+            scale: { start: 0.8, end: 0.1 },
+            alpha: { start: 0.6, end: 0 },
+            lifespan: 600,
+            tint: 0x4FC3F7,
+            gravityY: -20,
+            quantity: 1,
+            frequency: 120,
             emitting: false,
         }).setDepth(DEPTH_EFFECT_OVERLAY);
     }
@@ -167,6 +184,20 @@ export class EffectManager {
         this.particleEmitter.explode(8, x, y);
     }
 
+    /** G2: 오리 튜브 물결 이펙트 on/off */
+    setWaterEffect(active: boolean, x: number, y: number): void {
+        if (active && !this.waterActive) {
+            this.waterEmitter.setPosition(x, y + 20);
+            this.waterEmitter.start();
+            this.waterActive = true;
+        } else if (!active && this.waterActive) {
+            this.waterEmitter.stop();
+            this.waterActive = false;
+        } else if (active) {
+            this.waterEmitter.setPosition(x, y + 20);
+        }
+    }
+
     /** 매 프레임 호출: 슬로우모션 타이머 체크 */
     update(sceneTimeNow: number): void {
         if (this.isSlowmo) {
@@ -179,14 +210,17 @@ export class EffectManager {
 
     reset(): void {
         this.isSlowmo = false;
+        this.waterActive = false;
         this.flashOverlay.setAlpha(0);
         this.particleEmitter.stop();
         this.dustEmitter.stop();
+        this.waterEmitter.stop();
     }
 
     destroy(): void {
         this.flashOverlay.destroy();
         this.particleEmitter.destroy();
         this.dustEmitter.destroy();
+        this.waterEmitter.destroy();
     }
 }

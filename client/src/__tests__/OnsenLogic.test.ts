@@ -289,3 +289,85 @@ describe('getCompanionUnlockProgress', () => {
         expect(getCompanionUnlockProgress('onsen_level_2', { maxDistance: 0, onsenLevelIndex: 1, totalItemsCollected: 0 })).toBe(1);
     });
 });
+
+// ========== 경계값 테스트 ==========
+
+describe('getOnsenLevel — 경계값', () => {
+    it('1개 아이템 → basic (최솟값 이상)', () => {
+        expect(getOnsenLevel(1)).toBe('basic');
+    });
+
+    it('forest 임계값 직전 (14) → basic', () => {
+        expect(getOnsenLevel(14)).toBe('basic');
+    });
+
+    it('forest 임계값 정확히 (15) → forest', () => {
+        expect(getOnsenLevel(15)).toBe('forest');
+    });
+
+    it('snow 임계값 정확히 (35) → snow', () => {
+        expect(getOnsenLevel(35)).toBe('snow');
+    });
+
+    it('snow 임계값 직전 (34) → forest', () => {
+        expect(getOnsenLevel(34)).toBe('forest');
+    });
+
+    it('luxury 임계값 정확히 (60) → luxury', () => {
+        expect(getOnsenLevel(60)).toBe('luxury');
+    });
+
+    it('luxury 임계값 직전 (59) → snow', () => {
+        expect(getOnsenLevel(59)).toBe('snow');
+    });
+
+    it('매우 큰 값 (999999) → luxury (최대 레벨 유지)', () => {
+        expect(getOnsenLevel(999999)).toBe('luxury');
+    });
+});
+
+describe('getTotalItems — 경계값', () => {
+    it('모든 값이 0인 경우 → 0', () => {
+        expect(getTotalItems({ mandarin: 0, watermelon: 0, hotspring_material: 0 })).toBe(0);
+    });
+
+    it('한 종류만 있는 경우 → 해당 값', () => {
+        expect(getTotalItems({ mandarin: 100, watermelon: 0, hotspring_material: 0 })).toBe(100);
+    });
+
+    it('매우 큰 값에서도 정확히 합산', () => {
+        expect(getTotalItems({ mandarin: 10000, watermelon: 5000, hotspring_material: 2500 })).toBe(17500);
+    });
+});
+
+describe('getUnlockProgress — 경계값', () => {
+    const baseStats: UnlockStats = { maxDistance: 0, onsenLevelIndex: 0, totalItemsCollected: 0 };
+
+    it('distance_5000: maxDistance=0 → 0', () => {
+        expect(getUnlockProgress('distance_5000', { ...baseStats, maxDistance: 0 })).toBe(0);
+    });
+
+    it('distance_5000: maxDistance=4999 → 0.9998', () => {
+        expect(getUnlockProgress('distance_5000', { ...baseStats, maxDistance: 4999 })).toBeCloseTo(4999 / 5000, 4);
+    });
+
+    it('items_1000: totalItemsCollected=0 → 0', () => {
+        expect(getUnlockProgress('items_1000', { ...baseStats, totalItemsCollected: 0 })).toBe(0);
+    });
+
+    it('items_1000: totalItemsCollected=1001 → 1 (캡)', () => {
+        expect(getUnlockProgress('items_1000', { ...baseStats, totalItemsCollected: 1001 })).toBe(1);
+    });
+
+    it('onsen_level_3: onsenLevelIndex=0 → 0', () => {
+        expect(getUnlockProgress('onsen_level_3', { ...baseStats, onsenLevelIndex: 0 })).toBe(0);
+    });
+
+    it('onsen_level_3: onsenLevelIndex=2 → 1', () => {
+        expect(getUnlockProgress('onsen_level_3', { ...baseStats, onsenLevelIndex: 2 })).toBe(1);
+    });
+
+    it('onsen_level_3: onsenLevelIndex=3 (초과) → 1 (캡)', () => {
+        expect(getUnlockProgress('onsen_level_3', { ...baseStats, onsenLevelIndex: 3 })).toBe(1);
+    });
+});

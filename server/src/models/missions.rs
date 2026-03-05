@@ -9,8 +9,10 @@ use sqlx::{FromRow, SqlitePool};
 #[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
 pub struct Mission {
     #[serde(skip_serializing)]
+    #[allow(dead_code)]
     pub id: i64,
     #[serde(skip_serializing)]
+    #[allow(dead_code)]
     pub user_id: String,
     pub mission_date: String,
     pub mission_type: String,
@@ -37,6 +39,7 @@ pub struct Streak {
 #[derive(Debug, Serialize, Clone)]
 pub struct StreakResponse {
     #[serde(skip_serializing)]
+    #[allow(dead_code)]
     pub user_id: String,
     pub current_streak: i64,
     pub longest_streak: i64,
@@ -203,27 +206,15 @@ pub async fn update_mission_progress(
     .await
 }
 
-/// Fetches a single mission by id and user_id (ownership check).
-pub async fn get_mission_by_id(
-    pool: &SqlitePool,
-    mission_id: i64,
-    user_id: &str,
-) -> Result<Mission, sqlx::Error> {
-    sqlx::query_as::<_, Mission>(
-        "SELECT id, user_id, mission_date, mission_type, target_value, current_value,
-                completed, reward_claimed, reward_type, reward_amount
-         FROM daily_missions
-         WHERE id = ? AND user_id = ?",
-    )
-    .bind(mission_id)
-    .bind(user_id)
-    .fetch_one(pool)
-    .await
-}
-
 /// Claims the reward for a completed, unclaimed mission.
-/// Atomic TOCTOU fix: transaction starts FIRST, then an atomic UPDATE with
-/// conditions (completed=1 AND reward_claimed=0) prevents double-claim races.
+///
+/// A4: SELECT-first 패턴으로 불필요한 중복 SELECT 제거.
+/// 트랜잭션 내에서 미션을 먼저 읽어 조건을 검증한 후 UPDATE하여
+/// 읽어온 row를 재사용한다. 총 SELECT 횟수: 최대 1회 (기존 최대 2회 → 1회).
+///
+/// TOCTOU 안전성: BEGIN IMMEDIATE 없이도 SQLite WAL 모드에서
+/// 단일 writer 보장 + UPDATE의 WHERE 조건(completed=1 AND reward_claimed=0)이
+/// 동시 이중 청구를 원자적으로 차단한다.
 pub async fn claim_mission_reward(
     pool: &SqlitePool,
     user_id: &str,
@@ -231,10 +222,32 @@ pub async fn claim_mission_reward(
 ) -> Result<Mission, ClaimError> {
     let mut tx = pool.begin().await.map_err(ClaimError::Db)?;
 
-    // Atomic: mark claimed only if completed=1 AND reward_claimed=0
+    // A4: SELECT를 먼저 수행하여 미션 정보를 한 번만 읽는다.
+    // 이후 UPDATE 성공 여부에 따라 이 row를 그대로 재사용한다.
+    let mission = sqlx::query_as::<_, Mission>(
+        "SELECT id, user_id, mission_date, mission_type, target_value, current_value,
+                completed, reward_claimed, reward_type, reward_amount
+         FROM daily_missions WHERE id = ? AND user_id = ?",
+    )
+    .bind(mission_id)
+    .bind(user_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(ClaimError::Db)?;
+
+    // 존재 여부 및 상태 검증 (SELECT 결과 재사용)
+    let mission = match mission {
+        None => return Err(ClaimError::NotFound),
+        Some(m) if m.completed == 0 => return Err(ClaimError::NotCompleted),
+        Some(m) if m.reward_claimed != 0 => return Err(ClaimError::AlreadyClaimed),
+        Some(m) => m,
+    };
+
+    // Atomic: 동시 이중 청구 방지 — reward_claimed=0 조건이 경쟁 요청을 차단한다.
+    // rows_affected==0 이면 다른 요청이 동시에 먼저 청구한 것이므로 AlreadyClaimed 반환.
     let result = sqlx::query(
         "UPDATE daily_missions SET reward_claimed = 1
-         WHERE id = ? AND user_id = ? AND completed = 1 AND reward_claimed = 0",
+         WHERE id = ? AND user_id = ? AND reward_claimed = 0",
     )
     .bind(mission_id)
     .bind(user_id)
@@ -243,38 +256,10 @@ pub async fn claim_mission_reward(
     .map_err(ClaimError::Db)?;
 
     if result.rows_affected() == 0 {
-        // Could be: not found, not completed, or already claimed
-        // Check which case it is
-        let mission = sqlx::query_as::<_, Mission>(
-            "SELECT id, user_id, mission_date, mission_type, target_value, current_value,
-                    completed, reward_claimed, reward_type, reward_amount
-             FROM daily_missions WHERE id = ? AND user_id = ?",
-        )
-        .bind(mission_id)
-        .bind(user_id)
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(ClaimError::Db)?;
-
-        return match mission {
-            None => Err(ClaimError::NotFound),
-            Some(m) if m.completed == 0 => Err(ClaimError::NotCompleted),
-            Some(_) => Err(ClaimError::AlreadyClaimed),
-        };
+        return Err(ClaimError::AlreadyClaimed);
     }
 
-    // Get the mission to determine reward
-    let mission = sqlx::query_as::<_, Mission>(
-        "SELECT id, user_id, mission_date, mission_type, target_value, current_value,
-                completed, reward_claimed, reward_type, reward_amount
-         FROM daily_missions WHERE id = ? AND user_id = ?",
-    )
-    .bind(mission_id)
-    .bind(user_id)
-    .fetch_one(&mut *tx)
-    .await
-    .map_err(ClaimError::Db)?;
-
+    // 위에서 읽어온 mission row를 재사용하여 보상 타입 결정 (추가 SELECT 불필요)
     let (add_mandarin, add_watermelon, add_hotspring_material) = match mission.reward_type.as_str() {
         "mandarin" => (mission.reward_amount, 0i64, 0i64),
         "watermelon" => (0i64, mission.reward_amount, 0i64),
@@ -303,9 +288,11 @@ pub async fn claim_mission_reward(
 
     tx.commit().await.map_err(ClaimError::Db)?;
 
-    get_mission_by_id(pool, mission_id, user_id)
-        .await
-        .map_err(ClaimError::Db)
+    // A4: reward_claimed=1로 업데이트된 최종 상태를 반영하여 반환
+    Ok(Mission {
+        reward_claimed: 1,
+        ..mission
+    })
 }
 
 // ---------------------------------------------------------------------------

@@ -84,8 +84,8 @@ describe('DifficultyManager.getAvailableObstacleTypes', () => {
         expect(dm.getAvailableObstacleTypes('medium')).toEqual(['rock', 'branch_high', 'puddle', 'barrier']);
     });
 
-    it('returns all 5 types for hard', () => {
-        expect(dm.getAvailableObstacleTypes('hard')).toEqual(['rock', 'branch_high', 'puddle', 'barrier', 'car']);
+    it('returns all 6 types for hard', () => {
+        expect(dm.getAvailableObstacleTypes('hard')).toEqual(['rock', 'branch_high', 'puddle', 'barrier', 'car', 'snake']);
     });
 });
 
@@ -132,7 +132,8 @@ describe('DifficultyManager — relax obstacle types', () => {
     it('normal mode returns full types for each level', () => {
         expect(dm.getAvailableObstacleTypes('easy')).toEqual(['rock']);
         expect(dm.getAvailableObstacleTypes('medium')).toEqual(['rock', 'branch_high', 'puddle', 'barrier']);
-        expect(dm.getAvailableObstacleTypes('hard')).toHaveLength(5);
+        expect(dm.getAvailableObstacleTypes('hard')).toHaveLength(6);
+        expect(dm.getAvailableObstacleTypes('hard')).toContain('snake');
     });
 
     it('relax mode always spawns max 1 obstacle', () => {

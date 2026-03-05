@@ -186,4 +186,85 @@ describe('InventoryManager', () => {
             expect(mgr.getUnlockedCompanions()).toEqual([]);
         });
     });
+
+    // ── syncFromServer — Promise.allSettled 부분 실패 ────────────────
+
+    describe('syncFromServer — 부분 실패 시나리오', () => {
+        it('모든 API 호출 성공 시 인벤토리가 서버 값으로 갱신됨 (로컬보다 크면)', async () => {
+            // 로컬: mandarin=5, 서버: mandarin=10 → 10으로 갱신
+            localStorage.setItem(LS_KEY_INVENTORY, JSON.stringify({ mandarin: 5, watermelon: 0, hotspring_material: 0 }));
+            mockApi.getInventory.mockResolvedValueOnce({ mandarin: 10, watermelon: 0, hotspring_material: 0 });
+            mockApi.getOnsenLayout.mockResolvedValueOnce(null);
+            mockApi.getSkins.mockResolvedValueOnce(null);
+            mockApi.getCompanions.mockResolvedValueOnce(null);
+
+            await mgr.syncFromServer();
+
+            expect(mgr.getInventory().mandarin).toBe(10);
+        });
+
+        it('로컬 인벤토리가 더 크면 로컬 값 유지 (서버보다 큰 로컬)', async () => {
+            // 로컬: mandarin=20, 서버: mandarin=5 → 20 유지
+            localStorage.setItem(LS_KEY_INVENTORY, JSON.stringify({ mandarin: 20, watermelon: 0, hotspring_material: 0 }));
+            mockApi.getInventory.mockResolvedValueOnce({ mandarin: 5, watermelon: 0, hotspring_material: 0 });
+            mockApi.getOnsenLayout.mockResolvedValueOnce(null);
+            mockApi.getSkins.mockResolvedValueOnce(null);
+            mockApi.getCompanions.mockResolvedValueOnce(null);
+
+            await mgr.syncFromServer();
+
+            expect(mgr.getInventory().mandarin).toBe(20);
+        });
+
+        it('getInventory 실패(rejected) 시 로컬 인벤토리 변경 없음', async () => {
+            localStorage.setItem(LS_KEY_INVENTORY, JSON.stringify({ mandarin: 7, watermelon: 2, hotspring_material: 1 }));
+            mockApi.getInventory.mockRejectedValueOnce(new Error('network error'));
+            mockApi.getOnsenLayout.mockResolvedValueOnce(null);
+            mockApi.getSkins.mockResolvedValueOnce(null);
+            mockApi.getCompanions.mockResolvedValueOnce(null);
+
+            await mgr.syncFromServer();
+
+            const inv = mgr.getInventory();
+            expect(inv.mandarin).toBe(7);
+            expect(inv.watermelon).toBe(2);
+            expect(inv.hotspring_material).toBe(1);
+        });
+
+        it('일부만 실패해도 성공한 항목은 정상 반영 (onsenLayout만 성공)', async () => {
+            const layoutJson = JSON.stringify({ placedItems: [{ itemType: 'mandarin', x: 100, y: 200 }] });
+            mockApi.getInventory.mockRejectedValueOnce(new Error('fail'));
+            mockApi.getOnsenLayout.mockResolvedValueOnce(layoutJson);
+            mockApi.getSkins.mockRejectedValueOnce(new Error('fail'));
+            mockApi.getCompanions.mockRejectedValueOnce(new Error('fail'));
+
+            await mgr.syncFromServer();
+
+            // 인벤토리는 변경 없음 (기본값 0)
+            expect(mgr.getInventory()).toEqual({ mandarin: 0, watermelon: 0, hotspring_material: 0 });
+            // 온센 레이아웃은 반영됨
+            const layout = mgr.getOnsenLayout();
+            expect(layout.placedItems).toHaveLength(1);
+        });
+
+        it('전체 API 실패 시 syncFromServer는 예외를 던지지 않음 (Promise.allSettled 보장)', async () => {
+            mockApi.getInventory.mockRejectedValueOnce(new Error('fail'));
+            mockApi.getOnsenLayout.mockRejectedValueOnce(new Error('fail'));
+            mockApi.getSkins.mockRejectedValueOnce(new Error('fail'));
+            mockApi.getCompanions.mockRejectedValueOnce(new Error('fail'));
+
+            await expect(mgr.syncFromServer()).resolves.toBeUndefined();
+        });
+
+        it('getSkins 성공 시 selectedSkin localStorage에 반영됨', async () => {
+            mockApi.getInventory.mockResolvedValueOnce(null);
+            mockApi.getOnsenLayout.mockResolvedValueOnce(null);
+            mockApi.getSkins.mockResolvedValueOnce({ selected_skin: 'towel', unlocked_skins: '["default","towel"]' });
+            mockApi.getCompanions.mockResolvedValueOnce(null);
+
+            await mgr.syncFromServer();
+
+            expect(mgr.getSelectedSkin()).toBe('towel');
+        });
+    });
 });
