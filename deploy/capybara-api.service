@@ -9,7 +9,8 @@ WorkingDirectory=/home/cc2/game01/server
 Environment=DATABASE_URL=sqlite:data.db
 Environment=HOST=127.0.0.1
 Environment=PORT=3000
-Environment=CORS_ORIGINS=http://localhost
+# 프로덕션 도메인에 맞춰 수정 필요 (예: https://capybara.example.com)
+Environment=CORS_ORIGINS=http://localhost,https://localhost
 ExecStart=/home/cc2/game01/server/target/release/capybara-server
 Restart=on-failure
 RestartSec=5

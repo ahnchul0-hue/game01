@@ -157,7 +157,8 @@ export class Game extends Phaser.Scene {
         if (this.inputController) this.inputController.destroy();
         this.tweens.killAll();
         this.time.removeAllEvents();
-        this.cameras.main.resetFX();
+        this.cameras.main.clearMask();
+        this.cameras.main.resetPostPipeline();
         if (this.reviveUI) this.reviveUI.destroy();
         if (this.tutorialOverlay) {
             this.tutorialOverlay.destroy();

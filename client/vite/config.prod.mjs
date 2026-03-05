@@ -21,6 +21,8 @@ export default defineConfig({
     base: './',
     logLevel: 'warning',
     build: {
+        target: 'es2020',
+        chunkSizeWarningLimit: 4000,
         rollupOptions: {
             output: {
                 manualChunks(id) {
@@ -33,7 +35,8 @@ export default defineConfig({
         minify: 'terser',
         terserOptions: {
             compress: {
-                passes: 2
+                passes: 2,
+                drop_console: true,
             },
             mangle: true,
             format: {
@@ -49,8 +52,10 @@ export default defineConfig({
         VitePWA({
             registerType: 'autoUpdate',
             workbox: {
-                // 로컬 번들: JS/CSS/HTML + 이미지(png/jpg/svg/webp/gif) + 오디오(mp3/ogg/wav) + 폰트(woff2/woff/ttf)
-                globPatterns: ['**/*.{js,css,html,png,jpg,jpeg,svg,webp,gif,mp3,ogg,wav,woff2,woff,ttf}'],
+                // 로컬 번들: JS/CSS/HTML + 이미지(png/jpg/svg/webp/gif) + 폰트(woff2/woff/ttf)
+                // 오디오는 runtimeCaching에서 lazy 캐싱 (초기 SW 설치 경량화)
+                globPatterns: ['**/*.{js,css,html,png,jpg,jpeg,svg,webp,gif,woff2,woff,ttf}'],
+                maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB — Phaser 청크 precache 보장
                 navigateFallback: 'index.html',
                 runtimeCaching: [
                     // Google Fonts CSS (스타일시트) — StaleWhileRevalidate: 빠른 응답 + 백그라운드 갱신
@@ -81,6 +86,19 @@ export default defineConfig({
                             cacheableResponse: {
                                 statuses: [0, 200],
                             },
+                        },
+                    },
+                    // 오디오 파일 — CacheFirst + rangeRequests (Safari 호환)
+                    {
+                        urlPattern: /\.(?:mp3|ogg|wav)$/i,
+                        handler: 'CacheFirst',
+                        options: {
+                            cacheName: 'audio-cache',
+                            expiration: {
+                                maxEntries: 30,
+                                maxAgeSeconds: 60 * 60 * 24 * 60, // 60일
+                            },
+                            rangeRequests: true,
                         },
                     },
                     // API 요청은 항상 네트워크 (캐싱 금지)
