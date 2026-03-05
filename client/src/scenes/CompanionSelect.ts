@@ -313,36 +313,43 @@ export class CompanionSelect extends Phaser.Scene {
         this.cardBorders.set(config.id, border);
         this.cardRects.set(config.id, { x, y, w, h });
 
-        // 동물 아이콘 (특징적 미니 실루엣)
+        // A5: 동물 아이콘 (잠금 상태에서도 실루엣 표시)
         const iconGfx = this.add.graphics();
         const ix = x - w / 2 + 50;
         const iy = y;
-        const col = isUnlocked ? config.color : 0x666666;
+        const col = isUnlocked ? config.color : 0x888888;
+        const eyeWhite = isUnlocked ? 0xFFFFFF : 0xBBBBBB;
+        const eyeBlack = isUnlocked ? 0x000000 : 0x666666;
+        const detailAlpha = isUnlocked ? 1 : 0.5;
         iconGfx.fillStyle(col, 1);
         iconGfx.fillCircle(ix, iy, 22); // 몸
-        if (isUnlocked) {
-            // 눈
-            iconGfx.fillStyle(0xFFFFFF, 1);
-            iconGfx.fillCircle(ix - 7, iy - 5, 6);
-            iconGfx.fillCircle(ix + 7, iy - 5, 6);
-            iconGfx.fillStyle(0x000000, 1);
-            iconGfx.fillCircle(ix - 5, iy - 5, 3);
-            iconGfx.fillCircle(ix + 9, iy - 5, 3);
-            // 동물별 특징
-            if (config.id === 'otter') {
-                // 수달 수염
-                iconGfx.lineStyle(1, 0x333333, 0.6);
-                iconGfx.lineBetween(ix - 5, iy + 3, ix - 18, iy);
-                iconGfx.lineBetween(ix + 5, iy + 3, ix + 18, iy);
-            } else if (config.id === 'duck') {
-                // 오리 부리
-                iconGfx.fillStyle(0xFF8C00, 1);
-                iconGfx.fillRoundedRect(ix - 6, iy + 4, 12, 8, 3);
-            } else if (config.id === 'turtle') {
-                // 거북이 등딱지 무늬
-                iconGfx.lineStyle(1.5, 0x1B6B3A, 0.5);
-                iconGfx.strokeCircle(ix, iy, 10);
-            }
+        // 눈 (잠금 상태에서도 표시)
+        iconGfx.fillStyle(eyeWhite, 1);
+        iconGfx.fillCircle(ix - 7, iy - 5, 6);
+        iconGfx.fillCircle(ix + 7, iy - 5, 6);
+        iconGfx.fillStyle(eyeBlack, 1);
+        iconGfx.fillCircle(ix - 5, iy - 5, 3);
+        iconGfx.fillCircle(ix + 9, iy - 5, 3);
+        // 동물별 특징 (잠금 상태에서도 실루엣으로 표시)
+        if (config.id === 'otter') {
+            iconGfx.lineStyle(1, isUnlocked ? 0x333333 : 0x777777, 0.6 * detailAlpha);
+            iconGfx.lineBetween(ix - 5, iy + 3, ix - 18, iy);
+            iconGfx.lineBetween(ix + 5, iy + 3, ix + 18, iy);
+        } else if (config.id === 'duck') {
+            iconGfx.fillStyle(isUnlocked ? 0xFF8C00 : 0x999999, detailAlpha);
+            iconGfx.fillRoundedRect(ix - 6, iy + 4, 12, 8, 3);
+        } else if (config.id === 'turtle') {
+            iconGfx.lineStyle(1.5, isUnlocked ? 0x1B6B3A : 0x777777, 0.5 * detailAlpha);
+            iconGfx.strokeCircle(ix, iy, 10);
+        }
+        // 잠금 아이콘 오버레이
+        if (!isUnlocked) {
+            iconGfx.fillStyle(0x000000, 0.3);
+            iconGfx.fillCircle(ix, iy, 22);
+            // 자물쇠 표시
+            iconGfx.lineStyle(2, 0xFFFFFF, 0.6);
+            iconGfx.strokeRect(ix - 6, iy + 2, 12, 10);
+            iconGfx.strokeCircle(ix, iy - 3, 6);
         }
 
         // 이름

@@ -184,6 +184,13 @@ export class EffectManager {
         this.dustEmitter.explode(6, x, y + 30);
     }
 
+    /** A3: 니어미스 스파크 이펙트 */
+    onNearMiss(x: number, y: number): void {
+        this.particleEmitter.setPosition(x, y);
+        this.particleEmitter.setParticleTint(0x00FF88);
+        this.particleEmitter.explode(4, x, y);
+    }
+
     /** 헬멧 파괴 이펙트: 파괴 파티클 */
     onHelmetBreak(x: number, y: number): void {
         this.particleEmitter.setPosition(x, y);

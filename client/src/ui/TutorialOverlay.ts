@@ -23,6 +23,18 @@ export class TutorialOverlay extends Phaser.GameObjects.Container {
         overlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
         this.add(overlay);
 
+        // A7: 힌트 영역 반투명 패널 (가독성 향상)
+        const panelX = GAME_WIDTH * 0.08;
+        const panelY = GAME_HEIGHT / 2 - 140;
+        const panelW = GAME_WIDTH * 0.84;
+        const panelH = 230;
+        const panel = scene.add.graphics();
+        panel.fillStyle(0x000000, 0.55);
+        panel.fillRoundedRect(panelX, panelY, panelW, panelH, 16);
+        panel.lineStyle(2, 0xFFD700, 0.4);
+        panel.strokeRoundedRect(panelX, panelY, panelW, panelH, 16);
+        this.add(panel);
+
         // 조작법 힌트 목록
         const hints: { icon: string; desc: string; y: number }[] = [
             { icon: '←  →', desc: '좌우 스와이프: 레인 이동', y: GAME_HEIGHT / 2 - 100 },
@@ -33,13 +45,13 @@ export class TutorialOverlay extends Phaser.GameObjects.Container {
         for (const h of hints) {
             const iconText = scene.add.text(GAME_WIDTH / 2 - 120, h.y, h.icon, {
                 fontFamily: FONT_FAMILY,
-                fontSize: '32px',
+                fontSize: '36px',
                 color: '#FFD700',
                 fontStyle: 'bold',
             }).setOrigin(0.5);
             const descText = scene.add.text(GAME_WIDTH / 2 + 40, h.y, h.desc, {
                 fontFamily: FONT_FAMILY,
-                fontSize: '22px',
+                fontSize: '24px',
                 color: '#FFFFFF',
             }).setOrigin(0, 0.5);
             this.add([iconText, descText]);

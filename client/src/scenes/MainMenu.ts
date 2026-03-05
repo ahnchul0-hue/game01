@@ -85,52 +85,49 @@ export class MainMenu extends Phaser.Scene {
         const capybara = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT * 0.35, `capybara-${selectedSkin}`);
         capybara.setScale(2);
 
-        // 시작 버튼
+        // A6: 한글 통일 + 그룹화 레이아웃
+        // ── 플레이 모드 그룹 ──
         createButton(this, {
             x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.44,
-            label: 'START', color: 0x4CAF50, width: 280, height: 50, fontSize: '24px', radius: 14,
+            label: '시작', color: 0x4CAF50, width: 280, height: 52, fontSize: '26px', radius: 14,
             callback: () => fadeToScene(this, SCENE_GAME, { mode: 'normal' }),
         });
 
-        // 릴렉스 모드 버튼
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.505,
-            label: 'RELAX MODE', color: 0x81C784, width: 280, height: 50, fontSize: '24px', radius: 14,
+            x: GAME_WIDTH / 2 - 75, y: GAME_HEIGHT * 0.505,
+            label: '릴랙스', color: 0x81C784, width: 130, height: 44, fontSize: '20px', radius: 12,
             callback: () => fadeToScene(this, SCENE_GAME, { mode: 'relax' }),
         });
 
-        // 퀘스트 모드 버튼
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.57,
-            label: 'QUEST', color: 0xF57C00, width: 280, height: 50, fontSize: '24px', radius: 14,
+            x: GAME_WIDTH / 2 + 75, y: GAME_HEIGHT * 0.505,
+            label: '퀘스트', color: 0xF57C00, width: 130, height: 44, fontSize: '20px', radius: 12,
             callback: () => fadeToScene(this, SCENE_QUEST_SELECT),
         });
 
-        // 온천 버튼
+        // ── 꾸미기 그룹 ──
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.635,
-            label: 'ONSEN', color: 0xFF8C00, width: 280, height: 50, fontSize: '24px', radius: 14,
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.585,
+            label: '나의 온천', color: 0xFF8C00, width: 280, height: 48, fontSize: '22px', radius: 14,
             callback: () => fadeToScene(this, SCENE_ONSEN),
         });
 
-        // 스킨 버튼
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.70,
-            label: 'SKINS', color: 0x8B008B, width: 280, height: 50, fontSize: '24px', radius: 14,
+            x: GAME_WIDTH / 2 - 75, y: GAME_HEIGHT * 0.65,
+            label: '스킨', color: 0x8B008B, width: 130, height: 44, fontSize: '20px', radius: 12,
             callback: () => fadeToScene(this, SCENE_SKIN_SELECT),
         });
 
-        // 동물 친구 버튼
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.765,
-            label: 'COMPANIONS', color: 0x2E7D32, width: 280, height: 50, fontSize: '24px', radius: 14,
+            x: GAME_WIDTH / 2 + 75, y: GAME_HEIGHT * 0.65,
+            label: '동물친구', color: 0x2E7D32, width: 130, height: 44, fontSize: '20px', radius: 12,
             callback: () => fadeToScene(this, SCENE_COMPANION_SELECT),
         });
 
-        // 미션 버튼
+        // ── 시스템 ──
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.83,
-            label: '미션', color: 0x1565C0, width: 280, height: 50, fontSize: '24px', radius: 14,
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.73,
+            label: '미션', color: 0x1565C0, width: 280, height: 48, fontSize: '22px', radius: 14,
             callback: () => fadeToScene(this, SCENE_MISSIONS),
         });
 

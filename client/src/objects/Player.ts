@@ -115,8 +115,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         if (this.isSliding || this.isJumping) return;
         this.isSliding = true;
 
-        // 시각적 축소
-        this.setScale(this.baseScale, this.baseScale * 0.5);
+        // A1: 부드러운 이징 + 약간의 회전으로 역동적 슬라이드
+        this.scene.tweens.add({
+            targets: this,
+            scaleX: this.baseScale * 1.1,
+            scaleY: this.baseScale * 0.5,
+            angle: -8,
+            duration: 100,
+            ease: 'Back.easeOut',
+        });
 
         this.slideTimer = this.scene.time.delayedCall(SLIDE_DURATION, () => {
             this.endSlide();
@@ -125,7 +132,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     private endSlide(): void {
         this.isSliding = false;
-        this.setScale(this.baseScale);
+        // A1: 바운스 이징으로 탄성 복귀
+        this.scene.tweens.add({
+            targets: this,
+            scaleX: this.baseScale,
+            scaleY: this.baseScale,
+            angle: 0,
+            duration: 150,
+            ease: 'Bounce.easeOut',
+        });
         this.slideTimer = null;
     }
 

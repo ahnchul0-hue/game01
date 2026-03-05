@@ -255,7 +255,7 @@ export class Game extends Phaser.Scene {
             onMoveLeft: () => { this.player.moveLeft(); snd.playSfx('move'); },
             onMoveRight: () => { this.player.moveRight(); snd.playSfx('move'); },
             onJump: () => { this.player.jump(); snd.playSfx('jump'); this.effectManager.onJump(this.player.x, this.player.y); },
-            onSlide: () => { this.player.slide(); snd.playSfx('slide'); },
+            onSlide: () => { this.player.slide(); snd.playSfx('slide'); this.effectManager.onJump(this.player.x, this.player.y); },
         });
 
         // 부활 UI
@@ -507,10 +507,13 @@ export class Game extends Phaser.Scene {
 
     // M2: 아이템 수집 + 콤보 시스템
     private onCollectItem(item: Item): void {
-        SoundManager.getInstance().playSfx('collect');
+        const snd = SoundManager.getInstance();
+        snd.playSfx('collect');
 
         const comboMultiplier = this.combo.hit();
         const comboCount = this.combo.getCount();
+        // A2: 콤보 단계별 SFX
+        if (comboCount >= 3) snd.playComboHit(comboCount);
         const rawMultiplier = this.player.getScoreMultiplier() * this.onsenBuff.scoreMultiplier * this.companionBuff.scoreMultiplier * comboMultiplier;
         const points = Math.floor(item.points * Math.min(3.0, rawMultiplier));
         this.score += points;
@@ -528,6 +531,9 @@ export class Game extends Phaser.Scene {
         const bonus = 5;
         this.score += bonus;
         this.hud.showNearMiss(x, y, bonus);
+        // A3: 니어미스 swoosh SFX + 스파크 파티클
+        SoundManager.getInstance().playSfx('nearmiss');
+        this.effectManager.onNearMiss(x, y);
     }
 
     // M3: 파워업 수집

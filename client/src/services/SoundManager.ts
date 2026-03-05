@@ -1,6 +1,6 @@
 // Procedural Web Audio API sound engine for Capybara Runner (no audio files).
 
-export type SfxName = 'jump' | 'slide' | 'collect' | 'collect_rare' | 'hit' | 'powerup' | 'button' | 'gameover' | 'levelup' | 'move' | 'revive';
+export type SfxName = 'jump' | 'slide' | 'collect' | 'collect_rare' | 'hit' | 'powerup' | 'button' | 'gameover' | 'levelup' | 'move' | 'revive' | 'nearmiss';
 export type BgmName = 'bgm-menu' | 'bgm-game' | 'bgm-onsen'
     | 'bgm-forest' | 'bgm-river' | 'bgm-village' | 'bgm-onsen-stage';
 
@@ -59,6 +59,7 @@ export class SoundManager {
             case 'move':        this.playTone('sine', 800, 0.03);         break;
             case 'revive':      this.playSfxRevive();                     break;
             case 'collect_rare': this.playSfxCollectRare();               break;
+            case 'nearmiss':     this.playSfxNearMiss();                break;
         }
     }
 
@@ -128,6 +129,31 @@ export class SoundManager {
         this.playTone('sine', 523, 0.08, undefined, t);
         this.playTone('sine', 659, 0.08, undefined, t + 0.08);
         this.playTone('sine', 784, 0.12, undefined, t + 0.16);
+    }
+
+    /** A3: 니어미스 swoosh — 고주파 주파수 스위프 */
+    private playSfxNearMiss(): void {
+        const t = this.now();
+        this.playTone('sine', 1200, 0.08, 400, t);
+    }
+
+    /** A2: 콤보 히트 SFX — 콤보 단계별 피치 상승 */
+    playComboHit(count: number): void {
+        if (!this.ctx || !this.sfxGain || this.muted) return;
+        const t = this.now();
+        if (count >= 7) {
+            // 팡파르 (3음 화음)
+            this.playTone('sine', 659, 0.06, undefined, t);
+            this.playTone('sine', 784, 0.06, undefined, t + 0.05);
+            this.playTone('sine', 1047, 0.1, undefined, t + 0.1);
+        } else if (count >= 5) {
+            // 징글 (2음)
+            this.playTone('sine', 659, 0.06, undefined, t);
+            this.playTone('sine', 880, 0.08, undefined, t + 0.06);
+        } else if (count >= 3) {
+            // 딩 (1음 밝은 톤)
+            this.playTone('sine', 784, 0.08, undefined, t);
+        }
     }
 
     // ---- BGM ----------------------------------------------------------------

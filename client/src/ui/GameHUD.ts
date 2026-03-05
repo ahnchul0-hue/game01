@@ -18,6 +18,9 @@ const MAX_POPUP_POOL = 8;
 const HUD_COLORS: Record<string, string> = { tube: '#64B5F6', friend: '#FF6F00', magnet: '#CC0000' };
 const HUD_NAMES: Record<string, string> = { tube: '튜브', friend: '친구', magnet: '자석' };
 
+/** A4: 거리 마일스톤 목록 */
+const MILESTONES = [100, 250, 500, 1000, 2000, 3000, 5000];
+
 /** Manages all in-game HUD text elements and popup animations. */
 export class GameHUD {
     private scene: Phaser.Scene;
@@ -28,6 +31,8 @@ export class GameHUD {
     private comboText: Phaser.GameObjects.Text | null = null;
     /** 팝업 Text 풀 (최대 MAX_POPUP_POOL개 미리 할당, 재사용) */
     private popupPool: PopupSlot[] = [];
+    /** A4: 달성한 마일스톤 인덱스 */
+    private nextMilestoneIdx = 0;
 
     constructor(scene: Phaser.Scene, isRelax: boolean, onsenBuffMultiplier: number) {
         this.scene = scene;
@@ -98,6 +103,25 @@ export class GameHUD {
     updateDistance(distance: number): void {
         const s = `${Math.floor(distance)}m`;
         if (this.distanceText.text !== s) this.distanceText.setText(s);
+
+        // A4: 마일스톤 달성 시 팝업 알림
+        if (this.nextMilestoneIdx < MILESTONES.length && distance >= MILESTONES[this.nextMilestoneIdx]) {
+            const m = MILESTONES[this.nextMilestoneIdx];
+            this.nextMilestoneIdx++;
+            this._popup(
+                GAME_WIDTH / 2, 160,
+                `${m}m 돌파!`,
+                '#00E5FF', '30px', 1200, 40,
+            );
+            // 거리 텍스트 바운스
+            this.scene.tweens.add({
+                targets: this.distanceText,
+                scaleX: 1.4, scaleY: 1.4,
+                duration: 150,
+                yoyo: true,
+                ease: 'Power2',
+            });
+        }
     }
 
     updateItems(total: number): void {
@@ -128,7 +152,15 @@ export class GameHUD {
                 }).setOrigin(0.5).setDepth(100);
             }
             this.comboText.setText(`COMBO x${count}`).setVisible(true);
-            this.comboText.setColor(count >= 5 ? '#FF4444' : '#FF8800');
+            this.comboText.setColor(count >= 7 ? '#FF00FF' : count >= 5 ? '#FF4444' : '#FF8800');
+            // A2: 콤보 텍스트 스케일 펄스
+            this.scene.tweens.add({
+                targets: this.comboText,
+                scaleX: 1.4, scaleY: 1.4,
+                duration: 80,
+                yoyo: true,
+                ease: 'Power2',
+            });
         } else if (this.comboText) {
             this.comboText.setVisible(false);
         }
