@@ -16,6 +16,11 @@ export class QuestSelect extends Phaser.Scene {
         super(SCENE_QUEST_SELECT);
     }
 
+    shutdown(): void {
+        this.tweens.killAll();
+        this.time.removeAllEvents();
+    }
+
     create(): void {
         fadeIn(this);
 

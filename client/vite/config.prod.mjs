@@ -57,6 +57,7 @@ export default defineConfig({
                 globPatterns: ['**/*.{js,css,html,png,jpg,jpeg,svg,webp,gif,woff2,woff,ttf}'],
                 maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB — Phaser 청크 precache 보장
                 navigateFallback: 'index.html',
+                navigateFallbackDenylist: [/^\/api\//],
                 runtimeCaching: [
                     // Google Fonts CSS (스타일시트) — StaleWhileRevalidate: 빠른 응답 + 백그라운드 갱신
                     {
@@ -99,6 +100,9 @@ export default defineConfig({
                                 maxAgeSeconds: 60 * 60 * 24 * 60, // 60일
                             },
                             rangeRequests: true,
+                            cacheableResponse: {
+                                statuses: [0, 200, 206],
+                            },
                         },
                     },
                     // API 요청은 항상 네트워크 (캐싱 금지)

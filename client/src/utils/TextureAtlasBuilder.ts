@@ -359,7 +359,7 @@ function drawPowerUp(gfx: Phaser.GameObjects.Graphics, type: PowerUpType): void 
  *
  * [EXTEND] 512x512 초과 시 ATLAS_W/ATLAS_H 를 1024로 조정하세요.
  */
-export function buildGameAtlas(scene: Phaser.Scene): void {
+function buildGameAtlas(scene: Phaser.Scene): void {
     if (scene.textures.exists(ATLAS_GAME_KEY)) return;
 
     const ATLAS_W = 512;
@@ -428,7 +428,7 @@ export function buildGameAtlas(scene: Phaser.Scene): void {
  *
  * [EXTEND] 온천 꾸미기 아이템 추가 시 이 아틀라스에 추가하거나 atlas-ui-2 를 신설하세요.
  */
-export function buildUIAtlas(scene: Phaser.Scene): void {
+function buildUIAtlas(scene: Phaser.Scene): void {
     if (scene.textures.exists(ATLAS_UI_KEY)) return;
 
     const ATLAS_W = 256;

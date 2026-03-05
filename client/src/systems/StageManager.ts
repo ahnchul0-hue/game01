@@ -8,7 +8,7 @@ import type { BgmName } from '../services/SoundManager';
 import type { GameMode } from '../utils/Constants';
 
 /** 스테이지 ID → BGM 이름 매핑 */
-const STAGE_BGM: Record<StageType, BgmName> = {
+export const STAGE_BGM: Record<StageType, BgmName> = {
     forest:  'bgm-forest',
     river:   'bgm-river',
     village: 'bgm-village',

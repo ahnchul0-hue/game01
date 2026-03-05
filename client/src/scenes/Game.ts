@@ -8,7 +8,7 @@ import { ItemPool } from '../pools/ItemPool';
 import { PowerUpPool } from '../pools/PowerUpPool';
 import { DifficultyManager } from '../systems/DifficultyManager';
 import { SpawnManager } from '../systems/SpawnManager';
-import { StageManager } from '../systems/StageManager';
+import { StageManager, STAGE_BGM } from '../systems/StageManager';
 import { EffectManager } from '../systems/EffectManager';
 import { RoadRenderer } from '../systems/RoadRenderer';
 import { SceneryManager } from '../systems/SceneryManager';
@@ -33,11 +33,11 @@ import {
     MAGNET_Z_RANGE,
     FONT_FAMILY,
 } from '../utils/Constants';
-import type { GameMode, CollectedItems, OnsenBuff, CompanionAbility, StageType } from '../utils/Constants';
+import type { GameMode, CollectedItems, OnsenBuff, CompanionAbility } from '../utils/Constants';
 import { NO_COMPANION_ABILITY } from '../utils/Constants';
 import { getOnsenLevel, getOnsenBuff, getCompanionAbility } from '../utils/OnsenLogic';
 import { InventoryManager } from '../services/InventoryManager';
-import { SoundManager, type BgmName } from '../services/SoundManager';
+import { SoundManager } from '../services/SoundManager';
 import { fadeToScene } from '../ui/UIFactory';
 import { InputController } from '../ui/InputController';
 import { ReviveUI } from '../ui/ReviveUI';
@@ -281,24 +281,13 @@ export class Game extends Phaser.Scene {
 
         // 게임 BGM: 릴렉스 모드는 bgm-onsen 고정, 노멀 모드는 현재 스테이지 BGM
         SoundManager.getInstance().playBgm(
-            this.mode === 'relax' ? 'bgm-onsen' : this._stageBgm(this.stageManager.getCurrentStage()),
+            this.mode === 'relax' ? 'bgm-onsen' : (STAGE_BGM[this.stageManager.getCurrentStage()] ?? 'bgm-game'),
         );
 
         // 첫 플레이 튜토리얼
         if (!localStorage.getItem(LS_KEY_TUTORIAL_DONE)) {
             this.showTutorial();
         }
-    }
-
-    /** G3: 스테이지 타입 → BGM 키 매핑 */
-    private _stageBgm(stage: StageType): BgmName {
-        const map: Record<StageType, BgmName> = {
-            forest: 'bgm-forest',
-            river: 'bgm-river',
-            village: 'bgm-village',
-            onsen: 'bgm-onsen-stage',
-        };
-        return map[stage] ?? 'bgm-game';
     }
 
     private pauseGame(): void {
@@ -326,7 +315,7 @@ export class Game extends Phaser.Scene {
         this.physics.resume();
         this.state = 'playing';
         SoundManager.getInstance().playBgm(
-            this.mode === 'relax' ? 'bgm-onsen' : this._stageBgm(this.stageManager.getCurrentStage()),
+            this.mode === 'relax' ? 'bgm-onsen' : (STAGE_BGM[this.stageManager.getCurrentStage()] ?? 'bgm-game'),
         );
         // Prevent immediate re-pause (100ms cooldown)
         this.resumeCooldown = true;

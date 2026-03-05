@@ -154,16 +154,3 @@ export function getEventBanner(date: Date = new Date()): EventBanner | null {
     return banners[event];
 }
 
-/**
- * 시즌 이름(한국어)을 반환한다.
- * @param date - 기준 날짜 (기본값: 현재 시각)
- */
-export function getSeasonName(date: Date = new Date()): string {
-    const names: Record<Season, string> = {
-        spring: '봄',
-        summer: '여름',
-        autumn: '가을',
-        winter: '겨울',
-    };
-    return names[getCurrentSeason(date)];
-}

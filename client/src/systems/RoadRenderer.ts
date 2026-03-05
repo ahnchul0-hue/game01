@@ -245,21 +245,6 @@ export class RoadRenderer {
         this.roadDirty = true;
     }
 
-    /**
-     * 화면 크기가 변경되었을 때 호출.
-     *
-     * PerspectiveCamera의 투영 결과(screenY, edgeX)는 Constants의
-     * VANISH_Y / ROAD_HEIGHT 등에 의존하므로, 런타임에 화면 크기가
-     * 바뀌는 경우 LUT와 segmentCache를 재빌드해야 한다.
-     * (현재 게임은 고정 해상도이지만 향후 리사이즈 대응을 위해 제공)
-     */
-    onResize(): void {
-        this.buildSegmentCache();
-        this.buildLaneDashLUT();
-        this.skyDirty = true;
-        this.roadDirty = true;
-    }
-
     destroy(): void {
         this.skyGraphics.destroy();
         this.staticRoadGfx.destroy();
