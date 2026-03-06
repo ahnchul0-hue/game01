@@ -143,6 +143,7 @@ export class Game extends Phaser.Scene {
         this.wasJumping = false;
         this.combo.reset();
         this.resumeCooldown = false;
+        this.lastQuestFillW = -1;
 
         // 퀘스트 모드 초기화
         this.questId = data.questId ?? null;
@@ -154,6 +155,7 @@ export class Game extends Phaser.Scene {
     }
 
     shutdown(): void {
+        SoundManager.getInstance().stopAmbient();
         if (this.inputController) this.inputController.destroy();
         this.tweens.killAll();
         this.time.removeAllEvents();
@@ -280,9 +282,14 @@ export class Game extends Phaser.Scene {
         });
 
         // 게임 BGM: 릴렉스 모드는 bgm-onsen 고정, 노멀 모드는 현재 스테이지 BGM
-        SoundManager.getInstance().playBgm(
+        const sound = SoundManager.getInstance();
+        sound.playBgm(
             this.mode === 'relax' ? 'bgm-onsen' : (STAGE_BGM[this.stageManager.getCurrentStage()] ?? 'bgm-game'),
         );
+        // 릴렉스 모드: ASMR 사운드스케이프 (새소리 + 시냇물)
+        if (this.mode === 'relax') {
+            sound.playAmbient('ambient-birds');
+        }
 
         // 첫 플레이 튜토리얼
         if (!localStorage.getItem(LS_KEY_TUTORIAL_DONE)) {
@@ -294,6 +301,7 @@ export class Game extends Phaser.Scene {
         this.state = 'paused';
         this.physics.pause();
         SoundManager.getInstance().stopBgm();
+        SoundManager.getInstance().stopAmbient();
 
         this.pauseOverlay = new PauseOverlay(
             this,
@@ -317,6 +325,9 @@ export class Game extends Phaser.Scene {
         SoundManager.getInstance().playBgm(
             this.mode === 'relax' ? 'bgm-onsen' : (STAGE_BGM[this.stageManager.getCurrentStage()] ?? 'bgm-game'),
         );
+        if (this.mode === 'relax') {
+            SoundManager.getInstance().playAmbient('ambient-birds');
+        }
         // Prevent immediate re-pause (100ms cooldown)
         this.resumeCooldown = true;
         this.time.delayedCall(100, () => { this.resumeCooldown = false; });
@@ -748,6 +759,8 @@ export class Game extends Phaser.Scene {
         }).setOrigin(0.5, 0).setDepth(92);
     }
 
+    private lastQuestFillW = -1;
+
     private updateQuestHUD(): void {
         if (!this.questManager || !this.questBarFill || !this.questProgressText) return;
 
@@ -761,17 +774,19 @@ export class Game extends Phaser.Scene {
         const BAR_H = 14;
         const fillW = Math.floor((BAR_W * pct) / 100);
 
-        this.questBarFill.clear();
-        // 완료 직전(90%+)은 금색, 나머지는 주황
-        const fillColor = pct >= 90 ? 0xFFD700 : 0xFF7043;
-        this.questBarFill.fillStyle(fillColor, 1);
-        if (fillW > 0) {
-            this.questBarFill.fillRoundedRect(BAR_X, BAR_Y, fillW, BAR_H, 7);
-        }
+        // dirty flag: 변경 시에만 리드로
+        if (fillW !== this.lastQuestFillW) {
+            this.lastQuestFillW = fillW;
+            this.questBarFill.clear();
+            const fillColor = pct >= 90 ? 0xFFD700 : 0xFF7043;
+            this.questBarFill.fillStyle(fillColor, 1);
+            if (fillW > 0) {
+                this.questBarFill.fillRoundedRect(BAR_X, BAR_Y, fillW, BAR_H, 7);
+            }
 
-        // 진행 텍스트 갱신
-        const unit = quest.type === 'distance' ? 'm' : '개';
-        this.questProgressText.setText(`${current} / ${quest.target}${unit}`);
+            const unit = quest.type === 'distance' ? 'm' : '개';
+            this.questProgressText.setText(`${current} / ${quest.target}${unit}`);
+        }
     }
 }
 

@@ -3,20 +3,25 @@
 export type SfxName = 'jump' | 'slide' | 'collect' | 'collect_rare' | 'hit' | 'powerup' | 'button' | 'gameover' | 'levelup' | 'move' | 'revive' | 'nearmiss';
 export type BgmName = 'bgm-menu' | 'bgm-game' | 'bgm-onsen'
     | 'bgm-forest' | 'bgm-river' | 'bgm-village' | 'bgm-onsen-stage';
+export type AmbientName = 'ambient-birds' | 'ambient-stream' | 'ambient-wind' | 'ambient-rain';
 
 const LS_KEY_MUTED = 'capybara_muted';
 const LS_KEY_BGM_VOL = 'capybara_bgm_vol';
 const LS_KEY_SFX_VOL = 'capybara_sfx_vol';
+const LS_KEY_AMBIENT_VOL = 'capybara_ambient_vol';
 let _instance: SoundManager | null = null;
 
 export class SoundManager {
     private ctx: AudioContext | null = null;
     private sfxGain: GainNode | null = null;
     private bgmGain: GainNode | null = null;
+    private ambientGain: GainNode | null = null;
     private bgmNodes: AudioNode[] = [];
+    private ambientNodes: AudioNode[] = [];
     private muted: boolean;
     private bgmVol: number;
     private sfxVol: number;
+    private ambientVol: number;
     private hitNoiseBuffer: AudioBuffer | null = null;
     private onsenNoiseBuffer: AudioBuffer | null = null;
 
@@ -24,6 +29,7 @@ export class SoundManager {
         this.muted = localStorage.getItem(LS_KEY_MUTED) === 'true';
         this.bgmVol = parseFloat(localStorage.getItem(LS_KEY_BGM_VOL) ?? '0.18');
         this.sfxVol = parseFloat(localStorage.getItem(LS_KEY_SFX_VOL) ?? '0.6');
+        this.ambientVol = parseFloat(localStorage.getItem(LS_KEY_AMBIENT_VOL) ?? '0.35');
     }
 
     static getInstance(): SoundManager {
@@ -41,6 +47,9 @@ export class SoundManager {
         this.bgmGain = this.ctx.createGain();
         this.bgmGain.gain.value = this.muted ? 0 : this.bgmVol;
         this.bgmGain.connect(this.ctx.destination);
+        this.ambientGain = this.ctx.createGain();
+        this.ambientGain.gain.value = this.muted ? 0 : this.ambientVol;
+        this.ambientGain.connect(this.ctx.destination);
     }
 
     // ---- SFX ----------------------------------------------------------------
@@ -514,6 +523,230 @@ export class SoundManager {
         );
     }
 
+    // ---- Ambient (ASMR Soundscape) ------------------------------------------
+
+    playAmbient(name: AmbientName): void {
+        if (!this.ctx || !this.ambientGain) return;
+        this.stopAmbient();
+        switch (name) {
+            case 'ambient-birds':  this.createAmbientBirds();  break;
+            case 'ambient-stream': this.createAmbientStream(); break;
+            case 'ambient-wind':   this.createAmbientWind();   break;
+            case 'ambient-rain':   this.createAmbientRain();   break;
+        }
+    }
+
+    stopAmbient(): void {
+        for (const node of this.ambientNodes) {
+            try { (node as OscillatorNode | AudioBufferSourceNode).stop(); } catch { /* already stopped */ }
+            try { node.disconnect(); } catch { /* already disconnected */ }
+        }
+        this.ambientNodes = [];
+    }
+
+    /** 새소리: 고음 사인파 트릴 + 랜덤 간격 반복 */
+    private createAmbientBirds(): void {
+        if (!this.ctx || !this.ambientGain) return;
+
+        // 새소리 주파수 (다양한 새 시뮬레이션)
+        const birdFreqs = [1200, 1500, 1800, 2200, 1600];
+        const masterGain = this.ctx.createGain();
+        masterGain.gain.value = 0.6;
+        masterGain.connect(this.ambientGain);
+
+        for (const freq of birdFreqs) {
+            const osc = this.ctx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+
+            // 랜덤 트릴: 주파수를 LFO로 미세 변조
+            const trill = this.ctx.createOscillator();
+            trill.type = 'sine';
+            trill.frequency.value = 4 + Math.random() * 8; // 4~12Hz 트릴
+
+            const trillGain = this.ctx.createGain();
+            trillGain.gain.value = freq * 0.03; // 주파수의 3% 변조
+            trill.connect(trillGain);
+            trillGain.connect(osc.frequency);
+
+            // 볼륨 LFO: 느리게 나타났다 사라짐 (자연스러운 새소리)
+            const volLfo = this.ctx.createOscillator();
+            volLfo.type = 'sine';
+            volLfo.frequency.value = 0.1 + Math.random() * 0.3; // 0.1~0.4Hz
+
+            const volLfoGain = this.ctx.createGain();
+            volLfoGain.gain.value = 0.04;
+            volLfo.connect(volLfoGain);
+
+            const envGain = this.ctx.createGain();
+            envGain.gain.value = 0.02;
+            volLfoGain.connect(envGain.gain);
+            osc.connect(envGain);
+            envGain.connect(masterGain);
+
+            osc.start(); trill.start(); volLfo.start();
+            this.ambientNodes.push(osc, trill, trillGain, volLfo, volLfoGain, envGain);
+        }
+        this.ambientNodes.push(masterGain);
+    }
+
+    /** 시냇물: 밴드패스 노이즈 + 저주파 물방울 톤 */
+    private createAmbientStream(): void {
+        if (!this.ctx || !this.ambientGain) return;
+
+        if (!this.onsenNoiseBuffer) {
+            const bufSize = this.ctx.sampleRate * 4;
+            this.onsenNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+            const data = this.onsenNoiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+        }
+
+        // 메인 물소리 (저역 밴드패스)
+        const water = this.ctx.createBufferSource();
+        water.buffer = this.onsenNoiseBuffer;
+        water.loop = true;
+        const waterFilter = this.ctx.createBiquadFilter();
+        waterFilter.type = 'bandpass';
+        waterFilter.frequency.value = 400;
+        waterFilter.Q.value = 0.6;
+        const waterGain = this.ctx.createGain();
+        waterGain.gain.value = 0.5;
+        water.connect(waterFilter);
+        waterFilter.connect(waterGain);
+        waterGain.connect(this.ambientGain);
+
+        // 고역 졸졸 소리 (작은 물방울)
+        const ripple = this.ctx.createBufferSource();
+        ripple.buffer = this.onsenNoiseBuffer;
+        ripple.loop = true;
+        const rippleFilter = this.ctx.createBiquadFilter();
+        rippleFilter.type = 'bandpass';
+        rippleFilter.frequency.value = 2500;
+        rippleFilter.Q.value = 2.0;
+        // 볼륨 흔들림 (자연스러운 물결)
+        const rippleLfo = this.ctx.createOscillator();
+        rippleLfo.type = 'sine';
+        rippleLfo.frequency.value = 0.3;
+        const rippleLfoGain = this.ctx.createGain();
+        rippleLfoGain.gain.value = 0.04;
+        rippleLfo.connect(rippleLfoGain);
+        const rippleGain = this.ctx.createGain();
+        rippleGain.gain.value = 0.08;
+        rippleLfoGain.connect(rippleGain.gain);
+        ripple.connect(rippleFilter);
+        rippleFilter.connect(rippleGain);
+        rippleGain.connect(this.ambientGain);
+
+        water.start(); ripple.start(); rippleLfo.start();
+        this.ambientNodes.push(
+            water, waterFilter, waterGain,
+            ripple, rippleFilter, rippleLfo, rippleLfoGain, rippleGain,
+        );
+    }
+
+    /** 바람: 저주파 밴드패스 노이즈 + 느린 볼륨 스월 */
+    private createAmbientWind(): void {
+        if (!this.ctx || !this.ambientGain) return;
+
+        if (!this.onsenNoiseBuffer) {
+            const bufSize = this.ctx.sampleRate * 4;
+            this.onsenNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+            const data = this.onsenNoiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+        }
+
+        const wind = this.ctx.createBufferSource();
+        wind.buffer = this.onsenNoiseBuffer;
+        wind.loop = true;
+
+        const windFilter = this.ctx.createBiquadFilter();
+        windFilter.type = 'lowpass';
+        windFilter.frequency.value = 500;
+        windFilter.Q.value = 0.3;
+
+        // 느린 필터 스위프 (바람 세기 변화)
+        const sweepLfo = this.ctx.createOscillator();
+        sweepLfo.type = 'sine';
+        sweepLfo.frequency.value = 0.08; // ~12초 주기
+        const sweepGain = this.ctx.createGain();
+        sweepGain.gain.value = 300;
+        sweepLfo.connect(sweepGain);
+        sweepGain.connect(windFilter.frequency);
+
+        // 볼륨 스월 (바람이 불었다 잦아짐)
+        const volLfo = this.ctx.createOscillator();
+        volLfo.type = 'sine';
+        volLfo.frequency.value = 0.05; // ~20초 주기
+        const volLfoGain = this.ctx.createGain();
+        volLfoGain.gain.value = 0.2;
+        volLfo.connect(volLfoGain);
+        const windGain = this.ctx.createGain();
+        windGain.gain.value = 0.4;
+        volLfoGain.connect(windGain.gain);
+
+        wind.connect(windFilter);
+        windFilter.connect(windGain);
+        windGain.connect(this.ambientGain);
+
+        wind.start(); sweepLfo.start(); volLfo.start();
+        this.ambientNodes.push(
+            wind, windFilter,
+            sweepLfo, sweepGain,
+            volLfo, volLfoGain, windGain,
+        );
+    }
+
+    /** 비: 고밀도 노이즈 + 빗방울 톤 */
+    private createAmbientRain(): void {
+        if (!this.ctx || !this.ambientGain) return;
+
+        if (!this.onsenNoiseBuffer) {
+            const bufSize = this.ctx.sampleRate * 4;
+            this.onsenNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+            const data = this.onsenNoiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+        }
+
+        // 비 배경 (핑크 노이즈 근사: 로우패스 + 하이패스 조합)
+        const rain = this.ctx.createBufferSource();
+        rain.buffer = this.onsenNoiseBuffer;
+        rain.loop = true;
+        const lpf = this.ctx.createBiquadFilter();
+        lpf.type = 'lowpass';
+        lpf.frequency.value = 4000;
+        const hpf = this.ctx.createBiquadFilter();
+        hpf.type = 'highpass';
+        hpf.frequency.value = 200;
+        const rainGain = this.ctx.createGain();
+        rainGain.gain.value = 0.35;
+        rain.connect(lpf);
+        lpf.connect(hpf);
+        hpf.connect(rainGain);
+        rainGain.connect(this.ambientGain);
+
+        // 빗방울 "틱틱" — 고음 클릭 패턴 (랜덤 볼륨 LFO)
+        const drip = this.ctx.createOscillator();
+        drip.type = 'sine';
+        drip.frequency.value = 3500;
+        const dripLfo = this.ctx.createOscillator();
+        dripLfo.type = 'square'; // on/off 패턴
+        dripLfo.frequency.value = 6 + Math.random() * 4; // 6~10Hz 빗방울 밀도
+        const dripLfoGain = this.ctx.createGain();
+        dripLfoGain.gain.value = 0.015;
+        dripLfo.connect(dripLfoGain);
+        const dripGain = this.ctx.createGain();
+        dripGain.gain.value = 0.01;
+        dripLfoGain.connect(dripGain.gain);
+        drip.connect(dripGain);
+        dripGain.connect(this.ambientGain);
+
+        rain.start(); drip.start(); dripLfo.start();
+        this.ambientNodes.push(
+            rain, lpf, hpf, rainGain,
+            drip, dripLfo, dripLfoGain, dripGain,
+        );
+    }
+
     // ---- Volume / Mute ------------------------------------------------------
 
     setMuted(muted: boolean): void {
@@ -521,6 +754,7 @@ export class SoundManager {
         localStorage.setItem(LS_KEY_MUTED, String(muted));
         if (this.sfxGain) this.sfxGain.gain.value = muted ? 0 : this.sfxVol;
         if (this.bgmGain) this.bgmGain.gain.value = muted ? 0 : this.bgmVol;
+        if (this.ambientGain) this.ambientGain.gain.value = muted ? 0 : this.ambientVol;
     }
 
     getBgmVolume(): number { return this.bgmVol; }
@@ -539,6 +773,16 @@ export class SoundManager {
         localStorage.setItem(LS_KEY_SFX_VOL, this.sfxVol.toString());
         if (this.sfxGain && !this.muted) {
             this.sfxGain.gain.value = this.sfxVol;
+        }
+    }
+
+    getAmbientVolume(): number { return this.ambientVol; }
+
+    setAmbientVolume(vol: number): void {
+        this.ambientVol = Math.max(0, Math.min(1, vol));
+        localStorage.setItem(LS_KEY_AMBIENT_VOL, this.ambientVol.toString());
+        if (this.ambientGain && !this.muted) {
+            this.ambientGain.gain.value = this.ambientVol;
         }
     }
 

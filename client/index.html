@@ -5,24 +5,31 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/assets/favicon-192.png" />
     <link rel="manifest" href="/manifest.json" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+    <meta name="description" content="온천을 찾아 떠나는 카피바라의 힐링 러닝 게임. 귤과 과일을 모아 나만의 온천을 꾸며보세요!" />
+    <meta name="theme-color" content="#0f0f0f" />
+    <meta property="og:title" content="카피바라 러너 - Capybara Runner" />
+    <meta property="og:description" content="온천을 찾아 떠나는 카피바라의 힐링 러닝 게임" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/assets/favicon-512.png" />
     <meta name="screen-orientation" content="portrait" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="stylesheet" href="/fonts/fonts.css">
     <link rel="stylesheet" href="/style.css">
-    <title>Capybara Runner</title>
+    <title>카피바라 러너 - Capybara Runner</title>
 </head>
 
 <body>
-    <div id="landscape-warning">
-        <div class="icon">📱</div>
+    <div id="landscape-warning" role="alert" aria-live="assertive">
+        <div class="icon"><span role="img" aria-label="스마트폰을 세로로 돌려주세요">📱</span></div>
         <div class="msg">세로 모드로 전환해주세요</div>
     </div>
     <div id="app">
-        <div id="game-container"></div>
+        <div id="game-container" role="application" aria-label="카피바라 러너 게임"></div>
     </div>
+    <noscript><p style="color:#fff;text-align:center;padding:2rem;">이 게임은 JavaScript가 필요합니다. 브라우저 설정에서 JavaScript를 활성화해주세요.</p></noscript>
     <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

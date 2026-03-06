@@ -52,7 +52,8 @@ done
 if [ "$HEALTH_OK" = true ]; then
     echo "[4/4] Health check PASSED — API server is running."
 else
-    echo "WARNING: Health check failed after 5 attempts. Check: sudo systemctl status capybara-api"
+    echo "ERROR: Health check failed after 5 attempts. Check: sudo systemctl status capybara-api"
+    exit 1
 fi
 
 # 5. Ensure DB backup cron is registered (idempotent)
