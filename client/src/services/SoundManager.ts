@@ -1,6 +1,6 @@
 // Procedural Web Audio API sound engine for Capybara Runner (no audio files).
 
-export type SfxName = 'jump' | 'slide' | 'collect' | 'collect_rare' | 'hit' | 'powerup' | 'button' | 'gameover' | 'levelup' | 'move' | 'revive' | 'nearmiss';
+type SfxName = 'jump' | 'slide' | 'collect' | 'collect_rare' | 'hit' | 'powerup' | 'button' | 'gameover' | 'levelup' | 'move' | 'revive' | 'nearmiss';
 export type BgmName = 'bgm-menu' | 'bgm-game' | 'bgm-onsen'
     | 'bgm-forest' | 'bgm-river' | 'bgm-village' | 'bgm-onsen-stage';
 export type AmbientName = 'ambient-birds' | 'ambient-stream' | 'ambient-wind' | 'ambient-rain';

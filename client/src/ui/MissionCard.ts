@@ -5,7 +5,7 @@ import { FONT_FAMILY, GAME_WIDTH, GAME_HEIGHT, MISSION_LABELS } from '../utils/C
 import type { MissionType } from '../utils/Constants';
 
 // ─── MissionCard 설정 ────────────────────────────────────────────────────────
-export interface MissionCardConfig {
+interface MissionCardConfig {
     /** 카드 세로 위치 */
     cardY: number;
     /**

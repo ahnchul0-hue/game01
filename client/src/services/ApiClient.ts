@@ -5,22 +5,22 @@ interface UserResponse {
     token: string;
 }
 
-export interface InventoryResponse {
+interface InventoryResponse {
     mandarin: number;
     watermelon: number;
     hotspring_material: number;
 }
 
-export interface OnsenLayoutResponse {
+interface OnsenLayoutResponse {
     layout_json: string;
 }
 
-export interface SkinsResponse {
+interface SkinsResponse {
     selected_skin: string;
     unlocked_skins: string;
 }
 
-export interface CompanionsResponse {
+interface CompanionsResponse {
     selected_companion: string;
     unlocked_companions: string;
 }

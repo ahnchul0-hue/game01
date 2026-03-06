@@ -18,6 +18,7 @@ import { ApiClient, type ScoreEntry } from '../services/ApiClient';
 import { InventoryManager } from '../services/InventoryManager';
 import { SoundManager } from '../services/SoundManager';
 import { createButton, fadeToScene, fadeIn } from '../ui/UIFactory';
+import { ATLAS_GAME_KEY } from '../utils/TextureAtlasBuilder';
 
 interface GameOverData {
     score?: number;
@@ -311,9 +312,8 @@ export class GameOver extends Phaser.Scene {
         return `Next: ${bestCandidate.config.name} (${pct}%) — ${bestCandidate.config.unlockDescription}`;
     }
 
-    private createItemDisplay(x: number, y: number, texture: string, count: number): void {
-        const icon = this.add.image(x, y, texture).setScale(0.8);
-        // 텍스처가 아직 없는 경우 대비
+    private createItemDisplay(x: number, y: number, frame: string, count: number): void {
+        const icon = this.add.image(x, y, ATLAS_GAME_KEY, frame).setScale(0.8);
         if (!icon.texture || icon.texture.key === '__MISSING') {
             icon.destroy();
         }

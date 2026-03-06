@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SWIPE_THRESHOLD } from '../utils/Constants';
 
-export interface InputCallbacks {
+interface InputCallbacks {
     onMoveLeft(): void;
     onMoveRight(): void;
     onJump(): void;

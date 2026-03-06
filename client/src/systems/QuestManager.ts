@@ -8,7 +8,7 @@
  *   - 'dodge'     : 장애물 N개 회피
  */
 
-export type QuestType = 'distance' | 'collect' | 'dodge';
+type QuestType = 'distance' | 'collect' | 'dodge';
 
 export interface QuestDefinition {
     id: string;
@@ -20,7 +20,7 @@ export interface QuestDefinition {
 }
 
 /** 런타임 진행 상태 */
-export interface QuestProgress {
+interface QuestProgress {
     quest: QuestDefinition;
     current: number;
 }

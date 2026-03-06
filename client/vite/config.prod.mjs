@@ -52,6 +52,8 @@ export default defineConfig({
         VitePWA({
             registerType: 'autoUpdate',
             workbox: {
+                clientsClaim: true,
+                skipWaiting: true,
                 // 로컬 번들: JS/CSS/HTML + 이미지(png/jpg/svg/webp/gif) + 폰트(woff2/woff/ttf)
                 // 오디오는 runtimeCaching에서 lazy 캐싱 (초기 SW 설치 경량화)
                 globPatterns: ['**/*.{js,css,html,png,jpg,jpeg,svg,webp,gif,woff2,woff,ttf}'],

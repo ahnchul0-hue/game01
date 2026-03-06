@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, SCENE_JOURNEY_DIARY, SCENE_MAIN_MENU, FONT_FAMILY } from '../utils/Constants';
-import { DIARY_ENTRIES } from '../utils/DiaryData';
+import { DIARY_ENTRIES, getUnlockedCount } from '../utils/DiaryData';
 import { DiaryCard } from '../ui/DiaryCard';
 import { InventoryManager } from '../services/InventoryManager';
 import { createButton, fadeToScene, fadeIn } from '../ui/UIFactory';
@@ -36,7 +36,7 @@ export class JourneyDiary extends Phaser.Scene {
             fontStyle: 'bold', stroke: '#000000', strokeThickness: 4,
         }).setOrigin(0.5);
 
-        this.add.text(GAME_WIDTH / 2, 72, `${DIARY_ENTRIES.filter(e => maxDist >= e.distance).length}/${DIARY_ENTRIES.length} 해금`, {
+        this.add.text(GAME_WIDTH / 2, 72, `${getUnlockedCount(maxDist)}/${DIARY_ENTRIES.length} 해금`, {
             fontFamily: FONT_FAMILY, fontSize: '16px', color: '#AAAAAA',
         }).setOrigin(0.5);
 
@@ -86,5 +86,6 @@ export class JourneyDiary extends Phaser.Scene {
         for (const card of this.cards) card.destroy();
         this.cards = [];
         this.tweens.killAll();
+        this.time.removeAllEvents();
     }
 }

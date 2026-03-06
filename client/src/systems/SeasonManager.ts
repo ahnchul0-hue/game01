@@ -9,10 +9,10 @@
  */
 
 // 계절 타입
-export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
+type Season = 'spring' | 'summer' | 'autumn' | 'winter';
 
 // 특별 이벤트 타입
-export type SpecialEvent = 'christmas' | 'newyear' | 'cherry_blossom' | null;
+type SpecialEvent = 'christmas' | 'newyear' | 'cherry_blossom' | null;
 
 // 시즌별 색상 테마
 export interface SeasonTheme {
