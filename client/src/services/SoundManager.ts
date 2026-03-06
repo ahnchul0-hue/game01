@@ -538,10 +538,30 @@ export class SoundManager {
 
     stopAmbient(): void {
         for (const node of this.ambientNodes) {
-            try { (node as OscillatorNode | AudioBufferSourceNode).stop(); } catch { /* already stopped */ }
+            if ('stop' in node && typeof (node as any).stop === 'function') {
+                try { (node as OscillatorNode | AudioBufferSourceNode).stop(); } catch { /* already stopped */ }
+            }
             try { node.disconnect(); } catch { /* already disconnected */ }
         }
         this.ambientNodes = [];
+    }
+
+    /** 일시정지: 노드 유지한 채 볼륨만 페이드아웃 */
+    pauseAmbient(): void {
+        if (this.ambientGain && this.ctx) {
+            const t = this.ctx.currentTime;
+            this.ambientGain.gain.setValueAtTime(this.ambientGain.gain.value, t);
+            this.ambientGain.gain.linearRampToValueAtTime(0, t + 0.1);
+        }
+    }
+
+    /** 재개: 볼륨 페이드인 (노드 재생성 없음) */
+    resumeAmbient(): void {
+        if (this.ambientGain && this.ctx && !this.muted) {
+            const t = this.ctx.currentTime;
+            this.ambientGain.gain.setValueAtTime(0, t);
+            this.ambientGain.gain.linearRampToValueAtTime(this.ambientVol, t + 0.1);
+        }
     }
 
     /** 새소리: 고음 사인파 트릴 + 랜덤 간격 반복 */
@@ -749,12 +769,20 @@ export class SoundManager {
 
     // ---- Volume / Mute ------------------------------------------------------
 
+    /** 볼륨 변경 시 클릭 방지 ramp */
+    private rampGain(gain: GainNode, target: number): void {
+        if (!this.ctx) return;
+        const t = this.ctx.currentTime;
+        gain.gain.setValueAtTime(gain.gain.value, t);
+        gain.gain.linearRampToValueAtTime(target, t + 0.03);
+    }
+
     setMuted(muted: boolean): void {
         this.muted = muted;
         localStorage.setItem(LS_KEY_MUTED, String(muted));
-        if (this.sfxGain) this.sfxGain.gain.value = muted ? 0 : this.sfxVol;
-        if (this.bgmGain) this.bgmGain.gain.value = muted ? 0 : this.bgmVol;
-        if (this.ambientGain) this.ambientGain.gain.value = muted ? 0 : this.ambientVol;
+        if (this.sfxGain) this.rampGain(this.sfxGain, muted ? 0 : this.sfxVol);
+        if (this.bgmGain) this.rampGain(this.bgmGain, muted ? 0 : this.bgmVol);
+        if (this.ambientGain) this.rampGain(this.ambientGain, muted ? 0 : this.ambientVol);
     }
 
     getBgmVolume(): number { return this.bgmVol; }
@@ -764,7 +792,7 @@ export class SoundManager {
         this.bgmVol = Math.max(0, Math.min(1, vol));
         localStorage.setItem(LS_KEY_BGM_VOL, this.bgmVol.toString());
         if (this.bgmGain && !this.muted) {
-            this.bgmGain.gain.value = this.bgmVol;
+            this.rampGain(this.bgmGain, this.bgmVol);
         }
     }
 
@@ -772,7 +800,7 @@ export class SoundManager {
         this.sfxVol = Math.max(0, Math.min(1, vol));
         localStorage.setItem(LS_KEY_SFX_VOL, this.sfxVol.toString());
         if (this.sfxGain && !this.muted) {
-            this.sfxGain.gain.value = this.sfxVol;
+            this.rampGain(this.sfxGain, this.sfxVol);
         }
     }
 
@@ -782,7 +810,7 @@ export class SoundManager {
         this.ambientVol = Math.max(0, Math.min(1, vol));
         localStorage.setItem(LS_KEY_AMBIENT_VOL, this.ambientVol.toString());
         if (this.ambientGain && !this.muted) {
-            this.ambientGain.gain.value = this.ambientVol;
+            this.rampGain(this.ambientGain, this.ambientVol);
         }
     }
 

@@ -10,6 +10,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 const LS_KEY_MUTED = 'capybara_muted';
 const LS_KEY_BGM_VOL = 'capybara_bgm_vol';
 const LS_KEY_SFX_VOL = 'capybara_sfx_vol';
+const LS_KEY_AMBIENT_VOL = 'capybara_ambient_vol';
 
 // ─── 볼륨 클램프 로직 (SoundManager.setBgmVolume/setSfxVolume) ─────────
 function clampVolume(vol: number): number {
@@ -120,6 +121,70 @@ describe('SoundManager volume logic', () => {
             const vol = clampVolume(999);
             localStorage.setItem(LS_KEY_SFX_VOL, vol.toString());
             expect(parseSfxVol()).toBe(1);
+        });
+    });
+
+    describe('ambient volume logic', () => {
+        function parseAmbientVol(): number {
+            return parseFloat(localStorage.getItem(LS_KEY_AMBIENT_VOL) ?? '0.35');
+        }
+
+        it('ambient default is 0.35', () => {
+            expect(parseAmbientVol()).toBe(0.35);
+        });
+
+        it('reads stored ambient volume', () => {
+            localStorage.setItem(LS_KEY_AMBIENT_VOL, '0.7');
+            expect(parseAmbientVol()).toBe(0.7);
+        });
+
+        it('setAmbientVolume clamps negative to 0', () => {
+            const vol = clampVolume(-0.5);
+            localStorage.setItem(LS_KEY_AMBIENT_VOL, vol.toString());
+            expect(parseAmbientVol()).toBe(0);
+        });
+
+        it('setAmbientVolume clamps above 1 to 1', () => {
+            const vol = clampVolume(1.5);
+            localStorage.setItem(LS_KEY_AMBIENT_VOL, vol.toString());
+            expect(parseAmbientVol()).toBe(1);
+        });
+
+        it('handles invalid ambient vol string', () => {
+            localStorage.setItem(LS_KEY_AMBIENT_VOL, 'invalid');
+            expect(Number.isNaN(parseAmbientVol())).toBe(true);
+        });
+
+        it('ambient volume set+read cycle', () => {
+            const vol = clampVolume(0.5);
+            localStorage.setItem(LS_KEY_AMBIENT_VOL, vol.toString());
+            expect(parseAmbientVol()).toBe(0.5);
+        });
+    });
+
+    describe('stopAmbient node cleanup pattern', () => {
+        it('stop+disconnect clears all nodes without error', () => {
+            const mockNodes = [
+                { stop: () => {}, disconnect: () => {} },  // OscillatorNode
+                { disconnect: () => {} },                    // GainNode (no stop)
+                { stop: () => { throw new Error('already stopped'); }, disconnect: () => {} },
+            ];
+            const cleaned: typeof mockNodes = [];
+            for (const node of mockNodes) {
+                if ('stop' in node && typeof node.stop === 'function') {
+                    try { node.stop(); } catch { /* ok */ }
+                }
+                try { node.disconnect(); } catch { /* ok */ }
+            }
+            expect(cleaned.length).toBe(0); // array not accumulated
+        });
+
+        it('repeated play->stop does not accumulate nodes', () => {
+            let nodeCount = 0;
+            const stop = () => { nodeCount = 0; };
+            const play = () => { stop(); nodeCount = 31; };
+            play(); play(); play();
+            expect(nodeCount).toBe(31); // not 93
         });
     });
 

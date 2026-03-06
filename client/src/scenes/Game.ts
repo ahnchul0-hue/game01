@@ -301,7 +301,7 @@ export class Game extends Phaser.Scene {
         this.state = 'paused';
         this.physics.pause();
         SoundManager.getInstance().stopBgm();
-        SoundManager.getInstance().stopAmbient();
+        SoundManager.getInstance().pauseAmbient();
 
         this.pauseOverlay = new PauseOverlay(
             this,
@@ -326,7 +326,7 @@ export class Game extends Phaser.Scene {
             this.mode === 'relax' ? 'bgm-onsen' : (STAGE_BGM[this.stageManager.getCurrentStage()] ?? 'bgm-game'),
         );
         if (this.mode === 'relax') {
-            SoundManager.getInstance().playAmbient('ambient-birds');
+            SoundManager.getInstance().resumeAmbient();
         }
         // Prevent immediate re-pause (100ms cooldown)
         this.resumeCooldown = true;
@@ -651,6 +651,7 @@ export class Game extends Phaser.Scene {
 
         const snd = SoundManager.getInstance();
         snd.stopBgm();
+        snd.stopAmbient();
         snd.playSfx('gameover');
 
         // 거리 보너스 (1m = 0.5점)
@@ -681,6 +682,7 @@ export class Game extends Phaser.Scene {
 
         const snd = SoundManager.getInstance();
         snd.stopBgm();
+        snd.stopAmbient();
         snd.playSfx('levelup');
 
         // 퀘스트 완료 보너스 점수
