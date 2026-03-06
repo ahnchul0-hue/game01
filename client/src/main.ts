@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ErrorTracker } from './services/ErrorTracker';
 import { GAME_WIDTH, GAME_HEIGHT, GRAVITY } from './utils/Constants';
 import { Boot } from './scenes/Boot';
 import { Preloader } from './scenes/Preloader';
@@ -39,6 +40,9 @@ const config: Phaser.Types.Core.GameConfig = {
     },
     scene: [Boot, Preloader, MainMenu, Game, GameOver, Onsen, SkinSelect, Missions, CompanionSelect, QuestSelect, JourneyDiary],
 };
+
+// 프로덕션 에러 트래킹 설치 (Phaser 초기화 전)
+ErrorTracker.install();
 
 new Phaser.Game(config);
 

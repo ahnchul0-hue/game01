@@ -46,6 +46,7 @@ import { PauseOverlay } from '../ui/PauseOverlay';
 import { TutorialOverlay } from '../ui/TutorialOverlay';
 import { ComboManager } from '../systems/ComboManager';
 import { QuestManager } from '../systems/QuestManager';
+import { WeatherSystem } from '../systems/WeatherSystem';
 import { QUEST_COMPLETION_BONUS_SCORE } from '../utils/Constants';
 
 type GameState = 'playing' | 'paused' | 'revivePrompt' | 'gameOver';
@@ -115,6 +116,9 @@ export class Game extends Phaser.Scene {
     private questManager: QuestManager | null = null;
     private questId: string | null = null;
 
+    // 비주얼 날씨 시스템
+    private weatherSystem!: WeatherSystem;
+
     // 착지 감지 (먼지 파티클용)
     private wasJumping = false;
 
@@ -175,6 +179,7 @@ export class Game extends Phaser.Scene {
         if (this.roadRenderer) this.roadRenderer.destroy();
         if (this.sceneryManager) this.sceneryManager.destroy();
         if (this.speedLineRenderer) this.speedLineRenderer.destroy();
+        if (this.weatherSystem) this.weatherSystem.destroy();
         if (this.questBarBg) { this.questBarBg.destroy(); this.questBarBg = null; }
         if (this.questBarFill) { this.questBarFill.destroy(); this.questBarFill = null; }
     }
@@ -193,6 +198,9 @@ export class Game extends Phaser.Scene {
         this.roadRenderer = new RoadRenderer(this, 'forest');
         this.sceneryManager = new SceneryManager(this, 'forest');
         this.speedLineRenderer = new SpeedLineRenderer(this);
+
+        // 비주얼 날씨 시스템 (하늘 그라데이션 + 날씨 파티클)
+        this.weatherSystem = new WeatherSystem(this);
 
         // M4: 선택된 스킨 + 온천 버프 읽기
         const inventoryMgr = InventoryManager.getInstance();
@@ -402,6 +410,17 @@ export class Game extends Phaser.Scene {
                 // BGM 전환은 StageManager.transitionTo() 내부에서 처리
             }
         } catch (e) { console.error('[StageManager] update error:', e); }
+
+        try {
+            this.weatherSystem.update(this.distance, this.stageManager.getCurrentStage(), dt);
+            // 날씨→ASMR ambient 자동 연동 (릴렉스 모드)
+            if (isRelax) {
+                const weatherAmbient = this.weatherSystem.getWeatherAmbient();
+                if (weatherAmbient) {
+                    SoundManager.getInstance().playAmbient(weatherAmbient);
+                }
+            }
+        } catch (e) { console.error('[WeatherSystem] update error:', e); }
 
         try {
             const comboExpired = this.combo.update(effectiveDelta);

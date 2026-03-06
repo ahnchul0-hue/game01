@@ -3,6 +3,7 @@ pub mod health;
 pub mod inventory;
 pub mod missions;
 pub mod scores;
+pub mod telemetry;
 pub mod users;
 
 use std::collections::HashMap;
@@ -70,5 +71,6 @@ pub fn create_router(pool: SqlitePool) -> Router {
         .merge(inventory::router())
         .merge(missions::router())
         .merge(companions::router())
+        .merge(telemetry::router())
         .with_state(state)
 }
