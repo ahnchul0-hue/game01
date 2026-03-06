@@ -68,8 +68,10 @@ export class DiaryCard {
             const barBg = scene.add.graphics();
             barBg.fillStyle(0x444444, 1);
             barBg.fillRoundedRect(barX, barY, barW, 10, 5);
-            barBg.fillStyle(0x4CAF50, 1);
-            barBg.fillRoundedRect(barX, barY, barW * progress, 10, 5);
+            if (progress > 0) {
+                barBg.fillStyle(0x4CAF50, 1);
+                barBg.fillRoundedRect(barX, barY, barW * progress, 10, 5);
+            }
             this.objects.push(barBg);
 
             const pctText = scene.add.text(barX + barW + 8, barY - 2, `${Math.floor(progress * 100)}%`, {

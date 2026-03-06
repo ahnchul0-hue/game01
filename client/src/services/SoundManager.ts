@@ -52,14 +52,15 @@ export class SoundManager {
     init(): void {
         if (this.ctx) return;
         this.ctx = new AudioContext();
+        const t = this.ctx.currentTime;
         this.sfxGain = this.ctx.createGain();
-        this.sfxGain.gain.value = this.muted ? 0 : this.sfxVol;
+        this.sfxGain.gain.setValueAtTime(this.muted ? 0 : this.sfxVol, t);
         this.sfxGain.connect(this.ctx.destination);
         this.bgmGain = this.ctx.createGain();
-        this.bgmGain.gain.value = this.muted ? 0 : this.bgmVol;
+        this.bgmGain.gain.setValueAtTime(this.muted ? 0 : this.bgmVol, t);
         this.bgmGain.connect(this.ctx.destination);
         this.ambientGain = this.ctx.createGain();
-        this.ambientGain.gain.value = this.muted ? 0 : this.ambientVol;
+        this.ambientGain.gain.setValueAtTime(this.muted ? 0 : this.ambientVol, t);
         this.ambientGain.connect(this.ctx.destination);
     }
 
@@ -195,7 +196,9 @@ export class SoundManager {
 
     stopBgm(): void {
         for (const node of this.bgmNodes) {
-            try { (node as OscillatorNode | AudioBufferSourceNode).stop(); } catch { /* already stopped */ }
+            if ('stop' in node && typeof (node as OscillatorNode).stop === 'function') {
+                try { (node as OscillatorNode | AudioBufferSourceNode).stop(); } catch { /* already stopped */ }
+            }
             try { node.disconnect(); } catch { /* already disconnected */ }
         }
         this.bgmNodes = [];
@@ -621,7 +624,7 @@ export class SoundManager {
 
         // 고역 졸졸 소리 (작은 물방울)
         const ripple = this.ctx.createBufferSource();
-        ripple.buffer = this.onsenNoiseBuffer;
+        ripple.buffer = this.ensureNoiseBuffer();
         ripple.loop = true;
         const rippleFilter = this.ctx.createBiquadFilter();
         rippleFilter.type = 'bandpass';
