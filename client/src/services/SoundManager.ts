@@ -25,6 +25,17 @@ export class SoundManager {
     private hitNoiseBuffer: AudioBuffer | null = null;
     private onsenNoiseBuffer: AudioBuffer | null = null;
 
+    /** 4초 화이트 노이즈 버퍼 (BGM/Ambient 공용, 최초 1회 생성) */
+    private ensureNoiseBuffer(): AudioBuffer {
+        if (!this.onsenNoiseBuffer) {
+            const bufSize = this.ctx!.sampleRate * 4;
+            this.onsenNoiseBuffer = this.ctx!.createBuffer(1, bufSize, this.ctx!.sampleRate);
+            const data = this.onsenNoiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+        }
+        return this.onsenNoiseBuffer;
+    }
+
     private constructor() {
         this.muted = localStorage.getItem(LS_KEY_MUTED) === 'true';
         this.bgmVol = parseFloat(localStorage.getItem(LS_KEY_BGM_VOL) ?? '0.18');
@@ -231,16 +242,8 @@ export class SoundManager {
     /** Bandpass-filtered looping white noise for water ambience. */
     private createBgmOnsen(): void {
         if (!this.ctx || !this.bgmGain) return;
-        // Cached 4-second noise buffer (avoid per-call allocation)
-        if (!this.onsenNoiseBuffer) {
-            const bufSize = this.ctx.sampleRate * 4;
-            this.onsenNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
-            const data = this.onsenNoiseBuffer.getChannelData(0);
-            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
-        }
-
         const source = this.ctx.createBufferSource();
-        source.buffer = this.onsenNoiseBuffer;
+        source.buffer = this.ensureNoiseBuffer();
         source.loop = true;
 
         const filter = this.ctx.createBiquadFilter();
@@ -331,14 +334,8 @@ export class SoundManager {
         pulseGain.connect(this.bgmGain);
 
         // 물소리 텍스처: 저주파 밴드패스 노이즈
-        if (!this.onsenNoiseBuffer) {
-            const bufSize = this.ctx.sampleRate * 4;
-            this.onsenNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
-            const data = this.onsenNoiseBuffer.getChannelData(0);
-            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
-        }
         const noiseSource = this.ctx.createBufferSource();
-        noiseSource.buffer = this.onsenNoiseBuffer;
+        noiseSource.buffer = this.ensureNoiseBuffer();
         noiseSource.loop = true;
 
         const noiseFilter = this.ctx.createBiquadFilter();
@@ -462,14 +459,8 @@ export class SoundManager {
         pulseGain.connect(this.bgmGain);
 
         // 온천 수증기: 고주파 밴드패스 노이즈
-        if (!this.onsenNoiseBuffer) {
-            const bufSize = this.ctx.sampleRate * 4;
-            this.onsenNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
-            const data = this.onsenNoiseBuffer.getChannelData(0);
-            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
-        }
         const steamSource = this.ctx.createBufferSource();
-        steamSource.buffer = this.onsenNoiseBuffer;
+        steamSource.buffer = this.ensureNoiseBuffer();
         steamSource.loop = true;
 
         const steamFilter = this.ctx.createBiquadFilter();
@@ -614,16 +605,9 @@ export class SoundManager {
     private createAmbientStream(): void {
         if (!this.ctx || !this.ambientGain) return;
 
-        if (!this.onsenNoiseBuffer) {
-            const bufSize = this.ctx.sampleRate * 4;
-            this.onsenNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
-            const data = this.onsenNoiseBuffer.getChannelData(0);
-            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
-        }
-
         // 메인 물소리 (저역 밴드패스)
         const water = this.ctx.createBufferSource();
-        water.buffer = this.onsenNoiseBuffer;
+        water.buffer = this.ensureNoiseBuffer();
         water.loop = true;
         const waterFilter = this.ctx.createBiquadFilter();
         waterFilter.type = 'bandpass';
@@ -668,15 +652,8 @@ export class SoundManager {
     private createAmbientWind(): void {
         if (!this.ctx || !this.ambientGain) return;
 
-        if (!this.onsenNoiseBuffer) {
-            const bufSize = this.ctx.sampleRate * 4;
-            this.onsenNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
-            const data = this.onsenNoiseBuffer.getChannelData(0);
-            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
-        }
-
         const wind = this.ctx.createBufferSource();
-        wind.buffer = this.onsenNoiseBuffer;
+        wind.buffer = this.ensureNoiseBuffer();
         wind.loop = true;
 
         const windFilter = this.ctx.createBiquadFilter();
@@ -720,16 +697,9 @@ export class SoundManager {
     private createAmbientRain(): void {
         if (!this.ctx || !this.ambientGain) return;
 
-        if (!this.onsenNoiseBuffer) {
-            const bufSize = this.ctx.sampleRate * 4;
-            this.onsenNoiseBuffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
-            const data = this.onsenNoiseBuffer.getChannelData(0);
-            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
-        }
-
         // 비 배경 (핑크 노이즈 근사: 로우패스 + 하이패스 조합)
         const rain = this.ctx.createBufferSource();
-        rain.buffer = this.onsenNoiseBuffer;
+        rain.buffer = this.ensureNoiseBuffer();
         rain.loop = true;
         const lpf = this.ctx.createBiquadFilter();
         lpf.type = 'lowpass';

@@ -4,7 +4,7 @@ import type { StageType } from '../utils/Constants';
 import { getStageForDistance } from '../utils/GameLogic';
 import { RoadRenderer } from './RoadRenderer';
 import { SoundManager } from '../services/SoundManager';
-import type { BgmName } from '../services/SoundManager';
+import type { BgmName, AmbientName } from '../services/SoundManager';
 import type { GameMode } from '../utils/Constants';
 
 /** 스테이지 ID → BGM 이름 매핑 */
@@ -13,6 +13,14 @@ export const STAGE_BGM: Record<StageType, BgmName> = {
     river:   'bgm-river',
     village: 'bgm-village',
     onsen:   'bgm-onsen-stage',
+};
+
+/** 스테이지 ID → Ambient 사운드 매핑 (릴렉스 모드) */
+export const STAGE_AMBIENT: Record<StageType, AmbientName> = {
+    forest:  'ambient-birds',
+    river:   'ambient-stream',
+    village: 'ambient-wind',
+    onsen:   'ambient-rain',
 };
 
 export class StageManager {
@@ -47,8 +55,10 @@ export class StageManager {
         this.isTransitioning = true;
         this.roadRenderer.transitionToStage(newStage, STAGE_TRANSITION_DURATION / 1000);
 
-        // 릴렉스 모드는 항상 bgm-onsen 유지 (스테이지 BGM 변경 안 함)
-        if (this.gameMode !== 'relax') {
+        // 릴렉스 모드는 항상 bgm-onsen 유지 + 스테이지별 ambient 전환
+        if (this.gameMode === 'relax') {
+            SoundManager.getInstance().playAmbient(STAGE_AMBIENT[newStage]);
+        } else {
             SoundManager.getInstance().playBgm(STAGE_BGM[newStage]);
         }
 

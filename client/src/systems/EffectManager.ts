@@ -129,12 +129,14 @@ export class EffectManager {
 
         // 줌 펄스 (카메라가 살짝 줌인 후 복귀)
         const cam = this.scene.cameras.main;
+        this.scene.tweens.killTweensOf(cam);
         this.scene.tweens.add({
             targets: cam,
             zoom: 1.05,
             duration: 150,
             yoyo: true,
             ease: 'Power2',
+            onComplete: () => { cam.zoom = 1; },
         });
 
         // 슬로우모션 활성화
@@ -158,9 +160,11 @@ export class EffectManager {
 
         // B4: 카메라 줌 펄스
         const cam = this.scene.cameras.main;
+        this.scene.tweens.killTweensOf(cam);
         this.scene.tweens.add({
             targets: cam, zoom: 1.08, duration: 250,
             yoyo: true, ease: 'Sine.easeInOut',
+            onComplete: () => { cam.zoom = 1; },
         });
 
         // 스테이지명 텍스트

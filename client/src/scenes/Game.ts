@@ -8,7 +8,7 @@ import { ItemPool } from '../pools/ItemPool';
 import { PowerUpPool } from '../pools/PowerUpPool';
 import { DifficultyManager } from '../systems/DifficultyManager';
 import { SpawnManager } from '../systems/SpawnManager';
-import { StageManager, STAGE_BGM } from '../systems/StageManager';
+import { StageManager, STAGE_BGM, STAGE_AMBIENT } from '../systems/StageManager';
 import { EffectManager } from '../systems/EffectManager';
 import { RoadRenderer } from '../systems/RoadRenderer';
 import { SceneryManager } from '../systems/SceneryManager';
@@ -286,9 +286,9 @@ export class Game extends Phaser.Scene {
         sound.playBgm(
             this.mode === 'relax' ? 'bgm-onsen' : (STAGE_BGM[this.stageManager.getCurrentStage()] ?? 'bgm-game'),
         );
-        // 릴렉스 모드: ASMR 사운드스케이프 (새소리 + 시냇물)
+        // 릴렉스 모드: ASMR 사운드스케이프 (스테이지별 ambient)
         if (this.mode === 'relax') {
-            sound.playAmbient('ambient-birds');
+            sound.playAmbient(STAGE_AMBIENT[this.stageManager.getCurrentStage()]);
         }
 
         // 첫 플레이 튜토리얼
