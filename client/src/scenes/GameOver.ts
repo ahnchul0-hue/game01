@@ -177,14 +177,21 @@ export class GameOver extends Phaser.Scene {
 
         // 최고 거리
         const bestDistance = inventoryMgr.getMaxDistance();
-        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.62, `BEST: ${bestDistance}m`, {
+        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.60, `BEST: ${bestDistance}m`, {
             fontFamily: FONT_FAMILY, fontSize: '18px', color: '#AAAAAA',
         }).setOrigin(0.5);
+
+        // B3: 거리 보너스 보상 상자 (normal 모드만)
+        if (this.lastMode === 'normal' && this.finalDistance >= 100) {
+            const bonus = this.calculateDistanceBonus();
+            inventoryMgr.addItems(bonus);
+            this.showRewardBox(bonus);
+        }
 
         // 다음 스킨 잠금해제 힌트
         const hint = this.getNextUnlockHint(inventoryMgr);
         if (hint) {
-            this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.66, hint, {
+            this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.70, hint, {
                 fontFamily: FONT_FAMILY, fontSize: '14px', color: '#81C784',
             }).setOrigin(0.5);
         }
@@ -227,6 +234,55 @@ export class GameOver extends Phaser.Scene {
             x: GAME_WIDTH / 2 + 110, y: GAME_HEIGHT * 0.88,
             label: 'MENU', color: 0x757575, width: 180, height: 48,
             callback: () => fadeToScene(this, SCENE_MAIN_MENU),
+        });
+    }
+
+    /** B3: 거리 기반 보너스 보상 계산 */
+    private calculateDistanceBonus(): CollectedItems {
+        const d = this.finalDistance;
+        const bonus: CollectedItems = { mandarin: 0, watermelon: 0, hotspring_material: 0 };
+        if (d >= 1000) {
+            bonus.mandarin = 3 + Math.floor(Math.random() * 5);     // 3~7
+            bonus.watermelon = 1 + Math.floor(Math.random() * 2);   // 1~2
+            bonus.hotspring_material = Math.floor(Math.random() * 2); // 0~1
+        } else if (d >= 500) {
+            bonus.mandarin = 2 + Math.floor(Math.random() * 4);     // 2~5
+            bonus.watermelon = Math.floor(Math.random() * 2);        // 0~1
+        } else if (d >= 100) {
+            bonus.mandarin = 1 + Math.floor(Math.random() * 3);     // 1~3
+        }
+        return bonus;
+    }
+
+    /** B3: 보상 상자 패널 표시 */
+    private showRewardBox(bonus: CollectedItems): void {
+        const boxY = GAME_HEIGHT * 0.63;
+        const boxH = 60;
+
+        // 패널 배경
+        const bg = this.add.graphics();
+        bg.fillStyle(0x2E7D32, 0.85);
+        bg.fillRoundedRect(100, boxY, GAME_WIDTH - 200, boxH, 12);
+
+        // 제목
+        this.add.text(GAME_WIDTH / 2, boxY + 14, '거리 보너스!', {
+            fontFamily: FONT_FAMILY, fontSize: '16px', color: '#FFD700', fontStyle: 'bold',
+        }).setOrigin(0.5);
+
+        // 보상 아이템 나열
+        const parts: string[] = [];
+        if (bonus.mandarin > 0) parts.push(`귤 +${bonus.mandarin}`);
+        if (bonus.watermelon > 0) parts.push(`수박 +${bonus.watermelon}`);
+        if (bonus.hotspring_material > 0) parts.push(`온천재료 +${bonus.hotspring_material}`);
+
+        const rewardLabel = this.add.text(GAME_WIDTH / 2, boxY + 38, parts.join('  '), {
+            fontFamily: FONT_FAMILY, fontSize: '18px', color: '#FFFFFF',
+            stroke: '#000000', strokeThickness: 2,
+        }).setOrigin(0.5).setAlpha(0);
+
+        // 등장 애니메이션
+        this.tweens.add({
+            targets: rewardLabel, alpha: 1, duration: 400, delay: 800, ease: 'Power2',
         });
     }
 

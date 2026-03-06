@@ -145,6 +145,14 @@ export const STAGE_NAMES: Record<StageType, string> = {
     onsen:   '온천',
 };
 
+/** B1: 스테이지별 세계관 내러티브 */
+export const STAGE_STORIES: Record<StageType, string> = {
+    forest:  '따뜻한 온천을 찾아 카피바라의 여정이 시작됩니다',
+    river:   '시원한 강물 소리가 온천이 가까워졌음을 알려줍니다',
+    village: '마을 사람들이 카피바라에게 온천 길을 알려줍니다',
+    onsen:   '드디어 꿈에 그리던 온천에 도착했습니다!',
+};
+
 export const STAGE_TRANSITION_DURATION = 800;
 
 // 이펙트 상수

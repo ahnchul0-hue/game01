@@ -9,6 +9,7 @@ import {
     DEPTH_EFFECT_OVERLAY,
     DEPTH_STAGE_TEXT,
     STAGE_NAMES,
+    STAGE_STORIES,
     FONT_FAMILY,
 } from '../utils/Constants';
 import type { StageType } from '../utils/Constants';
@@ -141,10 +142,29 @@ export class EffectManager {
         this.slowmoStart = this.scene.time.now;
     }
 
-    /** 스테이지 전환 이펙트: 스테이지명 텍스트 */
+    /** 스테이지 전환 이펙트: B1 내러티브 + B4 카메라 줌/플래시 */
     onStageTransition(stage: StageType): void {
         const name = STAGE_NAMES[stage];
-        const text = this.scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 80, `${name}에 도착!`, {
+        const story = STAGE_STORIES[stage];
+
+        // B4: 화이트 플래시
+        const flash = this.scene.add.graphics().setDepth(DEPTH_EFFECT_OVERLAY + 1);
+        flash.fillStyle(0xFFFFFF, 0.5);
+        flash.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+        this.scene.tweens.add({
+            targets: flash, alpha: 0, duration: 400, ease: 'Power2',
+            onComplete: () => flash.destroy(),
+        });
+
+        // B4: 카메라 줌 펄스
+        const cam = this.scene.cameras.main;
+        this.scene.tweens.add({
+            targets: cam, zoom: 1.08, duration: 250,
+            yoyo: true, ease: 'Sine.easeInOut',
+        });
+
+        // 스테이지명 텍스트
+        const text = this.scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 90, `${name}에 도착!`, {
             fontFamily: FONT_FAMILY,
             fontSize: '36px',
             color: '#FFFFFF',
@@ -153,19 +173,37 @@ export class EffectManager {
             strokeThickness: 4,
         }).setOrigin(0.5).setDepth(DEPTH_STAGE_TEXT).setAlpha(0);
 
+        // B1: 내러티브 텍스트
+        const storyText = this.scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 45, story, {
+            fontFamily: FONT_FAMILY,
+            fontSize: '18px',
+            color: '#FFE0B2',
+            stroke: '#000000',
+            strokeThickness: 3,
+        }).setOrigin(0.5).setDepth(DEPTH_STAGE_TEXT).setAlpha(0);
+
+        // 등장 애니메이션
         this.scene.tweens.add({
             targets: text,
             alpha: 1,
             y: text.y - 20,
             duration: 300,
             ease: 'Power2',
+        });
+        this.scene.tweens.add({
+            targets: storyText,
+            alpha: 1,
+            y: storyText.y - 15,
+            duration: 400,
+            delay: 200,
+            ease: 'Power2',
             onComplete: () => {
                 this.scene.time.delayedCall(EFFECT_STAGE_TEXT_DURATION, () => {
                     this.scene.tweens.add({
-                        targets: text,
+                        targets: [text, storyText],
                         alpha: 0,
-                        duration: 300,
-                        onComplete: () => text.destroy(),
+                        duration: 400,
+                        onComplete: () => { text.destroy(); storyText.destroy(); },
                     });
                 });
             },
