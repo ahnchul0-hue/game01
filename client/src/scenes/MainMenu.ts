@@ -9,6 +9,7 @@ import {
     SCENE_MISSIONS,
     SCENE_COMPANION_SELECT,
     SCENE_QUEST_SELECT,
+    SCENE_JOURNEY_DIARY,
     FONT_FAMILY,
 } from '../utils/Constants';
 import { ApiClient } from '../services/ApiClient';
@@ -126,9 +127,15 @@ export class MainMenu extends Phaser.Scene {
 
         // ── 시스템 ──
         createButton(this, {
-            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.73,
-            label: '미션', color: 0x1565C0, width: 280, height: 48, fontSize: '22px', radius: 14,
+            x: GAME_WIDTH / 2 - 75, y: GAME_HEIGHT * 0.73,
+            label: '미션', color: 0x1565C0, width: 130, height: 44, fontSize: '20px', radius: 12,
             callback: () => fadeToScene(this, SCENE_MISSIONS),
+        });
+
+        createButton(this, {
+            x: GAME_WIDTH / 2 + 75, y: GAME_HEIGHT * 0.73,
+            label: '다이어리', color: 0x6D4C41, width: 130, height: 44, fontSize: '20px', radius: 12,
+            callback: () => fadeToScene(this, SCENE_JOURNEY_DIARY),
         });
 
         // 특별 이벤트 배너 표시

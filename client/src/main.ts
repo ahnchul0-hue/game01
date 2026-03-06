@@ -10,6 +10,7 @@ import { SkinSelect } from './scenes/SkinSelect';
 import { Missions } from './scenes/Missions';
 import { CompanionSelect } from './scenes/CompanionSelect';
 import { QuestSelect } from './scenes/QuestSelect';
+import { JourneyDiary } from './scenes/JourneyDiary';
 
 const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
@@ -36,7 +37,7 @@ const config: Phaser.Types.Core.GameConfig = {
             debug: false,
         },
     },
-    scene: [Boot, Preloader, MainMenu, Game, GameOver, Onsen, SkinSelect, Missions, CompanionSelect, QuestSelect],
+    scene: [Boot, Preloader, MainMenu, Game, GameOver, Onsen, SkinSelect, Missions, CompanionSelect, QuestSelect, JourneyDiary],
 };
 
 new Phaser.Game(config);

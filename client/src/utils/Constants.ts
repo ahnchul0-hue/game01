@@ -311,6 +311,7 @@ export const LS_KEY_STREAK = 'capybara_streak';
 
 // 동물 친구 시스템
 export const SCENE_COMPANION_SELECT = 'CompanionSelect';
+export const SCENE_JOURNEY_DIARY = 'JourneyDiary';
 export const LS_KEY_SELECTED_COMPANION = 'capybara_selected_companion';
 export const LS_KEY_UNLOCKED_COMPANIONS = 'capybara_unlocked_companions';
 
