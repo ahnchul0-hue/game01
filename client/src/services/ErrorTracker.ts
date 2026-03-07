@@ -1,7 +1,7 @@
 /**
  * ErrorTracker — 프로덕션 클라이언트 에러 캡처 + 서버 전송.
  *
- * window.onerror / unhandledrejection을 캡처하여
+ * window 'error' / 'unhandledrejection' 이벤트를 캡처하여
  * 서버 /api/telemetry 엔드포인트로 배치 전송.
  * 중복 억제 + 전송 제한으로 과부하 방지.
  */
@@ -32,17 +32,18 @@ class ErrorTrackerImpl {
         if (this.installed) return;
         this.installed = true;
 
-        window.onerror = (msg, source, line, col, err) => {
+        // addEventListener으로 기존 핸들러 체이닝 보존
+        window.addEventListener('error', (ev) => {
             this.capture({
                 type: 'error',
-                message: String(msg),
-                source: source ?? undefined,
-                line: line ?? undefined,
-                col: col ?? undefined,
-                stack: err?.stack,
+                message: ev.message ?? String(ev),
+                source: ev.filename ?? undefined,
+                line: ev.lineno ?? undefined,
+                col: ev.colno ?? undefined,
+                stack: ev.error?.stack,
                 ts: Date.now(),
             });
-        };
+        });
 
         window.addEventListener('unhandledrejection', (ev) => {
             const reason = ev.reason;
@@ -92,9 +93,9 @@ class ErrorTrackerImpl {
 
         const body = JSON.stringify({ errors: batch });
 
-        // sendBeacon for reliability on page unload, fetch as fallback
+        // sendBeacon: Blob으로 Content-Type: application/json 보장
         if (navigator.sendBeacon) {
-            navigator.sendBeacon(TELEMETRY_URL, body);
+            navigator.sendBeacon(TELEMETRY_URL, new Blob([body], { type: 'application/json' }));
         } else {
             fetch(TELEMETRY_URL, {
                 method: 'POST',

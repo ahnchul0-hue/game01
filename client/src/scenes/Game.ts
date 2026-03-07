@@ -119,6 +119,9 @@ export class Game extends Phaser.Scene {
     // 비주얼 날씨 시스템
     private weatherSystem!: WeatherSystem;
 
+    // 릴렉스 모드: 현재 재생 중인 ambient 캐시 (매 프레임 재호출 방지)
+    private currentAmbientName: string | null = null;
+
     // 착지 감지 (먼지 파티클용)
     private wasJumping = false;
 
@@ -147,6 +150,7 @@ export class Game extends Phaser.Scene {
         this.wasJumping = false;
         this.combo.reset();
         this.resumeCooldown = false;
+        this.currentAmbientName = null;
         this.lastQuestFillW = -1;
 
         // 퀘스트 모드 초기화
@@ -165,6 +169,8 @@ export class Game extends Phaser.Scene {
         this.time.removeAllEvents();
         this.cameras.main.clearMask();
         this.cameras.main.resetPostPipeline();
+        this.time.timeScale = 1;
+        this.cameras.main.setZoom(1);
         if (this.reviveUI) this.reviveUI.destroy();
         if (this.tutorialOverlay) {
             this.tutorialOverlay.destroy();
@@ -339,6 +345,7 @@ export class Game extends Phaser.Scene {
         // Prevent immediate re-pause (100ms cooldown)
         this.resumeCooldown = true;
         this.time.delayedCall(100, () => { this.resumeCooldown = false; });
+        this.currentAmbientName = null;
     }
 
     private showTutorial(): void {
@@ -413,10 +420,11 @@ export class Game extends Phaser.Scene {
 
         try {
             this.weatherSystem.update(this.distance, this.stageManager.getCurrentStage(), dt);
-            // 날씨→ASMR ambient 자동 연동 (릴렉스 모드)
+            // 날씨→ASMR ambient 자동 연동 (릴렉스 모드, 변경 시에만)
             if (isRelax) {
                 const weatherAmbient = this.weatherSystem.getWeatherAmbient();
-                if (weatherAmbient) {
+                if (weatherAmbient && weatherAmbient !== this.currentAmbientName) {
+                    this.currentAmbientName = weatherAmbient;
                     SoundManager.getInstance().playAmbient(weatherAmbient);
                 }
             }
@@ -524,6 +532,7 @@ export class Game extends Phaser.Scene {
         if (this.state !== 'playing') return;
 
         SoundManager.getInstance().playSfx('hit');
+        navigator.vibrate?.([100, 30, 100]);
         this.player.playHitAnimation();
         this.effectManager.onObstacleHit();
 
@@ -539,6 +548,7 @@ export class Game extends Phaser.Scene {
     private onCollectItem(item: Item): void {
         const snd = SoundManager.getInstance();
         snd.playSfx('collect');
+        navigator.vibrate?.(30);
 
         const comboMultiplier = this.combo.hit();
         const comboCount = this.combo.getCount();
@@ -559,6 +569,7 @@ export class Game extends Phaser.Scene {
     // 니어미스 시각 피드백 + 보너스 점수
     private showNearMiss(x: number, y: number): void {
         const bonus = 5;
+        navigator.vibrate?.(15);
         this.score += bonus;
         this.hud.showNearMiss(x, y, bonus);
         // A3: 니어미스 swoosh SFX + 스파크 파티클
@@ -569,6 +580,7 @@ export class Game extends Phaser.Scene {
     // M3: 파워업 수집
     private onCollectPowerUp(powerUp: PowerUp): void {
         SoundManager.getInstance().playSfx('powerup');
+        navigator.vibrate?.(50);
         this.player.applyPowerUp(powerUp.powerUpType);
         this.effectManager.onPowerUpCollected(this.player);
         powerUp.deactivate();
@@ -678,9 +690,24 @@ export class Game extends Phaser.Scene {
 
         this.player.clearAllPowerUps();
         this.reviveUI.hide();
-        this.physics.pause();
 
-        this.time.delayedCall(300, () => {
+        // === Death Cam: 슬로우모션 + 카메라 줌인 ===
+        // 햅틱 피드백
+        if (navigator.vibrate) navigator.vibrate([100, 30, 100]);
+
+        // 극한 슬로우모션 (timeScale 0.1 = 10배 느림)
+        this.time.timeScale = 0.1;
+
+        // 카메라 줌인 (1.3x over 300ms)
+        this.cameras.main.zoomTo(1.3, 300);
+
+        // 400ms 후 시간 복원 + Scene 전환
+        this.time.delayedCall(400, () => {
+            // 시간 스케일 복원
+            this.time.timeScale = 1;
+            this.cameras.main.zoomTo(1, 0);
+            this.physics.pause();
+
             if (!this.scene || !this.scene.isActive()) return;
             fadeToScene(this, SCENE_GAME_OVER, {
                 score: this.score,

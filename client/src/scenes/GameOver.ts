@@ -160,7 +160,14 @@ export class GameOver extends Phaser.Scene {
         this.tweens.add({
             targets: scoreDisplay, value: this.finalScore, duration: 1000, ease: 'Power1',
             onUpdate: () => scoreText.setText(Math.floor(scoreDisplay.value).toString()),
+            onComplete: () => {
+                // G2: New Record detection
+                this.checkNewRecord(scoreText);
+            },
         });
+
+        // G4: Score Breakdown (sequential animation below score)
+        this.showScoreBreakdown();
 
         // 거리 표시
         this.add.text(GAME_WIDTH / 2, GAME_HEIGHT * 0.50, `${this.finalDistance}m`, {
@@ -333,6 +340,73 @@ export class GameOver extends Phaser.Scene {
                 this.showShareToast('Copied!');
             }).catch(() => {});
         }
+    }
+
+    /** G2: Check and display new personal record */
+    private checkNewRecord(scoreText: Phaser.GameObjects.Text): void {
+        if (this.lastMode === 'relax') return;
+
+        const LS_KEY = 'capybara_max_score';
+        const prevBest = parseInt(localStorage.getItem(LS_KEY) ?? '0', 10) || 0;
+
+        if (this.finalScore > prevBest && this.finalScore > 0) {
+            localStorage.setItem(LS_KEY, this.finalScore.toString());
+
+            const recordText = this.add.text(
+                GAME_WIDTH / 2, scoreText.y - 40, 'NEW RECORD!',
+                {
+                    fontFamily: FONT_FAMILY, fontSize: '32px', color: '#FFD700',
+                    fontStyle: 'bold', stroke: '#000000', strokeThickness: 4,
+                },
+            ).setOrigin(0.5).setScale(0).setAlpha(0);
+
+            this.tweens.add({
+                targets: recordText,
+                scale: 1,
+                alpha: 1,
+                duration: 600,
+                ease: 'Back.easeOut',
+            });
+
+            // Haptic feedback
+            if (navigator.vibrate) {
+                navigator.vibrate([50, 30, 50, 30, 100]);
+            }
+        }
+    }
+
+    /** G4: Show itemized score breakdown with sequential animation */
+    private showScoreBreakdown(): void {
+        const baseY = GAME_HEIGHT * 0.465;
+        const lineHeight = 22;
+        const totalItemCount = this.collectedItems.mandarin
+            + this.collectedItems.watermelon
+            + this.collectedItems.hotspring_material;
+        const distanceBonus = Math.floor(this.finalDistance * 0.5);
+
+        const lines = [
+            { label: `아이템 수집: ${totalItemCount}개`, delay: 1200 },
+            { label: `거리 보너스: +${distanceBonus}점`, delay: 1400 },
+            { label: `총 점수: ${this.finalScore}점`, delay: 1600 },
+        ];
+
+        lines.forEach((line, i) => {
+            const text = this.add.text(
+                GAME_WIDTH / 2, baseY + i * lineHeight, line.label,
+                {
+                    fontFamily: FONT_FAMILY, fontSize: '20px', color: '#BBBBBB',
+                },
+            ).setOrigin(0.5).setAlpha(0);
+
+            this.time.delayedCall(line.delay, () => {
+                this.tweens.add({
+                    targets: text,
+                    alpha: 1,
+                    duration: 300,
+                    ease: 'Power2',
+                });
+            });
+        });
     }
 
     private showShareToast(message: string): void {
