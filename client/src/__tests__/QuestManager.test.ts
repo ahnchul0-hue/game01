@@ -14,8 +14,8 @@ function findQuest(type: QuestDefinition['type']): QuestDefinition {
 // DEFAULT_QUESTS 구조 검증
 // ──────────────────────────────────────────────
 describe('DEFAULT_QUESTS', () => {
-    it('5개의 퀘스트를 포함한다', () => {
-        expect(DEFAULT_QUESTS).toHaveLength(5);
+    it('8개의 퀘스트를 포함한다', () => {
+        expect(DEFAULT_QUESTS).toHaveLength(8);
     });
 
     it('모든 퀘스트에 고유한 id가 있다', () => {

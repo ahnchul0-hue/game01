@@ -33,16 +33,16 @@ describe('getStageForDistance', () => {
         expect(getStageForDistance(7999)).toBe('onsen');
     });
 
-    it('loops back to forest at STAGE_LOOP_DISTANCE', () => {
-        expect(getStageForDistance(8000)).toBe('forest');
+    it('loops to mountain at 8000m, forest at STAGE_LOOP_DISTANCE', () => {
+        expect(getStageForDistance(8000)).toBe('mountain');
     });
 
-    it('loops correctly at 9000m (river)', () => {
-        expect(getStageForDistance(9000)).toBe('river');
+    it('loops correctly at 9000m (mountain)', () => {
+        expect(getStageForDistance(9000)).toBe('mountain');
     });
 
-    it('loops correctly at 16000m (forest again)', () => {
-        expect(getStageForDistance(16000)).toBe('forest');
+    it('loops correctly at 16000m (village after loop)', () => {
+        expect(getStageForDistance(16000)).toBe('village');
     });
 
     it('returns forest for negative distance', () => {

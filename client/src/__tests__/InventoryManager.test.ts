@@ -34,7 +34,7 @@ describe('InventoryManager', () => {
     describe('getInventory', () => {
         it('returns default when empty', () => {
             const inv = mgr.getInventory();
-            expect(inv).toEqual({ mandarin: 0, watermelon: 0, hotspring_material: 0 });
+            expect(inv).toEqual({ mandarin: 0, watermelon: 0, hotspring_material: 0, gem: 0 });
         });
 
         it('returns stored values', () => {
@@ -48,7 +48,7 @@ describe('InventoryManager', () => {
         it('returns default on invalid JSON', () => {
             localStorage.setItem(LS_KEY_INVENTORY, 'not-json');
             const inv = mgr.getInventory();
-            expect(inv).toEqual({ mandarin: 0, watermelon: 0, hotspring_material: 0 });
+            expect(inv).toEqual({ mandarin: 0, watermelon: 0, hotspring_material: 0, gem: 0 });
         });
 
         it('merges partial data with defaults', () => {
@@ -241,7 +241,7 @@ describe('InventoryManager', () => {
             await mgr.syncFromServer();
 
             // 인벤토리는 변경 없음 (기본값 0)
-            expect(mgr.getInventory()).toEqual({ mandarin: 0, watermelon: 0, hotspring_material: 0 });
+            expect(mgr.getInventory()).toEqual({ mandarin: 0, watermelon: 0, hotspring_material: 0, gem: 0 });
             // 온센 레이아웃은 반영됨
             const layout = mgr.getOnsenLayout();
             expect(layout.placedItems).toHaveLength(1);

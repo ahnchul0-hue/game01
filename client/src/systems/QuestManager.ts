@@ -8,7 +8,7 @@
  *   - 'dodge'     : 장애물 N개 회피
  */
 
-type QuestType = 'distance' | 'collect' | 'dodge';
+type QuestType = 'distance' | 'collect' | 'dodge' | 'combo' | 'powerup' | 'stage';
 
 export interface QuestDefinition {
     id: string;
@@ -62,6 +62,27 @@ export const DEFAULT_QUESTS: QuestDefinition[] = [
         description: '장애물 10개 피하기',
         rewardMandarin: 25,
     },
+    {
+        id: 'q_combo_5',
+        type: 'combo',
+        target: 5,
+        description: '5 콤보 달성',
+        rewardMandarin: 40,
+    },
+    {
+        id: 'q_powerup_3',
+        type: 'powerup',
+        target: 3,
+        description: '파워업 3개 사용',
+        rewardMandarin: 35,
+    },
+    {
+        id: 'q_stage_mountain',
+        type: 'stage',
+        target: 8000,
+        description: '눈산 스테이지 도달',
+        rewardMandarin: 100,
+    },
 ];
 
 export class QuestManager {
@@ -78,12 +99,13 @@ export class QuestManager {
      * @param mandarins 현재까지 수집한 귤 수
      * @param dodges    현재까지 회피한 장애물 수
      */
-    update(distance: number, mandarins: number, dodges: number): void {
+    update(distance: number, mandarins: number, dodges: number, combos = 0, powerups = 0): void {
         if (this.completed) return;
 
         const { quest } = this.progress;
         switch (quest.type) {
             case 'distance':
+            case 'stage':
                 this.progress.current = Math.floor(distance);
                 break;
             case 'collect':
@@ -91,6 +113,12 @@ export class QuestManager {
                 break;
             case 'dodge':
                 this.progress.current = dodges;
+                break;
+            case 'combo':
+                this.progress.current = combos;
+                break;
+            case 'powerup':
+                this.progress.current = powerups;
                 break;
         }
 

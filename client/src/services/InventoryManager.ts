@@ -18,7 +18,7 @@ import {
 
 const VALID_SKIN_IDS = new Set<string>(SKIN_CONFIGS.map(s => s.id));
 
-const DEFAULT_INVENTORY: Inventory = { mandarin: 0, watermelon: 0, hotspring_material: 0 };
+const DEFAULT_INVENTORY: Inventory = { gem: 0, mandarin: 0, watermelon: 0, hotspring_material: 0 };
 const DEFAULT_LAYOUT: OnsenLayout = { placedItems: [] };
 
 let _inventoryInstance: InventoryManager | null = null;
@@ -181,6 +181,7 @@ export class InventoryManager {
             const inv = invResult.value;
             const local = this.getInventory();
             this.saveInventory({
+                gem: Math.max(local.gem, inv.gem ?? 0),
                 mandarin: Math.max(local.mandarin, inv.mandarin),
                 watermelon: Math.max(local.watermelon, inv.watermelon),
                 hotspring_material: Math.max(local.hotspring_material, inv.hotspring_material),
@@ -202,5 +203,64 @@ export class InventoryManager {
             localStorage.setItem(LS_KEY_SELECTED_COMPANION, companions.selected_companion);
             localStorage.setItem(LS_KEY_UNLOCKED_COMPANIONS, companions.unlocked_companions);
         }
+    }
+
+    // --- Gem (Premium Currency) ---
+
+    getGems(): number {
+        return this.getInventory().gem;
+    }
+
+    addGems(amount: number): void {
+        const inv = this.getInventory();
+        inv.gem += amount;
+        this.saveInventory(inv);
+        this.api.addInventory({ mandarin: 0, watermelon: 0, hotspring_material: 0, gem: amount } as unknown as CollectedItems);
+    }
+
+    spendGems(amount: number): boolean {
+        const inv = this.getInventory();
+        if (inv.gem < amount) return false;
+        inv.gem -= amount;
+        this.saveInventory(inv);
+        return true;
+    }
+
+    // --- Shop Unlocks ---
+
+    unlockSkin(skinId: SkinId): void {
+        const skins = this.getUnlockedSkins();
+        if (!skins.includes(skinId)) {
+            skins.push(skinId);
+            this.saveUnlockedSkins(skins);
+        }
+    }
+
+    unlockCompanion(companionId: CompanionId): void {
+        const companions = this.getUnlockedCompanions();
+        if (!companions.includes(companionId)) {
+            companions.push(companionId);
+            this.saveUnlockedCompanions(companions);
+        }
+    }
+
+    // --- Revive Tokens ---
+
+    getRevives(): number {
+        try {
+            return parseInt(localStorage.getItem('capybara_revives') ?? '0', 10);
+        } catch { return 0; }
+    }
+
+    addRevives(count: number): void {
+        const current = this.getRevives();
+        localStorage.setItem('capybara_revives', (current + count).toString());
+    }
+
+    useRevive(): boolean {
+        const current = this.getRevives();
+        if (current <= 0) return false;
+        localStorage.setItem('capybara_revives', (current - 1).toString());
+        return true;
     }
 }

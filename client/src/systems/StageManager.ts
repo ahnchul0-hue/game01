@@ -13,6 +13,7 @@ export const STAGE_BGM: Record<StageType, BgmName> = {
     river:   'bgm-river',
     village: 'bgm-village',
     onsen:   'bgm-onsen-stage',
+    mountain: 'bgm-mountain',
 };
 
 /** 스테이지 ID → Ambient 사운드 매핑 (릴렉스 모드) */
@@ -21,6 +22,7 @@ export const STAGE_AMBIENT: Record<StageType, AmbientName> = {
     river:   'ambient-stream',
     village: 'ambient-wind',
     onsen:   'ambient-rain',
+    mountain: 'ambient-wind',
 };
 
 export class StageManager {

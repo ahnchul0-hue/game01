@@ -6,6 +6,7 @@ interface UserResponse {
 }
 
 interface InventoryResponse {
+    gem: number;
     mandarin: number;
     watermelon: number;
     hotspring_material: number;

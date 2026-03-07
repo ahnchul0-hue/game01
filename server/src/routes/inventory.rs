@@ -36,7 +36,7 @@ async fn add_inventory(
     Json(req): Json<inventory::AddInventoryRequest>,
 ) -> Result<Json<inventory::InventoryRow>, AppError> {
     // 음수 값 방지
-    if req.add_mandarin < 0 || req.add_watermelon < 0 || req.add_hotspring_material < 0 {
+    if req.add_mandarin < 0 || req.add_watermelon < 0 || req.add_hotspring_material < 0 || req.add_gem < 0 {
         return Err(AppError::BadRequest(
             "Inventory values must be non-negative".to_string(),
         ));
@@ -46,6 +46,7 @@ async fn add_inventory(
     if req.add_mandarin > MAX_ADD_PER_REQUEST
         || req.add_watermelon > MAX_ADD_PER_REQUEST
         || req.add_hotspring_material > MAX_ADD_PER_REQUEST
+        || req.add_gem > MAX_ADD_PER_REQUEST
     {
         return Err(AppError::BadRequest(
             "Inventory delta too large".to_string(),
@@ -77,7 +78,7 @@ async fn spend_inventory(
     if req.amount <= 0 || req.amount > 10000 {
         return Err(AppError::BadRequest("Invalid spend amount".to_string()));
     }
-    if !["mandarin", "watermelon", "hotspring_material"].contains(&req.item_type.as_str()) {
+    if !["mandarin", "watermelon", "hotspring_material", "gem"].contains(&req.item_type.as_str()) {
         return Err(AppError::BadRequest("Invalid item type".to_string()));
     }
 

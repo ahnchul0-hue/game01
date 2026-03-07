@@ -163,6 +163,9 @@ export class QuestSelect extends Phaser.Scene {
             case 'distance': return { icon: '🏃', color: 0x42A5F5 };
             case 'collect':  return { icon: '🍊', color: 0xFF7043 };
             case 'dodge':    return { icon: '🚧', color: 0xAB47BC };
+            case 'combo':    return { icon: '🔥', color: 0xEF5350 };
+            case 'powerup':  return { icon: '⚡', color: 0xFFCA28 };
+            case 'stage':    return { icon: '🏔️', color: 0x78909C };
         }
     }
 }

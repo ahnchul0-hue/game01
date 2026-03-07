@@ -40,7 +40,7 @@ export interface EventBanner {
  *   autumn : 9~11월
  *   winter : 12~2월
  */
-export function getCurrentSeason(date: Date = new Date()): Season {
+function getCurrentSeason(date: Date = new Date()): Season {
     const month = date.getMonth() + 1; // getMonth()는 0-indexed
 
     if (month >= 3 && month <= 5)  return 'spring';
@@ -107,7 +107,7 @@ export function isSpecialEvent(date: Date = new Date()): boolean {
  * 현재 특별 이벤트 타입을 반환한다. 이벤트 없으면 null 반환.
  * @param date - 기준 날짜 (기본값: 현재 시각)
  */
-export function getSpecialEvent(date: Date = new Date()): SpecialEvent {
+function getSpecialEvent(date: Date = new Date()): SpecialEvent {
     const month = date.getMonth() + 1;
     const day   = date.getDate();
 

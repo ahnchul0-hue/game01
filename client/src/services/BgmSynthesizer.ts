@@ -91,6 +91,18 @@ const CONFIGS: Record<string, BgmConfig> = {
         bassOctave: 0.25, lfoRate: 0.6, lfoDepth: 0.25,
         filterFreq: 800,
     },
+    'bgm-mountain': {
+        chords: [
+            [N.E3, N.G3, N.B3],   // iii (Em)
+            [N.C3, N.E3, N.G3],   // I   (C)
+            [N.A3, N.C4, N.E4],   // vi  (Am)
+            [N.G3, N.B3, N.D4],   // V   (G)
+        ],
+        bpm: 54, beatsPerChord: 4,
+        modRatio: 2, modIndex: 0.5, volume: 0.20,
+        bassOctave: 0.5, lfoRate: 0.8, lfoDepth: 0.3,
+        filterFreq: 1500,
+    },
 };
 
 export class BgmSynthesizer {

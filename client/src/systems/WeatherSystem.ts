@@ -42,6 +42,7 @@ const STAGE_WEATHER: Record<StageType, { type: WeatherType; minDistance: number 
     river:   { type: 'rain',    minDistance: 1500 },
     village: { type: 'snow',    minDistance: 3500 },
     onsen:   { type: 'steam',   minDistance: 0 },
+    mountain: { type: 'snow',    minDistance: 8000 },
 };
 
 const MAX_PARTICLES = 60;

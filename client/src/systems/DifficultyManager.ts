@@ -7,12 +7,13 @@ import {
     SPAWN_INTERVAL_DECAY,
     DIFFICULTY_EASY_MAX,
     DIFFICULTY_MEDIUM_MAX,
+    DIFFICULTY_HARD_MAX,
     RELAX_SPEED_MULTIPLIER,
     RELAX_MAX_SPEED,
 } from '../utils/Constants';
 import type { ObstacleType } from '../utils/Constants';
 
-export type DifficultyLevel = 'easy' | 'medium' | 'hard';
+export type DifficultyLevel = 'easy' | 'medium' | 'hard' | 'extreme';
 
 export class DifficultyManager {
     getSpeed(distance: number, isRelax: boolean): number {
@@ -35,18 +36,20 @@ export class DifficultyManager {
     getLevel(distance: number): DifficultyLevel {
         if (distance < DIFFICULTY_EASY_MAX) return 'easy';
         if (distance < DIFFICULTY_MEDIUM_MAX) return 'medium';
-        return 'hard';
+        if (distance < DIFFICULTY_HARD_MAX) return 'hard';
+        return 'extreme';
     }
 
     getAvailableObstacleTypes(level: DifficultyLevel, isRelax = false): ObstacleType[] {
         if (isRelax) return ['rock', 'puddle'];
         if (level === 'easy') return ['rock'];
         if (level === 'medium') return ['rock', 'branch_high', 'puddle', 'barrier'];
-        return ['rock', 'branch_high', 'puddle', 'barrier', 'car', 'snake'];
+        if (level === 'hard') return ['rock', 'branch_high', 'puddle', 'barrier', 'car', 'snake'];
+        return ['rock', 'branch_high', 'puddle', 'barrier', 'car', 'snake', 'snowball', 'icicle'];
     }
 
     getMaxObstaclesPerSpawn(level: DifficultyLevel, isRelax = false): number {
         if (isRelax) return 1;
-        return level === 'hard' ? 2 : 1;
+        return (level === 'hard' || level === 'extreme') ? 2 : 1;
     }
 }

@@ -69,9 +69,9 @@ describe('DifficultyManager.getLevel', () => {
         expect(dm.getLevel(DIFFICULTY_MEDIUM_MAX - 1)).toBe('medium');
     });
 
-    it('returns hard at DIFFICULTY_MEDIUM_MAX and above', () => {
+    it('returns hard at DIFFICULTY_MEDIUM_MAX', () => {
         expect(dm.getLevel(DIFFICULTY_MEDIUM_MAX)).toBe('hard');
-        expect(dm.getLevel(10_000)).toBe('hard');
+        expect(dm.getLevel(10_000)).toBe('extreme');
     });
 });
 

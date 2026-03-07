@@ -4,7 +4,7 @@ import { BgmSynthesizer } from './BgmSynthesizer';
 
 type SfxName = 'jump' | 'slide' | 'collect' | 'collect_rare' | 'hit' | 'powerup' | 'button' | 'gameover' | 'levelup' | 'move' | 'revive' | 'nearmiss';
 export type BgmName = 'bgm-menu' | 'bgm-game' | 'bgm-onsen'
-    | 'bgm-forest' | 'bgm-river' | 'bgm-village' | 'bgm-onsen-stage';
+    | 'bgm-forest' | 'bgm-river' | 'bgm-village' | 'bgm-onsen-stage' | 'bgm-mountain';
 export type AmbientName = 'ambient-birds' | 'ambient-stream' | 'ambient-wind' | 'ambient-rain';
 
 const LS_KEY_MUTED = 'capybara_muted';

@@ -15,6 +15,7 @@ pub struct InventoryRow {
     pub mandarin: i64,
     pub watermelon: i64,
     pub hotspring_material: i64,
+    pub gem: i64,
     pub updated_at: String,
 }
 
@@ -26,6 +27,8 @@ pub struct AddInventoryRequest {
     pub add_watermelon: i64,
     #[serde(default)]
     pub add_hotspring_material: i64,
+    #[serde(default)]
+    pub add_gem: i64,
 }
 
 pub async fn get_inventory(pool: &SqlitePool, user_id: &str) -> Result<InventoryRow, sqlx::Error> {
@@ -36,7 +39,7 @@ pub async fn get_inventory(pool: &SqlitePool, user_id: &str) -> Result<Inventory
         .execute(pool)
         .await?;
     sqlx::query_as::<_, InventoryRow>(
-        "SELECT id, user_id, mandarin, watermelon, hotspring_material, updated_at FROM inventories WHERE user_id = ?",
+        "SELECT id, user_id, mandarin, watermelon, hotspring_material, gem, updated_at FROM inventories WHERE user_id = ?",
     )
     .bind(user_id)
     .fetch_one(pool)
@@ -50,12 +53,13 @@ pub async fn add_inventory(
 ) -> Result<InventoryRow, sqlx::Error> {
     let id = Uuid::new_v4().to_string();
     sqlx::query(
-        "INSERT INTO inventories (id, user_id, mandarin, watermelon, hotspring_material, updated_at)
-         VALUES (?, ?, ?, ?, ?, datetime('now'))
+        "INSERT INTO inventories (id, user_id, mandarin, watermelon, hotspring_material, gem, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
          ON CONFLICT(user_id) DO UPDATE SET
            mandarin = MIN(mandarin + excluded.mandarin, 99999),
            watermelon = MIN(watermelon + excluded.watermelon, 99999),
            hotspring_material = MIN(hotspring_material + excluded.hotspring_material, 99999),
+           gem = MIN(gem + excluded.gem, 99999),
            updated_at = datetime('now')",
     )
     .bind(&id)
@@ -63,6 +67,7 @@ pub async fn add_inventory(
     .bind(req.add_mandarin)
     .bind(req.add_watermelon)
     .bind(req.add_hotspring_material)
+    .bind(req.add_gem)
     .execute(pool)
     .await?;
 
@@ -85,6 +90,7 @@ pub async fn spend_inventory(
         "mandarin" => "mandarin",
         "watermelon" => "watermelon",
         "hotspring_material" => "hotspring_material",
+        "gem" => "gem",
         _ => return Ok(None), // 유효하지 않은 아이템 타입
     };
 

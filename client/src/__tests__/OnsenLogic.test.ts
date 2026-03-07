@@ -66,11 +66,11 @@ describe('getOnsenLevelIndex', () => {
 
 describe('getTotalItems', () => {
     it('returns 0 for empty inventory', () => {
-        expect(getTotalItems({ mandarin: 0, watermelon: 0, hotspring_material: 0 })).toBe(0);
+        expect(getTotalItems({ gem: 0, mandarin: 0, watermelon: 0, hotspring_material: 0 })).toBe(0);
     });
 
     it('sums all items', () => {
-        expect(getTotalItems({ mandarin: 10, watermelon: 5, hotspring_material: 3 })).toBe(18);
+        expect(getTotalItems({ gem: 0, mandarin: 10, watermelon: 5, hotspring_material: 3 })).toBe(18);
     });
 });
 
@@ -328,15 +328,15 @@ describe('getOnsenLevel — 경계값', () => {
 
 describe('getTotalItems — 경계값', () => {
     it('모든 값이 0인 경우 → 0', () => {
-        expect(getTotalItems({ mandarin: 0, watermelon: 0, hotspring_material: 0 })).toBe(0);
+        expect(getTotalItems({ gem: 0, mandarin: 0, watermelon: 0, hotspring_material: 0 })).toBe(0);
     });
 
     it('한 종류만 있는 경우 → 해당 값', () => {
-        expect(getTotalItems({ mandarin: 100, watermelon: 0, hotspring_material: 0 })).toBe(100);
+        expect(getTotalItems({ gem: 0, mandarin: 100, watermelon: 0, hotspring_material: 0 })).toBe(100);
     });
 
     it('매우 큰 값에서도 정확히 합산', () => {
-        expect(getTotalItems({ mandarin: 10000, watermelon: 5000, hotspring_material: 2500 })).toBe(17500);
+        expect(getTotalItems({ gem: 0, mandarin: 10000, watermelon: 5000, hotspring_material: 2500 })).toBe(17500);
     });
 });
 

@@ -12,6 +12,7 @@ import { Missions } from './scenes/Missions';
 import { CompanionSelect } from './scenes/CompanionSelect';
 import { QuestSelect } from './scenes/QuestSelect';
 import { JourneyDiary } from './scenes/JourneyDiary';
+import { Shop } from './scenes/Shop';
 
 const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
@@ -38,7 +39,7 @@ const config: Phaser.Types.Core.GameConfig = {
             debug: false,
         },
     },
-    scene: [Boot, Preloader, MainMenu, Game, GameOver, Onsen, SkinSelect, Missions, CompanionSelect, QuestSelect, JourneyDiary],
+    scene: [Boot, Preloader, MainMenu, Game, GameOver, Onsen, SkinSelect, Missions, CompanionSelect, QuestSelect, JourneyDiary, Shop],
 };
 
 // 프로덕션 에러 트래킹 설치 (Phaser 초기화 전)

@@ -51,7 +51,7 @@ export const SCENE_QUEST_SELECT = 'QuestSelect';
 export const QUEST_COMPLETION_BONUS_SCORE = 500;
 
 // 장애물 시스템
-export type ObstacleType = 'rock' | 'branch_high' | 'puddle' | 'barrier' | 'car' | 'snake';
+export type ObstacleType = 'rock' | 'branch_high' | 'puddle' | 'barrier' | 'car' | 'snake' | 'snowball' | 'icicle';
 
 export const OBSTACLE_CONFIGS: Record<ObstacleType, { width: number; height: number; color: number }> = {
     rock:        { width: 80, height: 80, color: 0x808080 },
@@ -59,7 +59,9 @@ export const OBSTACLE_CONFIGS: Record<ObstacleType, { width: number; height: num
     puddle:      { width: 100, height: 30, color: 0x4FC3F7 },
     barrier:     { width: 160, height: 60, color: 0xFF4444 },  // 2레인 차단
     car:         { width: 80, height: 100, color: 0x3366CC },   // 점프 회피
-    snake:       { width: 90, height: 30, color: 0x4CAF50 },   // 뱀 — 넓고 낮음 (점프로만 회피)
+    snake:       { width: 90, height: 30, color: 0x4CAF50 },
+    snowball:    { width: 90, height: 90, color: 0xF0F0FF },
+    icicle:      { width: 40, height: 110, color: 0xB0E0FF },   // 뱀 — 넓고 낮음 (점프로만 회피)
 };
 
 // 아이템 시스템
@@ -85,6 +87,7 @@ export const SPAWN_INTERVAL_DECAY = 0.15; // 거리당 감소량
 
 export const DIFFICULTY_EASY_MAX = 500;   // 거리 (m)
 export const DIFFICULTY_MEDIUM_MAX = 1800;
+export const DIFFICULTY_HARD_MAX = 8000;
 
 export const ITEM_SPAWN_CHANCE = 0.65;
 
@@ -105,13 +108,14 @@ export const LS_KEY_TOKEN = 'capybara_token';
 export const LS_KEY_USER_ID = 'capybara_user_id';
 
 // 파워업 시스템
-export type PowerUpType = 'helmet' | 'tube' | 'friend' | 'magnet';
+export type PowerUpType = 'helmet' | 'tube' | 'friend' | 'magnet' | 'doubleJump';
 
 export const POWERUP_CONFIGS: Record<PowerUpType, { width: number; height: number; color: number; duration: number }> = {
     helmet: { width: 50, height: 50, color: 0x2E7D32, duration: 0 },      // 1회용
     tube:   { width: 50, height: 50, color: 0x1565C0, duration: 8000 },    // 8초
     friend: { width: 50, height: 50, color: 0xFF6F00, duration: 8000 },    // 8초
-    magnet: { width: 50, height: 50, color: 0xCC0000, duration: 7000 },    // 7초
+    magnet:     { width: 50, height: 50, color: 0xCC0000, duration: 7000 },
+    doubleJump: { width: 50, height: 50, color: 0x9C27B0, duration: 8000 },    // 7초
 };
 
 export const POWERUP_SPAWN_CHANCE = 0.09;
@@ -120,22 +124,24 @@ export const POWERUP_MIN_DISTANCE = 300;
 export const POWERUP_SCORE_MULTIPLIER_TUBE = 2;
 
 // 스테이지 시스템
-export type StageType = 'forest' | 'river' | 'village' | 'onsen';
+export type StageType = 'forest' | 'river' | 'village' | 'onsen' | 'mountain';
 
 export const STAGE_THRESHOLDS: { stage: StageType; minDistance: number }[] = [
     { stage: 'forest',  minDistance: 0 },
     { stage: 'river',   minDistance: 1000 },
     { stage: 'village', minDistance: 3000 },
     { stage: 'onsen',   minDistance: 6000 },
+    { stage: 'mountain', minDistance: 8000 },
 ];
 
-export const STAGE_LOOP_DISTANCE = 8000;
+export const STAGE_LOOP_DISTANCE = 12000;
 
 export const STAGE_COLORS: Record<StageType, { sky: number; trees: number; ground: number }> = {
     forest:  { sky: 0x87CEEB, trees: 0x228B22, ground: 0x8B4513 },
     river:   { sky: 0xB0E0E6, trees: 0x2F9E9E, ground: 0x5D7A8A },
     village: { sky: 0xFAD6A5, trees: 0xA0522D, ground: 0xC49A6C },
     onsen:   { sky: 0xE8B4D8, trees: 0x9C6B98, ground: 0xB07BA5 },
+    mountain: { sky: 0xC8D8E8, trees: 0x4A6A7A, ground: 0xE8E8F0 },
 };
 
 export const STAGE_NAMES: Record<StageType, string> = {
@@ -143,6 +149,7 @@ export const STAGE_NAMES: Record<StageType, string> = {
     river:   '강가',
     village: '마을',
     onsen:   '온천',
+    mountain: '눈산',
 };
 
 /** B1: 스테이지별 세계관 내러티브 */
@@ -151,6 +158,7 @@ export const STAGE_STORIES: Record<StageType, string> = {
     river:   '시원한 강물 소리가 온천이 가까워졌음을 알려줍니다',
     village: '마을 사람들이 카피바라에게 온천 길을 알려줍니다',
     onsen:   '드디어 꿈에 그리던 온천에 도착했습니다!',
+    mountain: '온천 너머, 하얀 눈 덮인 산봉우리가 카피바라를 부릅니다',
 };
 
 export const STAGE_TRANSITION_DURATION = 800;
@@ -176,6 +184,7 @@ export const LS_KEY_UNLOCKED_SKINS = 'capybara_unlocked_skins';
 
 // 인벤토리
 export interface Inventory {
+    gem: number;
     mandarin: number;
     watermelon: number;
     hotspring_material: number;
@@ -312,8 +321,10 @@ export const LS_KEY_STREAK = 'capybara_streak';
 // 동물 친구 시스템
 export const SCENE_COMPANION_SELECT = 'CompanionSelect';
 export const SCENE_JOURNEY_DIARY = 'JourneyDiary';
+export const SCENE_SHOP = 'Shop';
 export const LS_KEY_SELECTED_COMPANION = 'capybara_selected_companion';
 export const LS_KEY_UNLOCKED_COMPANIONS = 'capybara_unlocked_companions';
+export const LS_KEY_GEM = 'capybara_gem';
 
 export type CompanionId = 'none' | 'otter' | 'duck' | 'turtle';
 export type CompanionUnlockCondition = 'always' | 'distance_2000' | 'distance_3000' | 'items_500' | 'onsen_level_2';

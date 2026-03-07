@@ -29,7 +29,7 @@ describe('STAGE_THRESHOLDS', () => {
     });
 
     it('contains 4 stages', () => {
-        expect(STAGE_THRESHOLDS).toHaveLength(4);
+        expect(STAGE_THRESHOLDS).toHaveLength(5);
     });
 });
 
@@ -57,7 +57,7 @@ describe('ITEM_WEIGHTS', () => {
 describe('POWERUP_CONFIGS', () => {
     it('contains 4 powerup types', () => {
         const keys = Object.keys(POWERUP_CONFIGS) as PowerUpType[];
-        expect(keys).toHaveLength(4);
+        expect(keys).toHaveLength(5);
         expect(keys).toContain('helmet');
         expect(keys).toContain('tube');
         expect(keys).toContain('friend');
@@ -77,7 +77,7 @@ describe('POWERUP_CONFIGS', () => {
 describe('OBSTACLE_CONFIGS', () => {
     it('contains 6 obstacle types', () => {
         const keys = Object.keys(OBSTACLE_CONFIGS) as ObstacleType[];
-        expect(keys).toHaveLength(6);
+        expect(keys).toHaveLength(8);
         expect(keys).toContain('rock');
         expect(keys).toContain('branch_high');
         expect(keys).toContain('puddle');
