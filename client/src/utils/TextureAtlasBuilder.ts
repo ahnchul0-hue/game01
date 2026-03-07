@@ -10,7 +10,7 @@
  * - generateTexture()마다 새 WebGL 텍스처가 생성되는 오버헤드 제거
  *
  * 아틀라스 키:
- * - 'atlas-game'  : 장애물 6종 + 아이템 3종 + 파워업 4종 (512x512)
+ * - 'atlas-game'  : 장애물 8종 + 아이템 3종 + 파워업 5종 (512x512)
  * - 'atlas-ui'    : particle + friend-sprite + helmet-overlay + onsen-deco 3종 (256x256)
  *
  * 기존 키 호환:
@@ -92,7 +92,7 @@ function buildGameAtlasFrames(): FrameRect[] {
     curY += rowH + PAD;
     rowH = 0;
 
-    const row2Types: ObstacleType[] = ['puddle', 'car', 'snake'];
+    const row2Types: ObstacleType[] = ['puddle', 'car', 'snake', 'snowball', 'icicle'];
     for (const type of row2Types) {
         const w = obstacleTexW(type);
         const h = obstacleTexH(type);
@@ -123,7 +123,7 @@ function buildGameAtlasFrames(): FrameRect[] {
     curY += rowH + PAD;
     rowH = 0;
 
-    const powerupTypes: PowerUpType[] = ['helmet', 'tube', 'friend', 'magnet'];
+    const powerupTypes: PowerUpType[] = ['helmet', 'tube', 'friend', 'magnet', 'doubleJump'];
     const pwPad = 4; // createPowerUpTexture의 pad 값
     for (const type of powerupTypes) {
         const { width: w, height: h } = POWERUP_CONFIGS[type];
@@ -242,6 +242,42 @@ function drawObstacle(
         gfx.lineStyle(2, 0xE53935, 1);
         gfx.lineBetween(w + 2, h / 2, w + 8, h / 2 - 4);
         gfx.lineBetween(w + 2, h / 2, w + 8, h / 2 + 4);
+    } else if (type === 'snowball') {
+        // 눈덩이: 큰 원형 + 눈 결정 패턴
+        gfx.fillStyle(0xE8E8FF, 1);
+        gfx.fillCircle(w / 2, h / 2, w / 2 - 2);
+        gfx.fillStyle(0xFFFFFF, 0.6);
+        gfx.fillCircle(w / 2 - 8, h / 2 - 8, w * 0.25);
+        gfx.lineStyle(1.5, 0xCCCCDD, 0.5);
+        gfx.strokeCircle(w / 2, h / 2, w / 2 - 2);
+        // 눈 결정 디테일
+        gfx.lineStyle(1, 0xBBBBCC, 0.4);
+        gfx.lineBetween(w * 0.3, h * 0.3, w * 0.7, h * 0.7);
+        gfx.lineBetween(w * 0.7, h * 0.3, w * 0.3, h * 0.7);
+    } else if (type === 'icicle') {
+        // 고드름: 위에서 아래로 뾰족한 삼각형
+        gfx.fillStyle(0xB0E0FF, 1);
+        gfx.beginPath();
+        gfx.moveTo(w / 2, h - 2);
+        gfx.lineTo(w - 4, 4);
+        gfx.lineTo(4, 4);
+        gfx.closePath();
+        gfx.fillPath();
+        // 하이라이트
+        gfx.fillStyle(0xFFFFFF, 0.4);
+        gfx.beginPath();
+        gfx.moveTo(w / 2 - 2, h * 0.6);
+        gfx.lineTo(w * 0.65, 8);
+        gfx.lineTo(w * 0.35, 8);
+        gfx.closePath();
+        gfx.fillPath();
+        gfx.lineStyle(1.5, 0x88CCEE, 0.5);
+        gfx.beginPath();
+        gfx.moveTo(w / 2, h - 2);
+        gfx.lineTo(w - 4, 4);
+        gfx.lineTo(4, 4);
+        gfx.closePath();
+        gfx.strokePath();
     }
 
     gfx.lineStyle(2, 0x000000, 0.3);
@@ -322,10 +358,25 @@ function drawPowerUp(gfx: Phaser.GameObjects.Graphics, type: PowerUpType): void 
         gfx.fillRoundedRect(ox + w / 2 - 6, oy + h / 2 - 6, 4, 14, 2);
         gfx.fillRoundedRect(ox + w / 2 + 2, oy + h / 2 - 6, 4, 14, 2);
         gfx.fillRoundedRect(ox + w / 2 - 6, oy + h / 2 + 4, 12, 4, 2);
-    } else {
+    } else if (type === 'friend') {
         // friend: 하트
         gfx.fillCircle(ox + w / 2 - 4, oy + h / 2 - 1, 5);
         gfx.fillCircle(ox + w / 2 + 4, oy + h / 2 - 1, 5);
+    } else {
+        // doubleJump: 이중 화살표
+        gfx.fillRoundedRect(ox + w / 2 - 3, oy + h / 2 - 8, 6, 16, 2);
+        gfx.beginPath();
+        gfx.moveTo(ox + w / 2, oy + h / 2 - 12);
+        gfx.lineTo(ox + w / 2 - 8, oy + h / 2 - 4);
+        gfx.lineTo(ox + w / 2 + 8, oy + h / 2 - 4);
+        gfx.closePath();
+        gfx.fillPath();
+        gfx.beginPath();
+        gfx.moveTo(ox + w / 2, oy + h / 2 + 12);
+        gfx.lineTo(ox + w / 2 - 6, oy + h / 2 + 6);
+        gfx.lineTo(ox + w / 2 + 6, oy + h / 2 + 6);
+        gfx.closePath();
+        gfx.fillPath();
     }
 
     gfx.lineStyle(1.5, 0xFFFFFF, 0.4);
@@ -347,9 +398,10 @@ function drawPowerUp(gfx: Phaser.GameObjects.Graphics, type: PowerUpType): void 
  *
  * 포함 텍스처:
  * - obstacle-rock, obstacle-branch_high, obstacle-puddle,
- *   obstacle-barrier, obstacle-car, obstacle-snake (6종)
+ *   obstacle-barrier, obstacle-car, obstacle-snake,
+ *   obstacle-snowball, obstacle-icicle (8종)
  * - item-mandarin, item-watermelon, item-hotspring_material (3종)
- * - powerup-helmet, powerup-tube, powerup-friend, powerup-magnet (4종)
+ * - powerup-helmet, powerup-tube, powerup-friend, powerup-magnet, powerup-doubleJump (5종)
  *
  * 사용:
  *   `this.add.image(x, y, ATLAS_GAME_KEY, 'obstacle-rock')`
@@ -374,7 +426,7 @@ function buildGameAtlas(scene: Phaser.Scene): void {
     const gfx = scene.make.graphics({ x: 0, y: 0 }, false);
 
     // 장애물 6종
-    const obstacleTypes: ObstacleType[] = ['rock', 'branch_high', 'puddle', 'barrier', 'car', 'snake'];
+    const obstacleTypes: ObstacleType[] = ['rock', 'branch_high', 'puddle', 'barrier', 'car', 'snake', 'snowball', 'icicle'];
     for (const type of obstacleTypes) {
         const frame = frames.find(f => f.key === `obstacle-${type}`)!;
         gfx.clear();
@@ -396,7 +448,7 @@ function buildGameAtlas(scene: Phaser.Scene): void {
     }
 
     // 파워업 4종
-    const powerupTypes: PowerUpType[] = ['helmet', 'tube', 'friend', 'magnet'];
+    const powerupTypes: PowerUpType[] = ['helmet', 'tube', 'friend', 'magnet', 'doubleJump'];
     for (const type of powerupTypes) {
         const frame = frames.find(f => f.key === `powerup-${type}`)!;
         gfx.clear();

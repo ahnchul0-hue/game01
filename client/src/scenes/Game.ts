@@ -508,9 +508,12 @@ export class Game extends Phaser.Scene {
         switch (obstacle.obstacleType) {
             case 'branch_high': shouldCollide = !this.player.getIsSliding(); break;
             case 'puddle':      shouldCollide = !this.player.getIsJumping(); break;
-            case 'car':         shouldCollide = !this.player.getIsJumping(); break; // 점프로 회피
+            case 'car':         shouldCollide = !this.player.getIsJumping(); break;
+            case 'snowball':    shouldCollide = !this.player.getIsJumping(); break; // 점프로 회피
+            case 'icicle':      shouldCollide = !this.player.getIsSliding(); break; // 슬라이드로 회피
             case 'rock':        shouldCollide = true; break;
-            case 'barrier':     shouldCollide = true; break; // 빈 레인으로 피해야 함
+            case 'barrier':     shouldCollide = true; break;
+            case 'snake':       shouldCollide = true; break;
             default:            shouldCollide = true; break;
         }
 

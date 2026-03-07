@@ -499,6 +499,74 @@ async fn inventory_spend_invalid_type() {
 }
 
 // ===========================================================================
+// Inventory: Gem currency
+// ===========================================================================
+
+#[tokio::test]
+async fn inventory_add_gem() {
+    let pool = test_pool().await;
+    let token = create_user(&pool).await;
+
+    let (status, body) = put_json(
+        app(pool.clone()),
+        "/api/inventory",
+        json!({ "add_mandarin": 0, "add_watermelon": 0, "add_hotspring_material": 0, "add_gem": 100 }),
+        Some(&token),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["gem"], 100);
+
+    // Verify via GET
+    let (status, body) = get_json(app(pool), "/api/inventory", Some(&token)).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["gem"], 100);
+}
+
+#[tokio::test]
+async fn inventory_spend_gem_success() {
+    let pool = test_pool().await;
+    let token = create_user(&pool).await;
+
+    // Add gems first
+    put_json(
+        app(pool.clone()),
+        "/api/inventory",
+        json!({ "add_mandarin": 0, "add_watermelon": 0, "add_hotspring_material": 0, "add_gem": 50 }),
+        Some(&token),
+    )
+    .await;
+
+    // Spend gems
+    let (status, body) = post_json(
+        app(pool.clone()),
+        "/api/inventory/spend",
+        json!({ "item_type": "gem", "amount": 30 }),
+        Some(&token),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["gem"], 20);
+}
+
+#[tokio::test]
+async fn inventory_spend_gem_insufficient() {
+    let pool = test_pool().await;
+    let token = create_user(&pool).await;
+
+    // Try to spend gems without having any
+    let (status, body) = post_json(
+        app(pool),
+        "/api/inventory/spend",
+        json!({ "item_type": "gem", "amount": 10 }),
+        Some(&token),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(body["error"].as_str().unwrap().contains("Insufficient"));
+}
+
+// ===========================================================================
 // Onsen Layout
 // ===========================================================================
 
