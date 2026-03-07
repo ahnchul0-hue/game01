@@ -267,4 +267,48 @@ describe('InventoryManager', () => {
             expect(mgr.getSelectedSkin()).toBe('towel');
         });
     });
+
+    describe('gem currency', () => {
+        it('getGems returns 0 when empty', () => {
+            expect(mgr.getGems()).toBe(0);
+        });
+
+        it('addGems increases gem count', () => {
+            mgr.addGems(10);
+            expect(mgr.getGems()).toBe(10);
+        });
+
+        it('addGems accumulates across calls', () => {
+            mgr.addGems(5);
+            mgr.addGems(3);
+            expect(mgr.getGems()).toBe(8);
+        });
+
+        it('spendGems returns true and deducts when sufficient', () => {
+            mgr.addGems(10);
+            const result = mgr.spendGems(7);
+            expect(result).toBe(true);
+            expect(mgr.getGems()).toBe(3);
+        });
+
+        it('spendGems returns false when insufficient', () => {
+            mgr.addGems(5);
+            const result = mgr.spendGems(10);
+            expect(result).toBe(false);
+            expect(mgr.getGems()).toBe(5);
+        });
+
+        it('spendGems returns false when zero balance', () => {
+            const result = mgr.spendGems(1);
+            expect(result).toBe(false);
+            expect(mgr.getGems()).toBe(0);
+        });
+
+        it('gem is included in getInventory default', () => {
+            const inv = mgr.getInventory();
+            expect(inv).toHaveProperty('gem');
+            expect(inv.gem).toBe(0);
+        });
+    });
+
 });

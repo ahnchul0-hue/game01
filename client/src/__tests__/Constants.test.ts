@@ -55,13 +55,18 @@ describe('ITEM_WEIGHTS', () => {
 });
 
 describe('POWERUP_CONFIGS', () => {
-    it('contains 4 powerup types', () => {
+    it('contains 5 powerup types', () => {
         const keys = Object.keys(POWERUP_CONFIGS) as PowerUpType[];
         expect(keys).toHaveLength(5);
         expect(keys).toContain('helmet');
         expect(keys).toContain('tube');
         expect(keys).toContain('friend');
         expect(keys).toContain('magnet');
+        expect(keys).toContain('doubleJump');
+    });
+
+    it('doubleJump has positive duration', () => {
+        expect(POWERUP_CONFIGS.doubleJump.duration).toBeGreaterThan(0);
     });
 
     it('helmet has duration 0 (one-time use)', () => {
@@ -75,7 +80,7 @@ describe('POWERUP_CONFIGS', () => {
 });
 
 describe('OBSTACLE_CONFIGS', () => {
-    it('contains 6 obstacle types', () => {
+    it('contains 8 obstacle types', () => {
         const keys = Object.keys(OBSTACLE_CONFIGS) as ObstacleType[];
         expect(keys).toHaveLength(8);
         expect(keys).toContain('rock');
@@ -84,6 +89,8 @@ describe('OBSTACLE_CONFIGS', () => {
         expect(keys).toContain('barrier');
         expect(keys).toContain('car');
         expect(keys).toContain('snake');
+        expect(keys).toContain('snowball');
+        expect(keys).toContain('icicle');
     });
 
     it('all have positive dimensions', () => {

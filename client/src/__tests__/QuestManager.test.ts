@@ -213,3 +213,89 @@ describe('QuestManager.fromId / fromIndex', () => {
         expect(mgrOver.getQuest().id).toBe(DEFAULT_QUESTS[DEFAULT_QUESTS.length - 1].id);
     });
 });
+
+// ──────────────────────────────────────────────
+// combo 타입 퀘스트
+// ──────────────────────────────────────────────
+describe('QuestManager - combo 타입', () => {
+    let mgr: QuestManager;
+    let quest: QuestDefinition;
+
+    beforeEach(() => {
+        quest = findQuest('combo');
+        mgr = new QuestManager(quest);
+    });
+
+    it('콤보 수가 target에 도달하면 완료된다', () => {
+        mgr.update(0, 0, 0, quest.target, 0);
+        expect(mgr.isComplete()).toBe(true);
+    });
+
+    it('부분 콤보 시 올바른 진행 퍼센트를 반환한다', () => {
+        mgr.update(0, 0, 0, Math.floor(quest.target / 2), 0);
+        expect(mgr.getProgress()).toBeGreaterThanOrEqual(40);
+        expect(mgr.getProgress()).toBeLessThanOrEqual(60);
+    });
+
+    it('distance/collect/dodge는 combo 타입에 영향을 주지 않는다', () => {
+        mgr.update(9999, 9999, 9999, 0, 0);
+        expect(mgr.isComplete()).toBe(false);
+    });
+});
+
+// ──────────────────────────────────────────────
+// powerup 타입 퀘스트
+// ──────────────────────────────────────────────
+describe('QuestManager - powerup 타입', () => {
+    let mgr: QuestManager;
+    let quest: QuestDefinition;
+
+    beforeEach(() => {
+        quest = findQuest('powerup');
+        mgr = new QuestManager(quest);
+    });
+
+    it('파워업 사용 수가 target에 도달하면 완료된다', () => {
+        mgr.update(0, 0, 0, 0, quest.target);
+        expect(mgr.isComplete()).toBe(true);
+    });
+
+    it('부분 사용 시 올바른 진행 퍼센트를 반환한다', () => {
+        mgr.update(0, 0, 0, 0, 1);
+        expect(mgr.getProgress()).toBeGreaterThan(0);
+        expect(mgr.getProgress()).toBeLessThan(100);
+    });
+
+    it('distance/collect/dodge/combo는 powerup 타입에 영향을 주지 않는다', () => {
+        mgr.update(9999, 9999, 9999, 9999, 0);
+        expect(mgr.isComplete()).toBe(false);
+    });
+});
+
+// ──────────────────────────────────────────────
+// stage 타입 퀘스트
+// ──────────────────────────────────────────────
+describe('QuestManager - stage 타입', () => {
+    let mgr: QuestManager;
+    let quest: QuestDefinition;
+
+    beforeEach(() => {
+        quest = findQuest('stage');
+        mgr = new QuestManager(quest);
+    });
+
+    it('distance가 stage target에 도달하면 완료된다', () => {
+        mgr.update(quest.target, 0, 0);
+        expect(mgr.isComplete()).toBe(true);
+    });
+
+    it('distance가 부족하면 완료되지 않는다', () => {
+        mgr.update(quest.target - 1, 0, 0);
+        expect(mgr.isComplete()).toBe(false);
+    });
+
+    it('collect/dodge/combo/powerup은 stage 타입에 영향을 주지 않는다', () => {
+        mgr.update(0, 9999, 9999, 9999, 9999);
+        expect(mgr.isComplete()).toBe(false);
+    });
+});
