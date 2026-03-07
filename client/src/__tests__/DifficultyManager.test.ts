@@ -151,3 +151,29 @@ describe('DifficultyManager — relax obstacle types', () => {
         expect(dm.getMaxObstaclesPerSpawn('medium')).toBe(1);
     });
 });
+
+describe('DifficultyManager - extreme 스폰 벽 완화 (C4)', () => {
+    const dm = new DifficultyManager();
+
+    it('extreme에서 maxObstacles는 1이다 (스폰 벽 방지)', () => {
+        expect(dm.getMaxObstaclesPerSpawn('extreme')).toBe(1);
+    });
+
+    it('hard에서 maxObstacles는 2이다', () => {
+        expect(dm.getMaxObstaclesPerSpawn('hard')).toBe(2);
+    });
+
+    it('극한 거리에서 스폰 간격이 SPAWN_INTERVAL_MIN 이상이다', () => {
+        expect(dm.getSpawnInterval(100000, false)).toBeGreaterThanOrEqual(SPAWN_INTERVAL_MIN);
+    });
+
+    it('SPAWN_INTERVAL_MIN이 600ms이다', () => {
+        expect(SPAWN_INTERVAL_MIN).toBe(600);
+    });
+
+    it('extreme 장애물 타입에 snowball/icicle이 포함된다', () => {
+        const types = dm.getAvailableObstacleTypes('extreme');
+        expect(types).toContain('snowball');
+        expect(types).toContain('icicle');
+    });
+});

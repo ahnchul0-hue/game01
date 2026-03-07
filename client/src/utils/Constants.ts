@@ -82,7 +82,7 @@ export const ITEM_WEIGHTS: Record<ItemType, number> = {
 export const ITEM_SIZE = 50;
 // 난이도 곡선
 export const SPAWN_INTERVAL_START = 900;  // ms (초반 밀도 개선)
-export const SPAWN_INTERVAL_MIN = 500;    // ms
+export const SPAWN_INTERVAL_MIN = 600;    // ms (500→600: extreme 스폰 벽 완화)
 export const SPAWN_INTERVAL_DECAY = 0.15; // 거리당 감소량
 
 export const DIFFICULTY_EASY_MAX = 500;   // 거리 (m)

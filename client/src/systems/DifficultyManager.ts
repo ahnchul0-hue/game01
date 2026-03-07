@@ -50,6 +50,7 @@ export class DifficultyManager {
 
     getMaxObstaclesPerSpawn(level: DifficultyLevel, isRelax = false): number {
         if (isRelax) return 1;
-        return (level === 'hard' || level === 'extreme') ? 2 : 1;
+        if (level === 'extreme') return 1;  // extreme: 600ms 간격 1개 (스폰 벽 방지)
+        return level === 'hard' ? 2 : 1;
     }
 }

@@ -9,6 +9,7 @@ import {
     type CompanionId,
 } from '../utils/Constants';
 import { InventoryManager } from '../services/InventoryManager';
+import { ApiClient } from '../services/ApiClient';
 import { createButton, fadeToScene, fadeIn } from '../ui/UIFactory';
 
 interface ShopItem {
@@ -118,8 +119,16 @@ export class Shop extends Phaser.Scene {
         return false;
     }
 
-    private purchase(item: ShopItem): void {
-        if (!this.inventoryMgr.spendGems(item.gemCost)) return;
+    private async purchase(item: ShopItem): Promise<void> {
+        // 서버에 gem 소비 검증 요청 (원자적 차감)
+        const success = await ApiClient.getInstance().spendInventory('gem', item.gemCost);
+        if (!success) {
+            this.showMessage('젬이 부족하거나 서버 오류가 발생했습니다');
+            return;
+        }
+
+        // 서버 성공 후 로컬 동기화
+        this.inventoryMgr.spendGems(item.gemCost);
 
         if (item.type === 'skin') this.inventoryMgr.unlockSkin(item.id.replace('skin_', '') as SkinId);
         else if (item.type === 'companion') this.inventoryMgr.unlockCompanion(item.id.replace('comp_', '') as CompanionId);
@@ -128,5 +137,13 @@ export class Shop extends Phaser.Scene {
         this.gemText.setText(`💎 ${this.inventoryMgr.getGems()}`);
         this.itemContainer.removeAll(true);
         this.renderItems();
+    }
+
+    private showMessage(msg: string): void {
+        const txt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, msg, {
+            fontFamily: FONT_FAMILY, fontSize: '18px', color: '#FF5555',
+            backgroundColor: '#000000CC', padding: { left: 16, right: 16, top: 8, bottom: 8 },
+        }).setOrigin(0.5).setDepth(1000);
+        this.time.delayedCall(2000, () => txt.destroy());
     }
 }

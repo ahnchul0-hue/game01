@@ -202,6 +202,27 @@ export class ApiClient {
         });
     }
 
+
+    /** Spend inventory item (gem, etc.) with server-side validation. Returns true if successful. */
+    async spendInventory(itemType: string, amount: number): Promise<boolean> {
+        const token = this.getToken();
+        if (!token) return false;
+        try {
+            const res = await this.fetchWithTimeout(`${this.baseUrl}/api/inventory/spend`, {
+                method: 'POST',
+                headers: this.authHeaders(),
+                body: JSON.stringify({ item_type: itemType, amount }),
+            });
+            if (res.status === 401) {
+                await this.handleAuthError();
+                return false;
+            }
+            return res.ok;
+        } catch {
+            return false;
+        }
+    }
+
     // ---- Onsen ------------------------------------------------------------------
 
     async getOnsenLayout(): Promise<string | null> {

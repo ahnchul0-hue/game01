@@ -48,6 +48,7 @@ import { ComboManager } from '../systems/ComboManager';
 import { QuestManager } from '../systems/QuestManager';
 import { WeatherSystem } from '../systems/WeatherSystem';
 import { RewardedAdManager } from '../services/RewardedAdManager';
+import { ErrorTracker } from '../services/ErrorTracker';
 import { QUEST_COMPLETION_BONUS_SCORE } from '../utils/Constants';
 
 type GameState = 'playing' | 'paused' | 'revivePrompt' | 'gameOver';
@@ -64,6 +65,7 @@ export class Game extends Phaser.Scene {
     private score = 0;
     private state: GameState = 'playing';
     private mode: GameMode = 'normal';
+    private systemErrors = 0;
 
     // M2: 풀/매니저
     private obstaclePool!: ObstaclePool;
@@ -374,58 +376,54 @@ export class Game extends Phaser.Scene {
 
         // C3: 시스템별 개별 try-catch (하나의 시스템 오류가 전체 게임을 중단하지 않도록)
         let effectiveDelta = delta;
-        try {
+        this.safeUpdate('EffectManager', () => {
             this.effectManager.update(time);
             effectiveDelta = this.effectManager.isSlowmo ? delta * EFFECT_SLOWMO_SCALE : delta;
-        } catch (e) { console.error('[EffectManager] update error:', e); }
+        });
 
         const dt = effectiveDelta / 1000;
         const isRelax = this.mode === 'relax';
 
-        try {
+        this.safeUpdate('DifficultyManager', () => {
             this.gameSpeed = this.difficulty.getSpeed(this.distance, isRelax);
-        } catch (e) { console.error('[DifficultyManager] update error:', e); }
+        });
 
         this.distance += this.gameSpeed * dt;
 
-        try {
+        this.safeUpdate('Renderer', () => {
             const zSpeed = this.gameSpeed / ROAD_HEIGHT;
             this.roadRenderer.update(this.gameSpeed, dt);
             this.sceneryManager.update(zSpeed, dt);
             this.speedLineRenderer.update(this.gameSpeed, dt);
-        } catch (e) { console.error('[Renderer] update error:', e); }
+        });
 
-        try { this.inputController.pollKeyboard(); }
-        catch (e) { console.error('[InputController] error:', e); }
+        this.safeUpdate('InputController', () => { this.inputController.pollKeyboard(); });
 
-        try {
+        this.safeUpdate('Player', () => {
             this.player.update();
             const jumping = this.player.getIsJumping();
             if (this.wasJumping && !jumping) {
                 this.effectManager.onLand(this.player.x, this.player.y);
             }
             this.wasJumping = jumping;
-            // G2: 오리 튜브 물결 이펙트
             this.effectManager.setWaterEffect(this.player.getHasTube(), this.player.x, this.player.y);
-        } catch (e) { console.error('[Player] update error:', e); }
+        });
 
-        try {
+        this.safeUpdate('SpawnManager', () => {
             this.spawnManager.update(effectiveDelta, this.distance, this.gameSpeed, isRelax);
-        } catch (e) { console.error('[SpawnManager] update error:', e); }
+        });
 
-        try {
+        this.safeUpdate('StageManager', () => {
             const newStage = this.stageManager.update(this.distance);
             if (newStage) {
                 this.effectManager.onStageTransition(newStage);
                 this.sceneryManager.setStageColors(newStage);
                 SoundManager.getInstance().playSfx('levelup');
-                // BGM 전환은 StageManager.transitionTo() 내부에서 처리
             }
-        } catch (e) { console.error('[StageManager] update error:', e); }
+        });
 
-        try {
+        this.safeUpdate('WeatherSystem', () => {
             this.weatherSystem.update(this.distance, this.stageManager.getCurrentStage(), dt);
-            // 날씨→ASMR ambient 자동 연동 (릴렉스 모드, 변경 시에만)
             if (isRelax) {
                 const weatherAmbient = this.weatherSystem.getWeatherAmbient();
                 if (weatherAmbient && weatherAmbient !== this.currentAmbientName) {
@@ -433,14 +431,14 @@ export class Game extends Phaser.Scene {
                     SoundManager.getInstance().playAmbient(weatherAmbient);
                 }
             }
-        } catch (e) { console.error('[WeatherSystem] update error:', e); }
+        });
 
-        try {
+        this.safeUpdate('ComboManager', () => {
             const comboExpired = this.combo.update(effectiveDelta);
             if (comboExpired) this.hud.updateCombo(0);
-        } catch (e) { console.error('[ComboManager] update error:', e); }
+        });
 
-        try {
+        this.safeUpdate('AutoCollect', () => {
             if (this.player.getHasMagnet()) {
                 this.autoCollectAllLanes(MAGNET_Z_RANGE);
             } else if (this.player.getHasFriend()) {
@@ -450,9 +448,9 @@ export class Game extends Phaser.Scene {
             } else if (this.companionBuff.itemMagnetRange > 0) {
                 this.autoCollectItems(this.companionBuff.itemMagnetRange);
             }
-        } catch (e) { console.error('[AutoCollect] error:', e); }
+        });
 
-        try {
+        this.safeUpdate('DodgeDetection', () => {
             this.currentActiveObstacles.clear();
             const obstacleChildren = this.obstaclePool.getGroup().getChildren();
             for (const child of obstacleChildren) {
@@ -472,20 +470,20 @@ export class Game extends Phaser.Scene {
             const tmp = this.prevActiveObstacles;
             this.prevActiveObstacles = this.currentActiveObstacles;
             this.currentActiveObstacles = tmp;
-        } catch (e) { console.error('[DodgeDetection] error:', e); }
+        });
 
-        try {
+        this.safeUpdate('GameHUD', () => {
             this.hud.updateScore(this.score);
             this.hud.updateDistance(this.distance);
             const totalItems = this.collectedItems.mandarin + this.collectedItems.watermelon + this.collectedItems.hotspring_material;
             this.hud.updateItems(totalItems);
             this.hud.updatePowerUps(this.player.getActivePowerUpTimers());
-        } catch (e) { console.error('[GameHUD] update error:', e); }
+        });
 
         // 퀘스트 모드: 진행도 업데이트 + 완료 감지
         if (this.mode === 'quest' && this.questManager) {
-            try {
-                this.questManager.update(
+            this.safeUpdate('QuestManager', () => {
+                this.questManager!.update(
                     this.distance,
                     this.collectedItems.mandarin,
                     this.dodgedObstacles,
@@ -493,10 +491,27 @@ export class Game extends Phaser.Scene {
                     this.powerupsUsed,
                 );
                 this.updateQuestHUD();
-                if (this.questManager.isComplete()) {
+                if (this.questManager!.isComplete()) {
                     this.triggerQuestComplete();
                 }
-            } catch (e) { console.error('[QuestManager] update error:', e); }
+            });
+        }
+    }
+
+
+    /** 시스템 업데이트 안전 래퍼 — 에러 발생 시 ErrorTracker 전송 + 연속 3회 시 graceful 복구 */
+    private safeUpdate(name: string, fn: () => void): void {
+        try {
+            fn();
+        } catch (e) {
+            const error = e instanceof Error ? e : new Error(String(e));
+            console.error(`[${name}]`, error);
+            ErrorTracker.captureError(error, { system: name });
+            this.systemErrors++;
+            if (this.systemErrors >= 3) {
+                this.state = 'gameOver';
+                this.triggerGameOver();
+            }
         }
     }
 

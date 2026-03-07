@@ -65,6 +65,16 @@ class ErrorTrackerImpl {
         });
     }
 
+    /** 외부에서 직접 에러를 캡처할 때 사용 */
+    captureError(error: Error, context?: Record<string, string>): void {
+        this.capture({
+            type: 'error',
+            message: `[${context?.system ?? 'unknown'}] ${error.message}`,
+            stack: error.stack,
+            ts: Date.now(),
+        });
+    }
+
     private capture(event: ErrorEvent): void {
         if (this.sentCount >= MAX_ERRORS_PER_SESSION) return;
 

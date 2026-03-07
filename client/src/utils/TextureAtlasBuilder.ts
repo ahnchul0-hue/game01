@@ -411,6 +411,16 @@ function drawPowerUp(gfx: Phaser.GameObjects.Graphics, type: PowerUpType): void 
  *
  * [EXTEND] 512x512 초과 시 ATLAS_W/ATLAS_H 를 1024로 조정하세요.
  */
+/** 프레임 안전 조회 — 누락 시 폴백 + 경고 (크래시 방지) */
+function getFrame(frames: FrameRect[], key: string): FrameRect {
+    const frame = frames.find(f => f.key === key);
+    if (!frame) {
+        console.error('[TextureAtlas] Missing frame:', key, '- using fallback');
+        return frames[0];
+    }
+    return frame;
+}
+
 function buildGameAtlas(scene: Phaser.Scene): void {
     if (scene.textures.exists(ATLAS_GAME_KEY)) return;
 
@@ -428,7 +438,7 @@ function buildGameAtlas(scene: Phaser.Scene): void {
     // 장애물 6종
     const obstacleTypes: ObstacleType[] = ['rock', 'branch_high', 'puddle', 'barrier', 'car', 'snake', 'snowball', 'icicle'];
     for (const type of obstacleTypes) {
-        const frame = frames.find(f => f.key === `obstacle-${type}`)!;
+        const frame = getFrame(frames, `obstacle-${type}`);
         gfx.clear();
         drawObstacle(gfx, type);
         rt.draw(gfx, frame.x, frame.y);
@@ -441,7 +451,7 @@ function buildGameAtlas(scene: Phaser.Scene): void {
         { name: 'hotspring_material', color: 0xFF69B4 },
     ];
     for (const { name, color } of itemDefs) {
-        const frame = frames.find(f => f.key === `item-${name}`)!;
+        const frame = getFrame(frames, `item-${name}`);
         gfx.clear();
         drawItem(gfx, color);
         rt.draw(gfx, frame.x, frame.y);
@@ -450,7 +460,7 @@ function buildGameAtlas(scene: Phaser.Scene): void {
     // 파워업 4종
     const powerupTypes: PowerUpType[] = ['helmet', 'tube', 'friend', 'magnet', 'doubleJump'];
     for (const type of powerupTypes) {
-        const frame = frames.find(f => f.key === `powerup-${type}`)!;
+        const frame = getFrame(frames, `powerup-${type}`);
         gfx.clear();
         drawPowerUp(gfx, type);
         rt.draw(gfx, frame.x, frame.y);
@@ -493,7 +503,7 @@ function buildUIAtlas(scene: Phaser.Scene): void {
 
     // particle
     {
-        const frame = frames.find(f => f.key === 'particle')!;
+        const frame = getFrame(frames, 'particle');
         gfx.clear();
         gfx.fillStyle(0xFFFFFF, 1);
         gfx.fillCircle(4, 4, 4);
@@ -502,7 +512,7 @@ function buildUIAtlas(scene: Phaser.Scene): void {
 
     // friend-sprite
     {
-        const frame = frames.find(f => f.key === 'friend-sprite')!;
+        const frame = getFrame(frames, 'friend-sprite');
         gfx.clear();
         gfx.fillStyle(0xFF6F00, 1);
         gfx.fillRoundedRect(0, 0, 60, 60, 12);
@@ -516,7 +526,7 @@ function buildUIAtlas(scene: Phaser.Scene): void {
 
     // helmet-overlay
     {
-        const frame = frames.find(f => f.key === 'helmet-overlay')!;
+        const frame = getFrame(frames, 'helmet-overlay');
         gfx.clear();
         gfx.fillStyle(0x2E7D32, 1);
         gfx.fillRoundedRect(0, 0, 50, 40, 10);
@@ -534,7 +544,7 @@ function buildUIAtlas(scene: Phaser.Scene): void {
         { name: 'hotspring_material', color: 0xFF69B4 },
     ];
     for (const { name, color } of decoDefs) {
-        const frame = frames.find(f => f.key === `onsen-deco-${name}`)!;
+        const frame = getFrame(frames, `onsen-deco-${name}`);
         const s = ONSEN_ITEM_DISPLAY_SIZE;
         gfx.clear();
         gfx.fillStyle(color, 1);
