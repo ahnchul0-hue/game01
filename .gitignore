@@ -41,3 +41,8 @@ coverage/
 # SQLite WAL/SHM sidecar files
 *.db-shm
 *.db-wal
+
+# E2E screenshots & analysis (dev-only)
+client/e2e-screenshots/
+docs/visual-tests/
+ux-analysis/

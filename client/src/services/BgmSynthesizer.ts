@@ -128,7 +128,7 @@ export class BgmSynthesizer {
             bassGain.gain.setValueAtTime(config.volume * 0.4, t);
             bass.connect(bassGain);
             bassGain.connect(output);
-            bass.start(t);
+            try { bass.start(t); } catch { /* closed context */ }
             this.bassCarrier = bass;
             nodes.push(bass, bassGain);
         }
@@ -143,7 +143,7 @@ export class BgmSynthesizer {
             lfo.connect(lfoGain);
             // LFO가 각 carrier의 gain에 영향 → 트레몰로
             lfoGain.connect(output.gain);
-            lfo.start(t);
+            try { lfo.start(t); } catch { /* closed context */ }
             nodes.push(lfo, lfoGain);
         }
 
@@ -214,8 +214,8 @@ export class BgmSynthesizer {
         lastNode.connect(voiceGain);
         voiceGain.connect(output);
 
-        mod.start(t);
-        carrier.start(t);
+        try { mod.start(t); } catch { /* closed context */ }
+        try { carrier.start(t); } catch { /* closed context */ }
         nodes.push(carrier, voiceGain);
 
         return { carrier, allNodes: nodes };

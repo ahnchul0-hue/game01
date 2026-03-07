@@ -25,6 +25,7 @@ interface Particle {
     size: number;
     alpha: number;
     rotation?: number;
+    type: WeatherType; // 파티클 생성 시 타입 고정 (전환 렌더링 버그 방지)
 }
 
 // 하늘 시간 색상 (거리에 따라 새벽→낮→노을→밤 순환)
@@ -51,12 +52,14 @@ export class WeatherSystem {
     private skyGraphics: Phaser.GameObjects.Graphics;
     private weatherGraphics: Phaser.GameObjects.Graphics;
     private particles: Particle[] = [];
+    private particleCount = 0; // swap-and-pop 활성 파티클 수
     private currentWeather: WeatherType = 'clear';
     private currentSkyTop = 0x87CEEB;
     private currentSkyBottom = 0xE0F0FF;
     private targetSkyTop = 0x87CEEB;
     private targetSkyBottom = 0xE0F0FF;
     private weatherIntensity = 0; // 0~1 fade in
+    private lastSkyKey = ''; // 하늘 캐시 (불필요한 재렌더링 방지)
 
     constructor(scene: Phaser.Scene) {
         // 하늘 오버레이 (depth 0: 모든 게임 오브젝트 뒤)
@@ -66,6 +69,11 @@ export class WeatherSystem {
         // 날씨 파티클 (depth 25: HUD 아래, 게임 오브젝트 위)
         this.weatherGraphics = scene.add.graphics();
         this.weatherGraphics.setDepth(25);
+
+        // 파티클 배열 사전 할당
+        for (let i = 0; i < MAX_PARTICLES; i++) {
+            this.particles.push({ x: 0, y: 0, vx: 0, vy: 0, size: 0, alpha: 0, type: 'clear' });
+        }
     }
 
     update(distance: number, stage: StageType, dt: number): void {
@@ -94,6 +102,11 @@ export class WeatherSystem {
         this.currentSkyTop = lerpColor(this.currentSkyTop, this.targetSkyTop, speed);
         this.currentSkyBottom = lerpColor(this.currentSkyBottom, this.targetSkyBottom, speed);
 
+        // 캐시 키로 불필요한 재렌더링 방지
+        const skyKey = `${this.currentSkyTop}:${this.currentSkyBottom}`;
+        if (skyKey === this.lastSkyKey) return;
+        this.lastSkyKey = skyKey;
+
         // 그라데이션 렌더링
         this.skyGraphics.clear();
         const steps = 8;
@@ -113,6 +126,8 @@ export class WeatherSystem {
         if (targetType !== this.currentWeather) {
             this.currentWeather = targetType;
             this.weatherIntensity = 0;
+            // 날씨 전환 시 기존 파티클 즉시 클리어 (렌더링 타입 불일치 방지)
+            this.particleCount = 0;
         }
 
         // 점진적 강도 증가
@@ -120,75 +135,82 @@ export class WeatherSystem {
             this.weatherIntensity = Math.min(1, this.weatherIntensity + dt * 0.5);
         }
 
-        // 파티클 생성
+        // 파티클 생성 (사전 할당 배열 내에서 활성화)
         if (this.currentWeather !== 'clear') {
-            const spawnRate = MAX_PARTICLES * this.weatherIntensity;
-            while (this.particles.length < spawnRate) {
-                this.particles.push(this.spawnParticle(this.currentWeather));
+            const spawnRate = Math.floor(MAX_PARTICLES * this.weatherIntensity);
+            while (this.particleCount < spawnRate) {
+                this.initParticle(this.particles[this.particleCount], this.currentWeather);
+                this.particleCount++;
             }
         }
 
-        // 파티클 업데이트
-        for (let i = this.particles.length - 1; i >= 0; i--) {
+        // 파티클 업데이트 (swap-and-pop으로 O(1) 제거)
+        for (let i = this.particleCount - 1; i >= 0; i--) {
             const p = this.particles[i];
             p.x += p.vx * dt;
             p.y += p.vy * dt;
             if (p.rotation !== undefined) p.rotation += dt * 2;
 
-            // 화면 밖 제거
+            // 화면 밖 → swap-and-pop
             if (p.y > GAME_HEIGHT || p.x < -20 || p.x > GAME_WIDTH + 20) {
-                this.particles.splice(i, 1);
+                this.particleCount--;
+                if (i < this.particleCount) {
+                    // 마지막 활성 파티클과 교환
+                    const last = this.particles[this.particleCount];
+                    this.particles[i] = last;
+                    this.particles[this.particleCount] = p;
+                }
             }
         }
     }
 
-    private spawnParticle(type: WeatherType): Particle {
-        const base: Particle = {
-            x: Math.random() * GAME_WIDTH,
-            y: -10,
-            vx: 0,
-            vy: 0,
-            size: 2,
-            alpha: 0.6,
-        };
+    private initParticle(p: Particle, type: WeatherType): void {
+        p.x = Math.random() * GAME_WIDTH;
+        p.y = -10;
+        p.vx = 0;
+        p.vy = 0;
+        p.size = 2;
+        p.alpha = 0.6;
+        p.rotation = undefined;
+        p.type = type;
 
         switch (type) {
             case 'rain':
-                base.vx = -30 + Math.random() * 10;
-                base.vy = 400 + Math.random() * 200;
-                base.size = 1.5;
-                base.alpha = 0.4 + Math.random() * 0.3;
+                p.vx = -30 + Math.random() * 10;
+                p.vy = 400 + Math.random() * 200;
+                p.size = 1.5;
+                p.alpha = 0.4 + Math.random() * 0.3;
                 break;
             case 'snow':
-                base.vx = -20 + Math.random() * 40;
-                base.vy = 40 + Math.random() * 60;
-                base.size = 2 + Math.random() * 3;
-                base.alpha = 0.5 + Math.random() * 0.4;
+                p.vx = -20 + Math.random() * 40;
+                p.vy = 40 + Math.random() * 60;
+                p.size = 2 + Math.random() * 3;
+                p.alpha = 0.5 + Math.random() * 0.4;
                 break;
             case 'petals':
-                base.vx = 20 + Math.random() * 40;
-                base.vy = 30 + Math.random() * 50;
-                base.size = 3 + Math.random() * 3;
-                base.alpha = 0.5 + Math.random() * 0.3;
-                base.rotation = Math.random() * Math.PI * 2;
+                p.vx = 20 + Math.random() * 40;
+                p.vy = 30 + Math.random() * 50;
+                p.size = 3 + Math.random() * 3;
+                p.alpha = 0.5 + Math.random() * 0.3;
+                p.rotation = Math.random() * Math.PI * 2;
                 break;
             case 'steam':
-                base.y = GAME_HEIGHT * 0.7 + Math.random() * GAME_HEIGHT * 0.2;
-                base.vx = -5 + Math.random() * 10;
-                base.vy = -(20 + Math.random() * 30);
-                base.size = 8 + Math.random() * 12;
-                base.alpha = 0.1 + Math.random() * 0.15;
+                p.y = GAME_HEIGHT * 0.7 + Math.random() * GAME_HEIGHT * 0.2;
+                p.vx = -5 + Math.random() * 10;
+                p.vy = -(20 + Math.random() * 30);
+                p.size = 8 + Math.random() * 12;
+                p.alpha = 0.1 + Math.random() * 0.15;
                 break;
         }
-
-        return base;
     }
 
     private renderParticles(): void {
         this.weatherGraphics.clear();
 
-        for (const p of this.particles) {
-            switch (this.currentWeather) {
+        for (let i = 0; i < this.particleCount; i++) {
+            const p = this.particles[i];
+            // 파티클 자체의 type으로 렌더링 (전환 중 시각 불일치 방지)
+            switch (p.type) {
                 case 'rain':
                     this.weatherGraphics.lineStyle(p.size, 0xAABBDD, p.alpha * this.weatherIntensity);
                     this.weatherGraphics.lineBetween(p.x, p.y, p.x - 3, p.y + 12);
@@ -222,7 +244,7 @@ export class WeatherSystem {
     destroy(): void {
         this.skyGraphics.destroy();
         this.weatherGraphics.destroy();
-        this.particles.length = 0;
+        this.particleCount = 0;
     }
 }
 
