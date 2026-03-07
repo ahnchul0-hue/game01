@@ -47,6 +47,7 @@ import { TutorialOverlay } from '../ui/TutorialOverlay';
 import { ComboManager } from '../systems/ComboManager';
 import { QuestManager } from '../systems/QuestManager';
 import { WeatherSystem } from '../systems/WeatherSystem';
+import { RewardedAdManager } from '../services/RewardedAdManager';
 import { QUEST_COMPLETION_BONUS_SCORE } from '../utils/Constants';
 
 type GameState = 'playing' | 'paused' | 'revivePrompt' | 'gameOver';
@@ -88,12 +89,14 @@ export class Game extends Phaser.Scene {
 
     // M2: 부활
     private revivesUsed = 0;
+    private adReviveUsed = false;
 
     // M2: 수집 아이템 카운트
     private collectedItems: CollectedItems = { mandarin: 0, watermelon: 0, hotspring_material: 0 };
 
     // 미션: 회피한 장애물 수
     private dodgedObstacles = 0;
+    private powerupsUsed = 0;
 
     // 입력
     private inputController!: InputController;
@@ -143,6 +146,8 @@ export class Game extends Phaser.Scene {
         this.revivesUsed = 0;
         this.collectedItems = { mandarin: 0, watermelon: 0, hotspring_material: 0 };
         this.dodgedObstacles = 0;
+        this.powerupsUsed = 0;
+        this.adReviveUsed = false;
         this.prevActiveObstacles = new Set();
         this.currentActiveObstacles = new Set();
         this.tutorialOverlay = null;
@@ -484,6 +489,8 @@ export class Game extends Phaser.Scene {
                     this.distance,
                     this.collectedItems.mandarin,
                     this.dodgedObstacles,
+                    this.combo.getCount(),
+                    this.powerupsUsed,
                 );
                 this.updateQuestHUD();
                 if (this.questManager.isComplete()) {
@@ -539,6 +546,8 @@ export class Game extends Phaser.Scene {
         const maxRevives = this.mode === 'relax' ? RELAX_FREE_REVIVES : MAX_FREE_REVIVES;
         if (this.revivesUsed < maxRevives) {
             this.showRevivePrompt();
+        } else if (!this.adReviveUsed && RewardedAdManager.getInstance().isAdReady('revive')) {
+            this.showAdRevivePrompt();
         } else {
             this.triggerGameOver();
         }
@@ -583,6 +592,7 @@ export class Game extends Phaser.Scene {
         navigator.vibrate?.(50);
         this.player.applyPowerUp(powerUp.powerUpType);
         this.effectManager.onPowerUpCollected(this.player);
+        this.powerupsUsed++;
         powerUp.deactivate();
     }
 
@@ -670,6 +680,25 @@ export class Game extends Phaser.Scene {
             countdownTimer.destroy();
             if (countText.scene) countText.destroy();
         });
+    }
+
+    /** 광고 시청 후 부활 프롬프트 */
+    private showAdRevivePrompt(): void {
+        this.state = 'revivePrompt';
+        this.physics.pause();
+        this.reviveUI.show(
+            () => {
+                this.adReviveUsed = true;
+                RewardedAdManager.getInstance().showAd('revive', (success) => {
+                    if (success) {
+                        this.revive();
+                    } else {
+                        this.triggerGameOver();
+                    }
+                });
+            },
+            () => this.triggerGameOver(),
+        );
     }
 
     triggerGameOver(): void {

@@ -43,12 +43,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     private hasTube = false;
     private hasFriend = false;
     private hasMagnet = false;
+    private hasDoubleJump = false;
+    private doubleJumpUsed = false;
     private scoreMultiplier = 1;
     private helmetOverlay: Phaser.GameObjects.Sprite | null = null;
     private friendSprite: Phaser.GameObjects.Sprite | null = null;
     private tubeTimerEvent: Phaser.Time.TimerEvent | null = null;
     private friendTimerEvent: Phaser.Time.TimerEvent | null = null;
     private magnetTimerEvent: Phaser.Time.TimerEvent | null = null;
+    private doubleJumpTimerEvent: Phaser.Time.TimerEvent | null = null;
 
     constructor(scene: Phaser.Scene, x: number, y: number, skinId: SkinId = 'default', companionId: CompanionId = 'none') {
         super(scene, x, y, `capybara-${skinId}`);
@@ -94,8 +97,30 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     jump(): void {
-        if (this.isJumping || this.isSliding) return;
+        if (this.isSliding) return;
+
+        // 2단 점프: 공중에서 한 번 더 점프 가능
+        if (this.isJumping) {
+            if (this.hasDoubleJump && !this.doubleJumpUsed) {
+                this.doubleJumpUsed = true;
+                this.jumpVelocityY = JUMP_VELOCITY * 0.85;
+                // 2단 점프 이펙트 (약간 작은 스케일)
+                this.scene.tweens.add({
+                    targets: this, scaleX: this.baseScale * 0.9, scaleY: this.baseScale * 1.15,
+                    duration: 80, ease: 'Power2',
+                    onComplete: () => {
+                        this.scene.tweens.add({
+                            targets: this, scaleX: this.baseScale, scaleY: this.baseScale,
+                            duration: 120, ease: 'Power1',
+                        });
+                    },
+                });
+            }
+            return;
+        }
+
         this.isJumping = true;
+        this.doubleJumpUsed = false;
         this.jumpVelocityY = JUMP_VELOCITY;
         this.jumpOffsetY = 0;
         // Squash/Stretch
@@ -341,6 +366,17 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
                     () => this.clearMagnet(),
                 );
                 break;
+
+            case 'doubleJump':
+                this.hasDoubleJump = true;
+                this.doubleJumpUsed = false;
+                this.setTint(0x9C27B0);
+                if (this.doubleJumpTimerEvent) this.doubleJumpTimerEvent.destroy();
+                this.doubleJumpTimerEvent = this.scene.time.delayedCall(
+                    POWERUP_CONFIGS.doubleJump.duration,
+                    () => this.clearDoubleJump(),
+                );
+                break;
         }
     }
 
@@ -367,8 +403,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     private clearMagnet(): void {
         this.hasMagnet = false;
-        if (!this.hasTube) this.clearTint();
+        if (!this.hasTube && !this.hasDoubleJump) this.clearTint();
         this.magnetTimerEvent = null;
+    }
+
+    private clearDoubleJump(): void {
+        this.hasDoubleJump = false;
+        this.doubleJumpUsed = false;
+        if (!this.hasTube && !this.hasMagnet) this.clearTint();
+        this.doubleJumpTimerEvent = null;
     }
 
     clearAllPowerUps(): void {
@@ -384,6 +427,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         if (this.hasMagnet) {
             if (this.magnetTimerEvent) { this.magnetTimerEvent.destroy(); this.magnetTimerEvent = null; }
             this.clearMagnet();
+        }
+        if (this.hasDoubleJump) {
+            if (this.doubleJumpTimerEvent) { this.doubleJumpTimerEvent.destroy(); this.doubleJumpTimerEvent = null; }
+            this.clearDoubleJump();
         }
     }
 
@@ -403,6 +450,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         }
         if (this.hasMagnet && this.magnetTimerEvent) {
             timers.push({ type: 'magnet', remaining: this.magnetTimerEvent.getRemaining() });
+        }
+        if (this.hasDoubleJump && this.doubleJumpTimerEvent) {
+            timers.push({ type: 'doubleJump', remaining: this.doubleJumpTimerEvent.getRemaining() });
         }
         return timers;
     }

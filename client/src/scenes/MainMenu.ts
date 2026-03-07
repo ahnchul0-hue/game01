@@ -10,6 +10,7 @@ import {
     SCENE_COMPANION_SELECT,
     SCENE_QUEST_SELECT,
     SCENE_JOURNEY_DIARY,
+    SCENE_SHOP,
     FONT_FAMILY,
 } from '../utils/Constants';
 import { ApiClient } from '../services/ApiClient';
@@ -138,6 +139,13 @@ export class MainMenu extends Phaser.Scene {
             callback: () => fadeToScene(this, SCENE_JOURNEY_DIARY),
         });
 
+        // ── 상점 ──
+        createButton(this, {
+            x: GAME_WIDTH / 2, y: GAME_HEIGHT * 0.80,
+            label: '상점', color: 0xE91E63, width: 280, height: 48, fontSize: '22px', radius: 14,
+            callback: () => fadeToScene(this, SCENE_SHOP),
+        });
+
         // 특별 이벤트 배너 표시
         if (isSpecialEvent()) {
             const banner = getEventBanner();
@@ -147,7 +155,7 @@ export class MainMenu extends Phaser.Scene {
                 bannerGfx.fillStyle(banner.bgColor, 0.92);
                 bannerGfx.fillRoundedRect(
                     GAME_WIDTH * 0.1,
-                    GAME_HEIGHT * 0.875,
+                    GAME_HEIGHT * 0.92,
                     GAME_WIDTH * 0.8,
                     52,
                     12,
@@ -157,7 +165,7 @@ export class MainMenu extends Phaser.Scene {
                 // 배너 텍스트
                 const bannerText = this.add.text(
                     GAME_WIDTH / 2,
-                    GAME_HEIGHT * 0.875 + 26,
+                    GAME_HEIGHT * 0.92 + 26,
                     banner.text,
                     {
                         fontFamily: FONT_FAMILY,
